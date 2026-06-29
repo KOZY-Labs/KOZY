@@ -1,9 +1,13 @@
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert } from 'react-native';
 import { router  } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import MapView, { Marker } from 'react-native-maps';
 
-import { DATA } from '@/data/mockListData';
+import { useListingDraft } from '@/context/ListingDraftContext';
+import { useAuth } from '@/context/AuthContext';
+import { draftToPreview, normalizeDraft, ownerFromProfile } from '@/lib/listingDraft';
+import { createListing, updateListing, deleteListing } from '@/lib/db/listings';
+import { uploadListingImages, uploadListingVideo } from '@/lib/utils/uploadMedia';
 import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
@@ -12,9 +16,40 @@ import ProfileSection from '@/components/ui/profileSection';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function PreviewListing() {
-  //const { id } = useLocalSearchParams();
-  const item = DATA[0];
+  const { draft, resetDraft } = useListingDraft();
+  const { profile, uid } = useAuth();
+  const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const [publishing, setPublishing] = useState(false);
+
+  const handlePublish = async () => {
+    if (!uid) {
+      Alert.alert('Sign in required', 'Please log in again to publish your listing.');
+      return;
+    }
+    setPublishing(true);
+    let createdId = null;
+    try {
+      // 1) create the listing as a draft (gives us an id for the media paths)
+      const payload = normalizeDraft(draft);
+      createdId = await createListing({ ...payload, ownerId: uid, owner: ownerFromProfile(profile), status: 'draft' });
+      // 2) upload media to listings/{id}/...
+      const images = draft.photos?.length ? await uploadListingImages(createdId, draft.photos) : [];
+      const videoUrl = draft.video ? await uploadListingVideo(createdId, draft.video) : '';
+      // 3) attach media + publish
+      await updateListing(createdId, { images, videoUrl, status: 'published', publishedDate: new Date().toISOString() });
+      resetDraft();
+      router.replace({ pathname: '/(tabs)/post/confirmPublish', params: { id: createdId } });
+    } catch (e) {
+      // Clean up the half-created draft so failed publishes don't leave orphans.
+      if (createdId) {
+        try { await deleteListing(createdId); } catch { /* best effort */ }
+      }
+      Alert.alert('Publish failed', e?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const defaultRegion = useMemo(() => {
   const initialLatitude = Number(item?.latitude);
@@ -126,27 +161,12 @@ export default function PreviewListing() {
             params: { id: item.id }
           })}}
         />
-        <AppButton 
-          text="Confirm & Publish" 
-          type="primary" 
-          onPress={() => {
-            Alert.alert(
-              'Your listing is live 🎉',
-              'Your room is ready to be discovered. You can update it anytime.',
-              [{
-                text: 'Close',
-                style: 'cancel',
-              },
-              {
-                text: 'View My listing',
-                onPress: () => { 
-                  router.push({
-                    pathname: '/(tabs)/account'
-                  });
-                },
-              },]
-            );
-          }}
+        <AppButton
+          text="Confirm & Publish"
+          type="primary"
+          loading={publishing}
+          loadingLabel="Publishing"
+          onPress={handlePublish}
         />
       </ScrollView>
   );

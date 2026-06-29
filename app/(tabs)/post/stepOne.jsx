@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Platform, StyleSheet, View, FlatList, Alert } from 'react-native';
-import { router, useNavigation } from 'expo-router';
+import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
@@ -15,6 +14,7 @@ import AppButton from '@/components/ui/appButton';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import Dropdown from '@/components/ui/input/dropdown';
 import DisplayInput from '@/components/ui/input/displayInput';
+import { useListingDraft } from '@/context/ListingDraftContext';
 
 const DEPOSIT_INCREMENT = 100;
 const DEPOSIT_TBD_VALUE = 'TBD';
@@ -54,7 +54,6 @@ const getLookingForLabel = (value) => (
 );
 
 const normalizeAddressPart = (value) => value?.trim?.() ?? '';
-const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
 
 const getAddressComponent = (components, type, name = 'long_name') => (
     components.find((component) => component.types.includes(type))?.[name] ?? ''
@@ -103,30 +102,30 @@ const createDepositOptions = (priceValue) => {
 
 {/* main component */}
 export default function StepOne() {
-    const navigation = useNavigation();
-    const [roomTitle, setRoomTitle] = useState(null);
-    const [price, setPrice] = useState(null);
-    const [street, setStreet] = useState(null);
-    const [additionalAddress, setAdditionalAddress] = useState(null);
-    const [city, setCity] = useState(null);
-    const [province, setProvince] = useState(null);
-    const [postalCode, setPostalCode] = useState(null);
+    const { draft, setFields } = useListingDraft();
+    // Initialize from the shared draft so going back/forward (and "Edit Listing") keeps values.
+    const [roomTitle, setRoomTitle] = useState(draft.roomTitle || null);
+    const [price, setPrice] = useState(draft.price || null);
+    const [street, setStreet] = useState(draft.street || null);
+    const [additionalAddress, setAdditionalAddress] = useState(draft.additionalAddress || null);
+    const [city, setCity] = useState(draft.city || null);
+    const [province, setProvince] = useState(draft.province || null);
+    const [postalCode, setPostalCode] = useState(draft.postalCode || null);
     const [error, setError] = useState(null);
-    const [placeId, setPlaceId] = useState(null);
-    const [latitude, setLatitude] = useState(null);
-    const [longitude, setLongitude] = useState(null);
-    const [leaseType, setLeaseType] = useState('');
-    const [deposit, setDeposit] = useState('');
-    const [draftDeposit, setDraftDeposit] = useState('');
-    const [roomType, setRoomType] = useState('');
-    const [bathroomType, setBathroomType] = useState('');
-    const [keyDetail, setKeyDetail] = useState([]);
-    const [lookingFor, setLookingFor] = useState([]);
-    const [availableMonth, setAvailableMonth] = useState(null);
-    const [availableDay, setAvailableDay] = useState(null);
-    const [availableYear, setAvailableYear] = useState(null);
-    const [minimumStay, setMinimumStay] = useState('');
-    const [isUtilityIncluded, setIsUtilityIncluded] = useState(true);
+    const [, setPlaceId] = useState(null);
+    const [latitude, setLatitude] = useState(draft.latitude ?? null);
+    const [longitude, setLongitude] = useState(draft.longitude ?? null);
+    const [leaseType, setLeaseType] = useState(draft.leaseType || '');
+    const [deposit, setDeposit] = useState(draft.deposit || '');
+    const [roomType, setRoomType] = useState(draft.roomType || '');
+    const [bathroomType, setBathroomType] = useState(draft.bathroomType || '');
+    const [keyDetail, setKeyDetail] = useState(draft.keyDetail ?? []);
+    const [lookingFor, setLookingFor] = useState(draft.lookingFor ?? []);
+    const [availableMonth, setAvailableMonth] = useState(draft.availableMonth ?? null);
+    const [availableDay, setAvailableDay] = useState(draft.availableDay ?? null);
+    const [availableYear, setAvailableYear] = useState(draft.availableYear ?? null);
+    const [minimumStay, setMinimumStay] = useState(draft.minimumStay || '');
+    const [isUtilityIncluded, setIsUtilityIncluded] = useState(draft.isUtilityIncluded ?? true);
     const [draftIsUtilityIncluded, setDraftIsUtilityIncluded] = useState(true);
     const availableMonthDrawerRef = useRef(null);
     const availableDayDrawerRef = useRef(null);
@@ -168,29 +167,12 @@ export default function StepOne() {
         }
     }, [deposit, price]);
 
-    useFocusEffect(
-        useCallback(() => {
-        const parent = navigation.getParent();
-        parent?.setOptions({
-            tabBarStyle: { display: 'none' },
-        });
-
-        return () => {
-            parent?.setOptions({
-                tabBarStyle: undefined,
-            });
-        };
-        }, [navigation])
-    );
+    // Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 
     const openDepositDrawer = () => {
-        setDraftDeposit(deposit);
+        // Default to the first option (TBD) so opening + closing (even via handle/backdrop) commits a value.
+        if (!deposit) setDeposit(DEPOSIT_TBD_VALUE);
         depositDrawerRef.current?.snapToIndex(0);
-    };
-
-    const saveDeposit = () => {
-        setDeposit(draftDeposit);
-        depositDrawerRef.current?.close();
     };
 
     const openUtilitiesDrawer = () => {
@@ -238,27 +220,45 @@ export default function StepOne() {
     };
 
     const continueToStepTwo = () => {
-        if (!GOOGLE_PLACES_API_KEY) {
-            setError('Google Places API key is missing.');
+        // Require the essentials. Coordinates come from Google Places autocomplete when
+        // available, but we don't hard-block on it so the flow works without the API key.
+        if (!normalizeAddressPart(roomTitle)) {
+            setError('Enter a room title before continuing.');
+            return;
+        }
+        if (!normalizeAddressPart(street) || !normalizeAddressPart(city) || !normalizeAddressPart(province)) {
+            setError('Enter the address (street, city, and state/province) before continuing.');
+            return;
+        }
+        if (!price) {
+            setError('Enter the monthly rent before continuing.');
             return;
         }
 
-        if (!placeId || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            setError('Select an address from the suggestions before continuing.');
-            return;
-        }
-
-        console.log('[StepOne] Continue with selected address', {
+        setFields({
+            roomTitle: normalizeAddressPart(roomTitle),
+            price,
             street: normalizeAddressPart(street),
             additionalAddress: normalizeAddressPart(additionalAddress),
             city: normalizeAddressPart(city),
             province: normalizeAddressPart(province),
             postalCode: normalizeAddressPart(postalCode),
-            placeId,
-            latitude,
-            longitude,
+            latitude: Number.isFinite(latitude) ? latitude : null,
+            longitude: Number.isFinite(longitude) ? longitude : null,
+            leaseType,
+            deposit,
+            roomType,
+            bathroomType,
+            keyDetail,
+            lookingFor,
+            availableMonth,
+            availableDay,
+            availableYear,
+            minimumStay,
+            isUtilityIncluded,
         });
 
+        setError(null);
         router.push('/post/stepTwo');
     };
 
@@ -308,10 +308,10 @@ export default function StepOne() {
                                         accessibilityLabel: 'Street address',
                                     }}
                                     onPress={handlePlaceSelect}
-                                    onFail={(placesError) => {
-                                        console.log('[StepOne] Google Places autocomplete failed', placesError);
-                                        setError('Address lookup failed. Please try again.');
-                                    }}
+                                    // onFail={(placesError) => {
+                                    //     console.log('[StepOne] Google Places autocomplete failed', placesError);
+                                    //     setError('Address lookup failed. Please try again.');
+                                    // }}
                                     onNotFound={() => {
                                         setError('No matching address found. Try a more specific address.');
                                     }}
@@ -367,21 +367,30 @@ export default function StepOne() {
                                     placeholder="Month"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
                                     showSoftInputOnFocus={false}
-                                    onPress={() => availableMonthDrawerRef.current?.snapToIndex(0)}
+                                    onPress={() => {
+                                        if (!availableMonth) setAvailableMonth('Jan');
+                                        availableMonthDrawerRef.current?.snapToIndex(0);
+                                    }}
                                 />
                                 <DisplayInput
                                     value={availableDay}
                                     placeholder="Day"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
                                     showSoftInputOnFocus={false}
-                                    onPress={() => availableDayDrawerRef.current?.snapToIndex(0)}
+                                    onPress={() => {
+                                        if (!availableDay) setAvailableDay('1');
+                                        availableDayDrawerRef.current?.snapToIndex(0);
+                                    }}
                                 />
                                 <DisplayInput
                                     value={availableYear}
                                     placeholder="Year"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
                                     showSoftInputOnFocus={false}
-                                    onPress={() => availableYearDrawerRef.current?.snapToIndex(0)}
+                                    onPress={() => {
+                                        if (!availableYear) setAvailableYear('2026');
+                                        availableYearDrawerRef.current?.snapToIndex(0);
+                                    }}
                                 />
                             </InputRow>
                         </FormField>
@@ -609,11 +618,11 @@ export default function StepOne() {
         </AppDrawer>
         <AppDrawer
             ref={depositDrawerRef}
-            primaryAction={saveDeposit}
+            primaryAction={() => depositDrawerRef.current?.close()}
         >
             <Dropdown
-                value={draftDeposit}
-                onChange={setDraftDeposit}
+                value={deposit}
+                onChange={setDeposit}
                 options={depositOptions}
             />
         </AppDrawer>

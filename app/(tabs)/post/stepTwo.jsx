@@ -11,13 +11,16 @@ import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
 import InfoList from '@/components/ui/appList';
 import { colors } from '@/constants/colors';
 import validateImage from '@/utils/mediaValidation';
+import { useListingDraft } from '@/context/ListingDraftContext';
 
 const MIN_PHOTOS = 3;
 const MAX_PHOTOS = 9;
 
 function createPendingPhoto(asset, index) {
   return {
-    id: asset.assetId ?? `${asset.uri}-${Date.now()}-${index}`,
+    // `||` (not `??`) so an empty-string assetId (seen on iOS) also falls back —
+    // otherwise every photo shares id '' and deleting one removes all of them.
+    id: asset.assetId || `${asset.uri}-${index}-${Date.now()}`,
     uri: asset.uri,
     previewUri: asset.uri,
     fileName: asset.fileName ?? null,
@@ -31,8 +34,9 @@ function createPendingPhoto(asset, index) {
 }
 
 export default function StepTwo() {
+    const { draft, setPhotos: savePhotosToDraft } = useListingDraft();
     const [error, setError] = useState(null);
-    const [photos, setPhotos] = useState([]);
+    const [photos, setPhotos] = useState(draft.photos ?? []);
 
     const insets = useSafeAreaInsets();
 
@@ -112,8 +116,7 @@ export default function StepTwo() {
             return;
         }
 
-        // Pass the pending photo objects to the listing draft/upload service here
-        // when backend persistence is introduced.
+        savePhotosToDraft(photos);
         router.push('/post/stepThree');
     };
 

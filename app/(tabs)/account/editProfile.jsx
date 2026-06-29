@@ -2,9 +2,10 @@ import { useRef, useState, useCallback } from 'react';
 import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
 import { Platform, StyleSheet, View, Dimensions, FlatList, Alert } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { startPersonaVerification } from '@/services/personaVerification';
 
 import PillGroup from '@/components/ui/pill/pillGroup';
@@ -14,15 +15,16 @@ import InputRow from '@/components/ui/layout/inputRow';
 import DisplayField from '@/components/ui/displayField';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import DisplayInput from '@/components/ui/input/displayInput';
-import { DATA } from '@/data/mockListData';
 import { colors } from '@/constants/colors';
 import Dropdown from '@/components/ui/input/dropdown';
 import TextField from '@/components/ui/input/textField';
 import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
 import MediaInput from '@/components/ui/input/mediaInput';
-import mockPickImage from '@/services/mockMediaUpload';
 import validateImage from '@/utils/mediaValidation';
+import { useAuth } from '@/context/AuthContext';
+import { updateUserDoc } from '@/lib/db/users';
+import { uploadUserAvatar } from '@/lib/utils/uploadMedia';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -35,9 +37,8 @@ export default function EditProfile() {
     const navigation = useNavigation();
     const { ownerId } = useLocalSearchParams();
     const normalizedOwnerId = Array.isArray(ownerId) ? ownerId[0] : ownerId;
-    const item = DATA.find(
-      (listing) => listing.owner.id === normalizedOwnerId
-    ) ?? DATA[0];
+    const { profile, uid, refreshProfile } = useAuth();
+    const existingAvatar = profile?.avatar ?? [];
     const genderDrawerRef = useRef(null);
     const personalityDrawerRef = useRef(null);
     const jobDrawerRef = useRef(null);
@@ -48,17 +49,17 @@ export default function EditProfile() {
     const emailEditDrawerRef = useRef(null);
     const emailCheckDrawerRef = useRef(null);
     const photoDrawerRef = useRef(null);
-    const photoConfirmDrawerRef = useRef(null);
-    const [personality, setPersonality] = useState([]);
-    const [lifestylePreferences, setLifestylePreferences] = useState([]);
-    const [gender, setGender] = useState(null);
-    const [job, setJob] = useState(null);
-    const [aboutMe, setAboutMe] = useState('');
+    const [personality, setPersonality] = useState(profile?.personality ?? []);
+    const [lifestylePreferences, setLifestylePreferences] = useState(profile?.lifestyle ?? []);
+    const [gender, setGender] = useState(profile?.gender ?? null);
+    const [job, setJob] = useState(profile?.occupation ?? null);
+    const [aboutMe, setAboutMe] = useState(profile?.aboutMe ?? '');
     const [error, setError] = useState(null);
-    const [myEmail, setMyEmail] = useState(null);
-    const [verified, setVerified] = useState(false);
+    const [myEmail, setMyEmail] = useState(profile?.email ?? null);
+    const [verified, setVerified] = useState(profile?.verified ?? false);
     const [photos, setPhotos] = useState([]);
     const [photoError, setPhotoError] = useState(null);
+    const [saving, setSaving] = useState(false);
 
     useFocusEffect(
       useCallback(() => {
@@ -87,30 +88,38 @@ export default function EditProfile() {
       }, [navigation, insets])
     );
 
-  const checkCompleteProfile = () => {
-    if(personality.length === 0 || lifestylePreferences.length === 0 || photos.length === 0 || !gender || !job || !aboutMe || !myEmail || !verified) {
-      Alert.alert(
-        'Profile Updated', 
-        'Your profile has been updated.', 
-        [
-          { 
-            text: 'Confirm', 
-            style: 'cancel' 
-          },
-        ]);
-      return false;
-    } else {
-      Alert.alert(
-        'Profile Updated', 
-        'Your profile has been updated. You can now start chatting and upload listings.', 
-        [
-          { 
-            text: 'Close', 
-            style: 'cancel' 
-          },
-        ]);
+  const saveProfile = async () => {
+    if (!uid) {
+      Alert.alert('Sign in required', 'Please log in again to update your profile.');
+      return;
     }
-  }
+    setSaving(true);
+    try {
+      // Upload any newly picked profile photos to Storage; otherwise keep existing avatar.
+      const newAvatarUrls = photos.length
+        ? await Promise.all(photos.map((p) => uploadUserAvatar(uid, p)))
+        : [];
+      const avatar = newAvatarUrls.length ? newAvatarUrls : existingAvatar;
+
+      await updateUserDoc(uid, {
+        gender: gender ?? '',
+        occupation: job ?? '',
+        personality,
+        lifestyle: lifestylePreferences,
+        aboutMe,
+        avatar,
+        verified,
+      });
+      await refreshProfile();
+      Alert.alert('Profile updated', 'Your changes have been saved.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (e) {
+      Alert.alert('Update failed', e?.message ?? 'Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const addPhoto = async () => {
     if (photos.length >= 2) {
@@ -119,23 +128,31 @@ export default function EditProfile() {
     }
 
     try {
-      const files = await mockPickImage();
-
-      for (const file of files) {
-        if (photos.length >= 2) break;
-
-        const error = validateImage(file);
-        if (error) {
-          setPhotoError(error);
-          return;
-        }
-
-        setPhotos(prev => [...prev, file]);
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Photo access required', 'Allow photo library access to add profile photos.');
+        return;
       }
 
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: 2 - photos.length,
+        quality: 1,
+      });
+
+      if (result.canceled) return;
+
+      const invalid = result.assets.find((asset) => validateImage(asset));
+      if (invalid) {
+        setPhotoError(validateImage(invalid));
+        return;
+      }
+
+      setPhotos((prev) => [...prev, ...result.assets].slice(0, 2));
       setPhotoError(null);
     } catch {
-      // cancelled
+      Alert.alert('Unable to open gallery', 'Please try selecting your photos again.');
     }
   };
 
@@ -151,7 +168,7 @@ export default function EditProfile() {
             <View style={styles.sliderContainer}>
               {/* Image carousel */}
               <FlatList
-                data={item.owner.avatar}
+                data={photos.length ? photos.map((p) => p.uri) : existingAvatar}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
@@ -161,8 +178,14 @@ export default function EditProfile() {
                 contentContainerStyle={{
                   paddingVertical: 20,
                 }}
+                ListEmptyComponent={(
+                  <View style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}>
+                    <View style={[styles.image, { backgroundColor: colors.semantic.bg.grey }]} />
+                  </View>
+                )}
                 renderItem={({ item: image, index }) => {
-                  const isLastItem = index === item.owner.avatar.length - 1;
+                  const total = photos.length ? photos.length : existingAvatar.length;
+                  const isLastItem = index === total - 1;
 
                   return (
                     <View style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}>
@@ -246,13 +269,21 @@ export default function EditProfile() {
                 />
               </FormField>
               <View style={styles.emailButtonContainer}>
-                  <AppButton 
+                  <AppButton
                     text="Edit Email"
                     size="sm"
                     type='primary'
                     onPress={() => emailEditDrawerRef.current?.snapToIndex(0)}
                   />
                 </View>
+            </View>
+            <View style={{ marginTop: 32 }}>
+              <AppButton
+                text="Save Changes"
+                loading={saving}
+                loadingLabel="Saving"
+                onPress={saveProfile}
+              />
             </View>
           </View>
         )}
@@ -262,9 +293,7 @@ export default function EditProfile() {
             ref={genderDrawerRef}
             title="What’s your gender?"
             primaryAction={() => {
-              genderDrawerRef.current?.close();
-              checkCompleteProfile();
-            }}
+              genderDrawerRef.current?.close();            }}
           >
             <Dropdown
               value={gender}
@@ -281,13 +310,11 @@ export default function EditProfile() {
             title="What do you do for work?"
             description="Tell us what your profession is."
             primaryAction={() => {
-              jobDrawerRef.current?.close(); 
-              checkCompleteProfile();
-            }}
+              jobDrawerRef.current?.close();             }}
           >
             <FormField label="" error={error}>
               <InputRow>
-                <TextField placeholder="ex: Software Engineer" error={!!error}/>
+                <TextField placeholder="ex: Software Engineer" error={!!error} value={job} onChangeText={setJob}/>
               </InputRow>
             </FormField>
       </AppDrawer>
@@ -296,9 +323,7 @@ export default function EditProfile() {
             title="What’s your personality like?"
             description="Let others know your vibe. Select words that reflect your personality."
             primaryAction={() => {
-              personalityDrawerRef.current?.close();
-              checkCompleteProfile();
-            }} 
+              personalityDrawerRef.current?.close();            }} 
           >
             <PillGroup
               items={[
@@ -318,9 +343,7 @@ export default function EditProfile() {
             title="What’s your lifestyle like?"
             description="Your daily habits matter in shared spaces. Choose your lifestyle preferences."
             primaryAction={() => {
-              lifestyleDrawerRef.current?.close(); 
-              checkCompleteProfile();
-            }}
+              lifestyleDrawerRef.current?.close();             }}
           >
             <PillGroup
               items={[
@@ -344,9 +367,7 @@ export default function EditProfile() {
             title="What your story?"
             description="Tell us what your short story."
             primaryAction={() => {
-              aboutMeDrawerRef.current?.close();
-              checkCompleteProfile();
-            }}
+              aboutMeDrawerRef.current?.close();            }}
           >
             <FormField label="" error={error}>
                 <TextArea 
@@ -443,7 +464,6 @@ export default function EditProfile() {
             primaryDisabled={photos.length === 0}
             primaryAction={() => {
               photoDrawerRef.current?.close();
-              photoConfirmDrawerRef.current?.snapToIndex(0);
             }}
           >
           <FormField label="" error={photoError}>

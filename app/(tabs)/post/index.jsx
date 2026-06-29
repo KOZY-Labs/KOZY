@@ -1,45 +1,15 @@
-import { router, usePathname, useFocusEffect, useNavigation } from "expo-router";
-import { useCallback } from 'react';
-import { Platform, StyleSheet, View} from 'react-native';
+import { router } from "expo-router";
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppText from '@/components/ui/appText';
 import EmptyListingsState from '@/components/ui/emptyListingsState';
 import { useAuth } from '@/context/AuthContext';
 
-
+// Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 export default function PostScreen() {
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const pathname = usePathname();
   const { isLoggedIn } = useAuth();
-
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      parent?.setOptions({
-        tabBarStyle: {
-          position: 'absolute',
-          alignSelf: 'center',
-          bottom: insets.bottom + 10,
-          overflow: 'hidden',
-          borderRadius: 16,
-          borderTopWidth: 0,
-          height: 56,
-          maxWidth: 400,
-          width: '100%',
-          paddingTop: 7,
-          marginHorizontal: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.2,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 5 },
-          elevation: 10,
-        },
-      });
-    }, [navigation])
-  );
-  
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

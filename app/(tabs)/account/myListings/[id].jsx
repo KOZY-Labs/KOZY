@@ -1,13 +1,13 @@
-import React, { useCallback } from 'react';
-import { View, StyleSheet, Dimensions, Text,Pressable } from 'react-native';
+import React, { useCallback, useEffect } from 'react';
+import { View, StyleSheet, Dimensions, Text, Pressable, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect, useLocalSearchParams, useNavigation} from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 
 import AppIconButton from '@/components/ui/appIconButton';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
-import { DATA } from '@/data/mockListData';
+import { useListing } from '@/hooks/use-listings';
 
 const { height } = Dimensions.get('window');
 
@@ -15,7 +15,8 @@ export default function MyList() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
-  const item = id ? DATA.find(d => d.id === id) : DATA[0];
+  const listingId = Array.isArray(id) ? id[0] : id;
+  const { data: item, loading } = useListing(listingId);
 
   useFocusEffect(
     useCallback(() => {
@@ -38,7 +39,6 @@ export default function MyList() {
             width: '100%',
             paddingTop: 7,
             marginHorizontal: 16,
-        
             shadowColor: '#000',
             shadowOpacity: 0.2,
             shadowRadius: 10,
@@ -47,18 +47,8 @@ export default function MyList() {
           },
         });
       };
-    }, [])
+    }, [navigation, insets.bottom])
   );
-
-  const player = useVideoPlayer(item?.videoUrl, (player) => {
-    if (!player) return;
-    player.loop = true;
-    player.muted = true;
-  });
-
-  const toggleMute = () => {
-    player.muted = !player.muted;
-  };
 
   return (
     <View style={styles.container}>
@@ -71,25 +61,52 @@ export default function MyList() {
           onPress={() => router.back()}
         />
       </View>
-      <Pressable style={styles.reel} onPress={toggleMute}>
-      {/* 🎥 Video */}
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color="#fff" />
+        </View>
+      ) : !item ? (
+        <View style={styles.center}>
+          <Text style={{ color: '#fff' }}>Listing not found</Text>
+        </View>
+      ) : (
+        <Reel item={item} insets={insets} />
+      )}
+    </View>
+  );
+}
+
+function Reel({ item, insets }) {
+  const player = useVideoPlayer(item.videoUrl ?? null, (p) => {
+    if (!p) return;
+    p.loop = true;
+    p.muted = true;
+  });
+
+  useEffect(() => {
+    player?.play();
+  }, [player]);
+
+  const toggleMute = () => {
+    if (player) player.muted = !player.muted;
+  };
+
+  return (
+    <Pressable style={styles.reel} onPress={toggleMute}>
       <VideoView
         player={player}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
         pointerEvents="none"
       />
-
       <ListingReelOverlay
         item={item}
         bottom={insets.bottom + 20}
         onPressDetail={() => router.push(`/(tabs)/account/myListings/detail/${item.id}`)}
       />
     </Pressable>
-    </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -101,8 +118,13 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: 'black',
   },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   topBar: {
-    position: 'absolute', 
+    position: 'absolute',
     left: 16,
     zIndex: 10,
   },

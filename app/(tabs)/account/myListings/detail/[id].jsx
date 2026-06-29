@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback } from 'react';
 
-import { DATA } from '@/data/mockListData';
+import { useListing } from '@/hooks/use-listings';
 import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
 
@@ -17,7 +17,8 @@ export default function MyPostDetail() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
-  const item = DATA.find(d => d.id === id);
+  const listingId = Array.isArray(id) ? id[0] : id;
+  const { data: item, loading } = useListing(listingId);
 
   useFocusEffect(
     useCallback(() => {
@@ -34,10 +35,18 @@ export default function MyPostDetail() {
     }, [navigation])
   );
 
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#fff" />
+      </View>
+    );
+  }
+
   if (!item) {
     return (
       <View style={styles.center}>
-        <Text>Item not found</Text>
+        <Text style={{ color: '#fff' }}>Item not found</Text>
       </View>
     );
   }
@@ -49,7 +58,7 @@ export default function MyPostDetail() {
       >
         <Text style={styles.sectionTitle}>Room Details</Text>
         <FlatList
-          data={item.images}
+          data={item.images ?? []}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -104,14 +113,10 @@ export default function MyPostDetail() {
             {item.furnished ? 'Yes' : 'No'}
           </DisplayField>
 
-          <DisplayField title="Description">
-            {item.description}
-          </DisplayField>
-
           {/* Amenities */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Amenities</Text>
-            {item.amenities.map((a, index) => (
+            {(item.roomDetail ?? []).map((a, index) => (
               <Text key={index} style={styles.amenity}>
                 • {a}
               </Text>

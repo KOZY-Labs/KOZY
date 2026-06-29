@@ -1,6 +1,6 @@
 // Data hooks for listings — centralize fetch + loading/empty/error so screens stay clean.
 import { useState, useEffect, useCallback } from 'react';
-import { listListings, listMyListings, getListing } from '@/lib/db/listings';
+import { listListings, getListing, subscribeMyListings } from '@/lib/db/listings';
 
 // Browse/feed listings. `options` is passed to listListings (e.g. { max, status }).
 export function useListings(options) {
@@ -51,27 +51,26 @@ export function useListing(id) {
   return { ...state, reload: load };
 }
 
-// Listings owned by a user (all statuses), for My Listings.
+// Listings owned by a user (all statuses), for My Listings. Realtime so a freshly
+// published listing appears as soon as its serverTimestamp resolves.
 export function useMyListings(ownerId) {
   const [state, setState] = useState({ data: [], loading: true, error: null });
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     if (!ownerId) {
       setState({ data: [], loading: false, error: null });
-      return;
+      return undefined;
     }
     setState((s) => ({ ...s, loading: true, error: null }));
-    try {
-      const data = await listMyListings(ownerId);
-      setState({ data, loading: false, error: null });
-    } catch (error) {
-      setState({ data: [], loading: false, error });
-    }
+    const unsubscribe = subscribeMyListings(
+      ownerId,
+      (data) => setState({ data, loading: false, error: null })
+    );
+    return unsubscribe;
   }, [ownerId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // reload kept for API compatibility; realtime listener already keeps data fresh.
+  const reload = useCallback(() => {}, []);
 
-  return { ...state, reload: load };
+  return { ...state, reload };
 }

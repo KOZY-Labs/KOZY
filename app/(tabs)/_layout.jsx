@@ -22,12 +22,16 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const segments = useSegments();
-  const hiddenTabPaths = ['/home/search', '/post/stepTwo'];
+  // Hide the floating tab bar on any post sub-step (stepOne..confirmPublish/uploadedPost)
+  // and on the home search flow. The post index ('/post') keeps the tab bar.
+  const onPostSubScreen =
+    segments.includes('post') && segments[segments.length - 1] !== 'post';
+  const onHomeSearch = segments.includes('home') && segments.includes('search');
   const shouldHideTabBar =
-    hiddenTabPaths.includes(pathname) ||
-    /^\/home\/search\/[^/]+$/.test(pathname) ||
-    (segments.includes('home') && segments.includes('search')) ||
-    (segments.includes('post') && segments.includes('stepTwo'));
+    onPostSubScreen ||
+    onHomeSearch ||
+    pathname.startsWith('/post/') ||
+    pathname.startsWith('/home/search');
 
   return (
     <Tabs

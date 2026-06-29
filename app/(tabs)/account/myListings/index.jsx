@@ -1,4 +1,4 @@
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,12 +8,15 @@ import EmptyListingsState from '@/components/ui/emptyListingsState';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import ResultVideoCard from '@/components/ui/resultVideoCard';
-import { DATA } from '@/data/mockListData';
 import { colors } from '@/constants/colors';
+import { useAuth } from '@/context/AuthContext';
+import { useMyListings } from '@/hooks/use-listings';
+import { deleteListing } from '@/lib/db/listings';
 
 export default function MyListings() {
   const insets = useSafeAreaInsets();
-  const [listings, setListings] = useState(DATA.filter((item) => item.owner?.id === 'u1')); // Mock: filter to only show listings owned by user 'u1'
+  const { uid } = useAuth();
+  const { data: listings, loading, reload } = useMyListings(uid);
   const [isEditMode, setIsEditMode] = useState(false);
 
   const toggleEdit = () => {
@@ -32,13 +35,26 @@ export default function MyListings() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setListings((prev) => prev.filter((item) => item.id !== listing.id));
+          onPress: async () => {
+            try {
+              await deleteListing(listing.id);
+              reload();
+            } catch (e) {
+              Alert.alert('Delete failed', e?.message ?? 'Please try again.');
+            }
           },
         },
       ]
     );
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator color="#fff" />
+      </View>
+    );
+  }
 
   if (!listings || listings.length === 0) {
     return (

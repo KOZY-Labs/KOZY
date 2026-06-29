@@ -3,15 +3,13 @@ import { Platform, StyleSheet, View} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from "@expo/vector-icons";
 
-import { DATA } from "@/data/mockListData";
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
 
 export default function ConfrimPublish() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  //const { id } = useLocalSearchParams();
-  const id = DATA[0].id;
+  const { id } = useLocalSearchParams();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

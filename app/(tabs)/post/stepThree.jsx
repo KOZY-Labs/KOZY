@@ -1,12 +1,14 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { Platform, StyleSheet, View, Alert, FlatList, Pressable, useWindowDimensions } from 'react-native';
-import { useNavigation, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 
-import { DATA } from '@/data/mockListData';
+import { useListingDraft } from '@/context/ListingDraftContext';
+import { useAuth } from '@/context/AuthContext';
+import { draftToPreview } from '@/lib/listingDraft';
 
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
@@ -53,21 +55,34 @@ function SampleVideo({ source, isActive, isScreenFocused, width }) {
 }
 
 export default function StepThree() {
-    const navigation = useNavigation();
     const isScreenFocused = useIsFocused();
-    const [selectedVideo, setSelectedVideo] = useState(null);
+    const { draft, setVideo } = useListingDraft();
+    const { profile } = useAuth();
+    const [selectedVideo, setSelectedVideo] = useState(draft.video ?? null);
     const [activeSampleIndex, setActiveSampleIndex] = useState(0);
     const { width: screenWidth } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const sampleVideoWidth = Math.min(screenWidth - 96, 360);
-    const item = DATA[0];
+    const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
     const drawerRef = useRef(null);
     const selectedVideoPlayer = useVideoPlayer(
             selectedVideo?.uri ?? null,
             (player) => {
                 player.loop = true;
+                player.muted = true;
             }
             );
+
+    // Auto-play the preview: load the picked video and start it (handles re-selection too).
+    useEffect(() => {
+        if (!selectedVideoPlayer || !selectedVideo?.uri) return;
+        try {
+            selectedVideoPlayer.replace(selectedVideo.uri);
+        } catch {
+            // first render already created the player with this source
+        }
+        selectedVideoPlayer.play();
+    }, [selectedVideo, selectedVideoPlayer]);
 
     const openAlbum = async () => {
         const permissionResult =
@@ -91,19 +106,26 @@ export default function StepThree() {
             const asset = result.assets[0];
 
             setSelectedVideo(asset);
-            drawerRef.current?.snapToIndex(0);
+            setVideo(asset); // persist to the draft immediately
+            // Open the preview at the top snap point so it's fully visible right away.
+            drawerRef.current?.snapToIndex(1);
         }
     };
 
 
+    // Returning to this step (e.g. Back from step 4) with a previously chosen video:
+    // reopen the preview so the selection is visible again instead of looking lost.
+    // (Tab bar visibility for post sub-screens is handled in (tabs)/_layout.jsx.)
     useFocusEffect(
         useCallback(() => {
-          const parent = navigation.getParent();
-          parent?.setOptions({
-            tabBarStyle: { display: 'none' },
-          });
-        }, [navigation])
-      );
+            if (!selectedVideo) return undefined;
+            const t = setTimeout(() => {
+                drawerRef.current?.snapToIndex(1);
+                selectedVideoPlayer?.play();
+            }, 0);
+            return () => clearTimeout(t);
+        }, [selectedVideo, selectedVideoPlayer])
+    );
 
 
   return (
@@ -195,15 +217,18 @@ export default function StepThree() {
                         player={selectedVideoPlayer}
                         style={styles.previewVideo}
                         contentFit="cover"
+                        nativeControls={false}
                     />
-                    <ListingReelOverlay
-                        item={item}
-                        bottom={20}
-                        onPressDetail={() => router.push(`/(tabs)/account/myListings/detail/${item.id}`)}
-                        showMoreAction
-                        showSaveAction
-                        showShareAction
-                    />
+                    {/* Overlay is display-only in the preview — block all touches. */}
+                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                        <ListingReelOverlay
+                            item={item}
+                            bottom={20}
+                            showMoreAction
+                            showSaveAction
+                            showShareAction
+                        />
+                    </View>
                 </View>
                 )}
                 <Pressable 
@@ -232,9 +257,9 @@ export default function StepThree() {
                         <AppButton
                             text="Continue"
                             onPress={() => {
+                                setVideo(selectedVideo);
                                 drawerRef.current?.close();
                                 router.push('post/stepFour');
-                                // TODO: save video to form / upload
                             }}
                         />
                     </View>

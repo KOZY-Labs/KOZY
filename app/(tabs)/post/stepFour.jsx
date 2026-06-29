@@ -1,27 +1,20 @@
-import { useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useMemo } from 'react';
 import { Platform, StyleSheet, View, Alert, FlatList, Pressable } from 'react-native';
-import { useNavigation, router } from 'expo-router';
+import { router } from 'expo-router';
 
-import { DATA } from '@/data/mockListData';
+import { useListingDraft } from '@/context/ListingDraftContext';
+import { useAuth } from '@/context/AuthContext';
+import { draftToPreview } from '@/lib/listingDraft';
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
 import DisplayField from '@/components/ui/displayField';
 import ProfileSection from '@/components/ui/profileSection';
 
+// Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 export default function StepFour() {
-    const navigation = useNavigation();
-    const item = DATA[0];
-
-    useFocusEffect(
-        useCallback(() => {
-          const parent = navigation.getParent();
-          parent?.setOptions({
-            tabBarStyle: { display: 'none' },
-          });
-        }, [navigation])
-      );
-
+    const { draft } = useListingDraft();
+    const { profile } = useAuth();
+    const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
 
   return (
     <View style={{ flex: 1, overflow: 'visible' }}>

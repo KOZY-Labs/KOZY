@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
+import { ListingDraftProvider } from '@/context/ListingDraftContext';
 
 export default function PostStack() {
   return (
+    <ListingDraftProvider>
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" options={{ title: 'Post'}} />
       <Stack.Screen name="stepOne" 
@@ -57,5 +59,6 @@ export default function PostStack() {
         }}
       />
     </Stack>
+    </ListingDraftProvider>
   );
 }

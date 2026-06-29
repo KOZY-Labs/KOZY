@@ -31,6 +31,9 @@ const AppDrawer = forwardRef(
         index={-1}
         snapPoints={snapPoints ?? ['70%', '80%']}
         enablePanDownToClose
+        // Don't let dragging the content (e.g. the wheel Picker) move the sheet —
+        // only the handle drag / backdrop tap should dismiss it.
+        enableContentPanningGesture={false}
         backgroundStyle={{
             backgroundColor: colors.semantic.bottomSheet.background,
             borderTopLeftRadius: 16,
@@ -93,6 +96,8 @@ const AppDrawer = forwardRef(
     );
   }
 );
+
+AppDrawer.displayName = 'AppDrawer';
 
 export default AppDrawer;
 
