@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import MapView, { Marker } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 import AppButton from '@/components/ui/appButton';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
@@ -13,8 +13,11 @@ import PillGroup from '@/components/ui/pill/pillGroup';
 import TextField from '@/components/ui/input/textField';
 import Dropdown from '@/components/ui/input/dropdown';
 import FormField from '@/components/ui/form/formField';
+import ListingsClusterMap from '@/components/ui/listingsClusterMap';
 import { colors } from '@/constants/colors';
-import { DATA } from '@/data/mockListData';
+import { useListings } from '@/hooks/use-listings';
+import { filterWithCoordinates } from '@/lib/geo/mapRegion';
+import { filterListings } from '@/lib/listingFilters';
 
 const ROOM_TYPE_OPTIONS = [
   { label: 'Private Room', value: 'Private Room' },
@@ -49,94 +52,178 @@ export default function SearchScreen() {
   const lifestyleDrawerRef = useRef(null);
 
   const [location, setLocation] = useState('');
+  // Set when an autocomplete suggestion is picked: { mainText, latitude, longitude }.
+  // The input shows the full address; filtering uses mainText (street) so it can match
+  // listing addresses; the preview map recenters on the coordinates.
+  const [selectedPlace, setSelectedPlace] = useState(null);
   const [budgetFrom, setBudgetFrom] = useState('');
   const [budgetTo, setBudgetTo] = useState('');
-  const [gender, setGender] = useState('Male');
+  const [gender, setGender] = useState(''); // '' = open to any (no gender filter)
   const [roomTypes, setRoomTypes] = useState([]);
   const [lifestyleMatches, setLifestyleMatches] = useState([]);
 
   const [error, setError] = useState(null);
+  const { data: listings } = useListings();
 
-  const mapListings = useMemo(() => {
-    return DATA.filter((item) => {
-      const latitude = Number(item?.latitude);
-      const longitude = Number(item?.longitude);
-      return Number.isFinite(latitude) && Number.isFinite(longitude);
-    });
-  }, []);
+  const locationQuery = selectedPlace?.mainText ?? location;
 
-  const handleOpenResults = () => {
-    router.push({
-      pathname: '/home/search/searchResult',
-      params: {
-        location,
+  // Live-filtered pins: the preview map reflects the current filters in real time.
+  const mapListings = useMemo(
+    () =>
+      filterListings(filterWithCoordinates(listings), {
+        location: locationQuery,
         budgetFrom,
         budgetTo,
         gender,
-        roomTypes: JSON.stringify(roomTypes),
-        lifestyleMatches: JSON.stringify(lifestyleMatches),
+        roomTypes,
+        lifestyleMatches,
+      }),
+    [listings, locationQuery, budgetFrom, budgetTo, gender, roomTypes, lifestyleMatches]
+  );
+
+  // Latest preview-map position — handed off to the full-screen map so it opens in place.
+  const lastRegionRef = useRef(null);
+
+  const filterParams = () => ({
+    location: locationQuery,
+    budgetFrom,
+    budgetTo,
+    gender,
+    roomTypes: JSON.stringify(roomTypes),
+    lifestyleMatches: JSON.stringify(lifestyleMatches),
+  });
+
+  const handleOpenResults = () => {
+    router.push({ pathname: '/home/search/searchResult', params: filterParams() });
+  };
+
+  const handleOpenFullMap = () => {
+    const r = lastRegionRef.current;
+    router.push({
+      pathname: '/home/search/map',
+      params: {
+        ...filterParams(),
+        ...(r
+          ? {
+              centerLat: String(r.latitude),
+              centerLng: String(r.longitude),
+              latDelta: String(r.latitudeDelta),
+              lngDelta: String(r.longitudeDelta),
+            }
+          : {}),
       },
     });
   };
 
-  const defaultRegion = useMemo(() => {
-    const initialLatitude = Number(mapListings[0]?.latitude);
-    const initialLongitude = Number(mapListings[0]?.longitude);
-    return {
-      latitude: Number.isFinite(initialLatitude) ? initialLatitude : 40.7736,
-      longitude: Number.isFinite(initialLongitude) ? initialLongitude : -73.9566,
-      latitudeDelta: 0.018,
-      longitudeDelta: 0.018,
-    };
-  }, [mapListings]);
+  // Recenter the preview when an address is picked from the autocomplete.
+  const previewCenter = useMemo(() => {
+    if (selectedPlace?.latitude != null && selectedPlace?.longitude != null) {
+      return {
+        latitude: selectedPlace.latitude,
+        longitude: selectedPlace.longitude,
+        latitudeDelta: 0.03,
+        longitudeDelta: 0.03,
+      };
+    }
+    return null;
+  }, [selectedPlace]);
 
   return (
     <>
       <View style={styles.screen}>
-        <ScrollView
+        {/* Single-item FlatList container (not ScrollView) so the autocomplete's inner
+            VirtualizedList doesn't warn about nesting — same pattern as post/stepOne. */}
+        <FlatList
+          data={[{ key: 'content' }]}
+          keyExtractor={(item) => item.key}
           contentContainerStyle={[
             styles.content,
             { paddingBottom: insets.bottom + 20 },
           ]}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
-        >
+          renderItem={() => (
+            <>
           <View style={styles.heroBlock}>
             <SearchSection label="Location">
               <View style={styles.locationInput}>
-                <TextInput
-                  value={location}
+                <GooglePlacesAutocomplete
                   placeholder="1423 3rd Ave"
-                  placeholderTextColor={colors.semantic.input.textDisabled}
-                  onChangeText={setLocation}
-                  returnKeyType="search"
-                  accessibilityLabel="Location"
-                  style={styles.locationText}
+                  fetchDetails
+                  debounce={300}
+                  minLength={2}
+                  enablePoweredByContainer={false}
+                  keyboardShouldPersistTaps="always"
+                  listViewDisplayed="auto"
+                  query={{
+                    key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
+                    language: 'en',
+                    components: 'country:ca|country:us',
+                  }}
+                  textInputProps={{
+                    value: location,
+                    placeholderTextColor: colors.semantic.input.textDisabled,
+                    onChangeText: (text) => {
+                      setLocation(text);
+                      setSelectedPlace(null);
+                    },
+                    returnKeyType: 'search',
+                    accessibilityLabel: 'Location',
+                  }}
+                  onPress={(data, details = null) => {
+                    // Show the full address; filter by the street part; recenter the map.
+                    const loc = details?.geometry?.location;
+                    setLocation(data?.description ?? '');
+                    setSelectedPlace({
+                      mainText: data?.structured_formatting?.main_text ?? data?.description ?? '',
+                      latitude: loc?.lat ?? null,
+                      longitude: loc?.lng ?? null,
+                    });
+                  }}
+                  styles={{
+                    container: styles.placesContainer,
+                    textInputContainer: styles.placesTextInputContainer,
+                    textInput: styles.locationText,
+                    listView: styles.placesList,
+                    row: styles.placesRow,
+                    separator: styles.placesSeparator,
+                    description: styles.placesDescription,
+                  }}
                 />
-                <Feather name="search" color={colors.semantic.text.primary} size={28} />
+                <Feather name="search" color={colors.semantic.text.primary} size={28} style={{ marginTop: 5 }} />
               </View>
             </SearchSection>
 
+            {/* Interactive clustered preview — pan/zoom/pills work in place */}
             <View style={styles.mapContainer}>
-              <MapView
+              <ListingsClusterMap
+                listings={mapListings}
                 style={StyleSheet.absoluteFill}
-                initialRegion={defaultRegion}
-                scrollEnabled={false}
-                zoomEnabled={false}
-                rotateEnabled={false}
-                pitchEnabled={false}
-                pointerEvents="none"
+                centerRegion={previewCenter}
+                onPressListing={(listing) =>
+                  router.push({
+                    pathname: '/home/search/[id]',
+                    // from:'search' → the reel's back button returns here, not to searchResult
+                    params: { id: listing.id, from: 'search', ...filterParams() },
+                  })
+                }
+                onRegionChange={(region) => {
+                  lastRegionRef.current = region;
+                }}
+                showZoomControls
+                zoomControlsOffset={52}
+              />
+              <Pressable
+                style={styles.mapHint}
+                accessibilityRole="button"
+                accessibilityLabel="Open full map of listings"
+                onPress={handleOpenFullMap}
               >
-                {mapListings.slice(0, 3).map((item) => (
-                  <Marker
-                    key={item.id}
-                    coordinate={{
-                      latitude: Number(item.latitude),
-                      longitude: Number(item.longitude),
-                    }}
-                  />
-                ))}
-              </MapView>
+                <Feather name="map" size={14} color={colors.base.white} />
+                <AppText variant="body-xsm" style={styles.mapHintText}>
+                  Open map
+                </AppText>
+              </Pressable>
             </View>
           </View>
 
@@ -162,6 +249,7 @@ export default function SearchScreen() {
             <FormField label="Gender Preference" error={error}>
               <DisplayInput
                 value={gender}
+                placeholder="Open to any"
                 onPress={() => genderDrawerRef.current?.snapToIndex(0)}
                 rightIcon={<Feather name="chevron-down" size={22} color={colors.semantic.text.primary} />}
                 accessibilityLabel="Gender Preference filter"
@@ -183,7 +271,9 @@ export default function SearchScreen() {
             </FormField>
             <AppButton text="Search" onPress={handleOpenResults} style={styles.searchButton} />
           </View>
-        </ScrollView>
+            </>
+          )}
+        />
 
         <AppDrawer
           ref={genderDrawerRef}
@@ -194,6 +284,7 @@ export default function SearchScreen() {
             value={gender}
             onChange={setGender}
             options={[
+              { label: "Open to any", value: "" },
               { label: "Female", value: "Female" },
               { label: "Male", value: "Male" },
               { label: "Non-binary", value: "Non-binary" },
@@ -268,20 +359,56 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   locationInput: {
-    height: 38,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.semantic.input.border.normal.color,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 16,
+    zIndex: 20,
+    elevation: 20,
   },
   locationText: {
     flex: 1,
+    height: 38,
     color: colors.semantic.input.text,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
     paddingVertical: 4,
     fontFamily: 'OpenSans_400Regular',
     fontSize: 12,
     lineHeight: 16,
+    marginBottom: 0,
+  },
+  placesContainer: {
+    flex: 1,
+    zIndex: 20,
+  },
+  placesTextInputContainer: {
+    flexDirection: 'row',
+    height: 38,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.semantic.input.border.normal.color,
+  },
+  placesList: {
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: colors.semantic.bottomSheet.background,
+    borderWidth: 1,
+    borderColor: colors.base.gray800,
+    overflow: 'hidden',
+    zIndex: 30,
+    elevation: 30,
+  },
+  placesRow: {
+    backgroundColor: colors.semantic.bottomSheet.background,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  placesSeparator: {
+    height: 1,
+    backgroundColor: colors.base.gray800,
+  },
+  placesDescription: {
+    color: colors.semantic.text.primary,
+    fontSize: 12,
   },
   mapContainer: {
     height: 320,
@@ -289,6 +416,21 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     overflow: 'hidden',
     backgroundColor: colors.base.gray500,
+  },
+  mapHint: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  mapHintText: {
+    color: colors.base.white,
   },
   filters: {
     marginTop: 25,

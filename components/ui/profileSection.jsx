@@ -1,22 +1,19 @@
 import { Image, StyleSheet, View } from 'react-native';
 
-import { DATA } from '@/data/mockListData';
 import AppText from '@/components/ui/appText';
-import Badge from '@/components/ui/badge';
 import DisplayField from '@/components/ui/displayField';
 
-export default function ProfileSection({ userId, listing, title = 'Meet Your Roomate' }) {
-  const item = listing ?? DATA.find((dataItem) => dataItem.owner.id === userId);
-  const owner = item?.owner;
+export default function ProfileSection({ listing }) {
+  const owner = listing?.owner;
 
-  if (!item || !owner) {
+  if (!owner) {
     return null;
   }
 
   return (
     <View style={styles.profileSection}>
       <Image
-        source={{ uri: owner.avatar[0] }}
+        source={{ uri: owner.avatar?.[0] }}
         style={styles.avatarImage}
         resizeMode="cover"
       />

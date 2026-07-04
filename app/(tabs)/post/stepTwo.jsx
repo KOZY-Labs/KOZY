@@ -182,7 +182,7 @@ export default function StepTwo() {
                                 text: 'Exit without saving',
                                 style: 'destructive',
                                 onPress: () => {
-                                    router.push('/(tabs)/post');
+                                    router.dismissTo('/(tabs)/post');
                                 },
                             },]
                         );  

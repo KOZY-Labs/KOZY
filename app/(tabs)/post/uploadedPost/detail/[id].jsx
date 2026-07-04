@@ -1,9 +1,7 @@
-import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView } from 'react-native';
-import { router, useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCallback } from 'react';
+import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, ActivityIndicator } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 
-import { DATA } from '@/data/mockListData';
+import { useListing } from '@/hooks/use-listings';
 import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
 
@@ -12,31 +10,24 @@ const ITEM_WIDTH = SCREEN_WIDTH * 0.8;
 const ITEM_SPACING = 12;
 const IMAGE_HEIGHT = 228;
 
+// Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 export default function UploadedPostDetail() {
-  const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
-  const item = DATA.find(d => d.id === id);
+  const listingId = Array.isArray(id) ? id[0] : id;
+  const { data: item, loading } = useListing(listingId);
 
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      parent?.setOptions({
-        tabBarStyle: { display: 'none' },
-      });
-
-      return () => {
-        parent?.setOptions({
-          tabBarStyle: undefined,
-        });
-      };
-    }, [navigation])
-  );
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#fff" />
+      </View>
+    );
+  }
 
   if (!item) {
     return (
       <View style={styles.center}>
-        <Text>Item not found</Text>
+        <Text style={{ color: '#fff' }}>Item not found</Text>
       </View>
     );
   }
@@ -48,7 +39,7 @@ export default function UploadedPostDetail() {
       >
         <Text style={styles.sectionTitle}>Room Details</Text>
         <FlatList
-          data={item.images}
+          data={item.images ?? []}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -103,14 +94,10 @@ export default function UploadedPostDetail() {
             {item.furnished ? 'Yes' : 'No'}
           </DisplayField>
 
-          <DisplayField title="Description">
-            {item.description}
-          </DisplayField>
-
           {/* Amenities */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Amenities</Text>
-            {item.amenities.map((a, index) => (
+            {(item.roomDetail ?? []).map((a, index) => (
               <Text key={index} style={styles.amenity}>
                 • {a}
               </Text>

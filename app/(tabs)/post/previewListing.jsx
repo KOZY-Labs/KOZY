@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert } from 'react-native';
 import { router  } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { useAuth } from '@/context/AuthContext';
@@ -119,9 +119,16 @@ export default function PreviewListing() {
             {`${item.street}, ${item.city}, ${item.province}`}
           </DisplayField>
           <View style={styles.mapContainer}>
-            <MapView 
-              style={StyleSheet.absoluteFill} 
-              initialRegion={defaultRegion}
+            {/* Static location preview — not pannable/zoomable */}
+            <MapView
+              provider={PROVIDER_GOOGLE}
+              style={StyleSheet.absoluteFill}
+              region={defaultRegion}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              pointerEvents="none"
             >
               <Marker
                 key={item.id}

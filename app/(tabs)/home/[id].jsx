@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert, Pressable, ActivityIndicator } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Feather } from '@expo/vector-icons';
 
 import { useListing } from '@/hooks/use-listings';
@@ -20,13 +20,20 @@ export default function DetailScreen() {
   const [activeIndex, setActiveIndex] = React.useState(0);
 
   const handleBack = useCallback(() => {
-    const target = Array.isArray(backTo) ? backTo[0] : backTo;
+    // Prefer popping the stack — returns to whichever screen pushed this one (reel, map
+    // card, home feed) without stacking a duplicate instance. `backTo` replace is only a
+    // fallback for when there is no navigation history (e.g. deep links).
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
 
+    const target = Array.isArray(backTo) ? backTo[0] : backTo;
     if (target) {
       router.replace(parseBackRoute(target));
       return;
     }
-  
+
     router.back();
   }, [backTo]);
 
@@ -125,9 +132,16 @@ export default function DetailScreen() {
             {`${item.street}, ${item.city}, ${item.province}`}
           </DisplayField>
           <View style={styles.mapContainer}>
-            <MapView 
-              style={StyleSheet.absoluteFill} 
-              initialRegion={defaultRegion}
+            {/* Static location preview — not pannable/zoomable */}
+            <MapView
+              provider={PROVIDER_GOOGLE}
+              style={StyleSheet.absoluteFill}
+              region={defaultRegion}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              pointerEvents="none"
             >
               <Marker
                 key={item.id}

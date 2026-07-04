@@ -63,7 +63,7 @@ export default function MyListings() {
           heading="Have a room to share?"
           description="List it and connect with verified seekers."
           actionText="Share a room"
-          onAction={() => router.push('/(tabs)/post')}
+          onAction={() => router.push('/(tabs)/post/stepOne')}
           imageSource = {require('@/assets/images/3d-house.png')}
         />
       </View>

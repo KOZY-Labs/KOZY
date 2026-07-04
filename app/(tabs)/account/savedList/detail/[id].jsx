@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useCallback, useMemo } from 'react';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
-import { DATA } from '@/data/mockListData';
+import { useListing } from '@/hooks/use-listings';
 import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
 
@@ -17,7 +17,8 @@ export default function SavedListDetail() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
-  const item = DATA.find(d => d.id === id);
+  const listingId = Array.isArray(id) ? id[0] : id;
+  const { data: item, loading } = useListing(listingId);
   const userVerified = true; // TODO: replace with real verification logic
 
   useFocusEffect(
@@ -96,10 +97,18 @@ export default function SavedListDetail() {
   };
   
 
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#fff" />
+      </View>
+    );
+  }
+
   if (!item) {
     return (
       <View style={styles.center}>
-        <Text>Item not found</Text>
+        <Text style={{ color: '#fff' }}>Item not found</Text>
       </View>
     );
   }
@@ -111,7 +120,7 @@ export default function SavedListDetail() {
       >
         <Text style={styles.sectionTitle}>Room Details</Text>
         <FlatList
-          data={item.images}
+          data={item.images ?? []}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -138,9 +147,16 @@ export default function SavedListDetail() {
             {`${item.street}, ${item.city}, ${item.province}`}
           </DisplayField>
           <View style={styles.mapContainer}>
-            <MapView 
-              style={StyleSheet.absoluteFill} 
-              initialRegion={defaultRegion}
+            {/* Static location preview — not pannable/zoomable */}
+            <MapView
+              provider={PROVIDER_GOOGLE}
+              style={StyleSheet.absoluteFill}
+              region={defaultRegion}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              pointerEvents="none"
             >
               
                 <Marker
@@ -181,14 +197,10 @@ export default function SavedListDetail() {
             {item.furnished ? 'Yes' : 'No'}
           </DisplayField>
 
-          <DisplayField title="Description">
-            {item.description}
-          </DisplayField>
-
           {/* Amenities */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Amenities</Text>
-            {item.amenities.map((a, index) => (
+            {(item.roomDetail ?? []).map((a, index) => (
               <Text key={index} style={styles.amenity}>
                 • {a}
               </Text>
@@ -208,7 +220,7 @@ export default function SavedListDetail() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Roommate Information</Text>
             <FlatList
-              data={item.owner.avatar}
+              data={item.owner?.avatar ?? []}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
@@ -229,31 +241,31 @@ export default function SavedListDetail() {
               )}
             />
             <DisplayField title="Name">
-              {item.owner.name}
+              {item.owner?.name}
             </DisplayField>
 
             <DisplayField title="Age Group">
-              {item.owner.ageGroup}
+              {item.owner?.ageGroup}
             </DisplayField>
 
             <DisplayField title="Gender">
-              {item.owner.gender}
+              {item.owner?.gender}
             </DisplayField>
 
             <DisplayField title="Occupation">
-              {item.owner.occupation}
+              {item.owner?.occupation}
             </DisplayField>
 
             <DisplayField title="Personality">
-              {item.owner.personality}
+              {item.owner?.personality}
             </DisplayField>
 
             <DisplayField title="Lifestyle">
-              {item.owner.lifestyle}
+              {item.owner?.lifestyle}
             </DisplayField>
 
             <DisplayField title="About Me">
-              {item.owner.aboutMe}
+              {item.owner?.aboutMe}
             </DisplayField>
           </View>
         </View> 

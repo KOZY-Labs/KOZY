@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Dimensions, Share, Pressable } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, Dimensions, Share, Pressable, ActivityIndicator, Text } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect, useLocalSearchParams, useNavigation} from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from 'react-native-elements';
@@ -10,121 +10,39 @@ import { Avatar } from 'react-native-elements';
 import AppIconButton from '@/components/ui/appIconButton';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
-import { DATA } from '@/data/mockListData';
+import { useListing } from '@/hooks/use-listings';
 import { colors } from '@/constants/colors';
 
 const { height } = Dimensions.get('window');
 
+// Tab bar visibility for the search flow is handled centrally in (tabs)/_layout.jsx.
 export default function SearchResultListItem() {
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const {
-    id,
-    location,
-    budgetFrom,
-    budgetTo,
-    gender,
-    roomTypes,
-    lifestyleMatches,
-  } = useLocalSearchParams();
-  const item = id ? DATA.find(d => d.id === id) : DATA[0];
-  const [isSaved, setIsSaved] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-  const loadSavedState = useCallback(async () => {
-    try {
-      const stored = await AsyncStorage.getItem('savedListings');
-      const parsed = stored ? JSON.parse(stored) : [];
-      setIsSaved(parsed.some((saved) => saved.id === item?.id));
-    } catch (_error) {
-      setIsSaved(false);
-    }
-  }, [item?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadSavedState();
-    }, [loadSavedState])
-  );
-
-  const handleToggleSave = useCallback(async () => {
-    try {
-      const stored = await AsyncStorage.getItem('savedListings');
-      const parsed = stored ? JSON.parse(stored) : [];
-      const exists = parsed.some((saved) => saved.id === item?.id);
-      const next = exists
-        ? parsed.filter((saved) => saved.id !== item?.id)
-        : [item, ...parsed];
-
-      await AsyncStorage.setItem('savedListings', JSON.stringify(next));
-      setIsSaved(!exists);
-    } catch (_error) {
-      // noop
-    }
-  }, [item]);
-
-  useFocusEffect(
-      useCallback(() => {
-        const parent = navigation.getParent();
-        parent?.setOptions({
-          tabBarStyle: { display: 'none' },
-        });
-  
-        return () => {
-          parent?.setOptions({
-            tabBarStyle: {
-              position: 'absolute',
-              alignSelf: 'center', 
-              bottom: insets.bottom + 10,
-              borderRadius: 16,
-              borderTopWidth: 0,
-              height: 56,
-              backgroundColor: 'rgba(0,0,0,1)',
-              maxWidth: 400,
-              paddingTop: 7,
-              marginHorizontal: 16,
-            },
-          });
-        };
-      }, [navigation, insets.bottom])
-    );
-
-  const onShare = async () => {
-      try {
-        await Share.share({
-          message: "Check this out! 👀",
-          url: "https://example.com", // iOS uses this
-          title: "Share link",        // Android uses this
-        });
-      } catch (error) {
-        console.error("Share error:", error);
-      }
-    };
-
-  const player = useVideoPlayer(item?.videoUrl, (player) => {
-    if (!player) return;
-    player.loop = true;
-    player.muted = true;
-  });
-
-  const toggleMute = () => {
-    player.muted = !player.muted;
-  };
-
-  const toggleDropdown = () => {
-    setIsDropdownOpen((prev) => !prev);
-  };
+  const params = useLocalSearchParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const { data: item, loading } = useListing(id);
 
   const handleBack = () => {
+    // Pop the stack so back always slides left-to-right and returns to whichever screen
+    // pushed this one (search page or results list) with its state intact.
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    // No history (deep link) — rebuild the most sensible screen.
+    if (getParamString(params.from) === 'search') {
+      router.replace('/home/search');
+      return;
+    }
     router.replace({
       pathname: '/home/search/searchResult',
       params: {
-        location: getParamString(location),
-        budgetFrom: getParamString(budgetFrom),
-        budgetTo: getParamString(budgetTo),
-        gender: getParamString(gender),
-        roomTypes: getParamString(roomTypes),
-        lifestyleMatches: getParamString(lifestyleMatches),
+        location: getParamString(params.location),
+        budgetFrom: getParamString(params.budgetFrom),
+        budgetTo: getParamString(params.budgetTo),
+        gender: getParamString(params.gender),
+        roomTypes: getParamString(params.roomTypes),
+        lifestyleMatches: getParamString(params.lifestyleMatches),
       },
     });
   };
@@ -140,7 +58,86 @@ export default function SearchResultListItem() {
           onPress={handleBack}
         />
       </View>
-      <Pressable style={styles.reel} onPress={toggleMute}>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color="#fff" />
+        </View>
+      ) : !item ? (
+        <View style={styles.center}>
+          <Text style={{ color: '#fff' }}>Listing not found</Text>
+        </View>
+      ) : (
+        <Reel item={item} insets={insets} params={params} />
+      )}
+    </View>
+  );
+}
+
+function Reel({ item, insets, params }) {
+  const [isSaved, setIsSaved] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const loadSavedState = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('savedListings');
+      const parsed = stored ? JSON.parse(stored) : [];
+      setIsSaved(parsed.some((saved) => saved.id === item.id));
+    } catch {
+      setIsSaved(false);
+    }
+  }, [item.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedState();
+    }, [loadSavedState])
+  );
+
+  const handleToggleSave = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('savedListings');
+      const parsed = stored ? JSON.parse(stored) : [];
+      const exists = parsed.some((saved) => saved.id === item.id);
+      const next = exists
+        ? parsed.filter((saved) => saved.id !== item.id)
+        : [item, ...parsed];
+
+      await AsyncStorage.setItem('savedListings', JSON.stringify(next));
+      setIsSaved(!exists);
+    } catch {
+      // noop
+    }
+  }, [item]);
+
+  const onShare = async () => {
+    try {
+      await Share.share({
+        message: 'Check this out! 👀',
+        url: 'https://example.com',
+        title: 'Share link',
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+    }
+  };
+
+  const player = useVideoPlayer(item.videoUrl ?? null, (p) => {
+    if (!p) return;
+    p.loop = true;
+    p.muted = true;
+  });
+
+  useEffect(() => {
+    player?.play();
+  }, [player]);
+
+  const toggleMute = () => {
+    if (player) player.muted = !player.muted;
+  };
+  const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
+
+  return (
+    <Pressable style={styles.reel} onPress={toggleMute}>
       {/* 🎥 Video */}
       <VideoView
         player={player}
@@ -152,8 +149,8 @@ export default function SearchResultListItem() {
       {/* Right Actions */}
       <View style={[styles.rightActions, { bottom: insets.bottom + 92 }]}>
         <AppIconButton
-          icon={<MaterialIcons name={isSaved ? "favorite" : "favorite-border"} />}
-          type='bare'
+          icon={<MaterialIcons name={isSaved ? 'favorite' : 'favorite-border'} />}
+          type="bare"
           onPress={handleToggleSave}
         />
         <AppIconButton icon={<Feather name="share-2" />} type="bare" onPress={onShare} />
@@ -177,20 +174,20 @@ export default function SearchResultListItem() {
       <View style={[styles.bottomLeft, { bottom: insets.bottom + 92 }]}>
         <View style={styles.bottomRoomInfo}>
           <Avatar
-            source={{ uri: item.owner.avatar[0] }}
+            source={{ uri: item.owner?.avatar?.[0] }}
             size={44}
             rounded
             containerStyle={{ backgroundColor: 'gray' }}
           />
           <View style={styles.bottomInfo}>
-            <AppText variant='body-sm-strong'>{item.title}</AppText>
-            <AppText variant='body-sm'>${item.price} / month</AppText>
+            <AppText variant="body-sm-strong">{item.title}</AppText>
+            <AppText variant="body-sm">${item.price} / month</AppText>
           </View>
           <View style={styles.bottomCTA}>
             <AppButton
               text="Detail"
               size="sm"
-              type='primary'
+              type="primary"
               onPress={() => router.push({
                 pathname: '/home/[id]',
                 params: {
@@ -199,12 +196,13 @@ export default function SearchResultListItem() {
                     pathname: '/home/search/[id]',
                     params: {
                       id: item.id,
-                      location: getParamString(location),
-                      budgetFrom: getParamString(budgetFrom),
-                      budgetTo: getParamString(budgetTo),
-                      gender: getParamString(gender),
-                      roomTypes: getParamString(roomTypes),
-                      lifestyleMatches: getParamString(lifestyleMatches),
+                      from: getParamString(params.from),
+                      location: getParamString(params.location),
+                      budgetFrom: getParamString(params.budgetFrom),
+                      budgetTo: getParamString(params.budgetTo),
+                      gender: getParamString(params.gender),
+                      roomTypes: getParamString(params.roomTypes),
+                      lifestyleMatches: getParamString(params.lifestyleMatches),
                     },
                   }),
                 },
@@ -212,12 +210,11 @@ export default function SearchResultListItem() {
             />
           </View>
         </View>
-        <AppText variant='body-sm-strong' numberOfLines={2}>
+        <AppText variant="body-sm-strong" numberOfLines={2}>
           #{item.city} #{item.province}
         </AppText>
       </View>
     </Pressable>
-    </View>
   );
 }
 
@@ -225,7 +222,6 @@ function getParamString(value) {
   if (Array.isArray(value)) return value[0] ?? '';
   return value ?? '';
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -237,8 +233,13 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: 'black',
   },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   topBar: {
-    position: 'absolute', 
+    position: 'absolute',
     left: 16,
     zIndex: 10,
   },
@@ -266,15 +267,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 200,
   },
-  bottomInfo:{
+  bottomInfo: {
     flex: 1,
   },
-  bottomRoomInfo:{
+  bottomRoomInfo: {
     width: '100%',
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:'space-between',
+    justifyContent: 'space-between',
     gap: 10,
     marginBottom: 8,
   },

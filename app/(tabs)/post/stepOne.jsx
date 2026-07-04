@@ -15,6 +15,7 @@ import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import Dropdown from '@/components/ui/input/dropdown';
 import DisplayInput from '@/components/ui/input/displayInput';
 import { useListingDraft } from '@/context/ListingDraftContext';
+import { geocodeAddress } from '@/lib/geo/geocode';
 
 const DEPOSIT_INCREMENT = 100;
 const DEPOSIT_TBD_VALUE = 'TBD';
@@ -112,6 +113,7 @@ export default function StepOne() {
     const [province, setProvince] = useState(draft.province || null);
     const [postalCode, setPostalCode] = useState(draft.postalCode || null);
     const [error, setError] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [, setPlaceId] = useState(null);
     const [latitude, setLatitude] = useState(draft.latitude ?? null);
     const [longitude, setLongitude] = useState(draft.longitude ?? null);
@@ -219,9 +221,9 @@ export default function StepOne() {
         });
     };
 
-    const continueToStepTwo = () => {
+    const continueToStepTwo = async () => {
         // Require the essentials. Coordinates come from Google Places autocomplete when
-        // available, but we don't hard-block on it so the flow works without the API key.
+        // a suggestion is tapped; otherwise we geocode the typed address as a fallback.
         if (!normalizeAddressPart(roomTitle)) {
             setError('Enter a room title before continuing.');
             return;
@@ -235,6 +237,25 @@ export default function StepOne() {
             return;
         }
 
+        setSubmitting(true);
+        let lat = Number.isFinite(latitude) ? latitude : null;
+        let lng = Number.isFinite(longitude) ? longitude : null;
+        if (lat === null || lng === null) {
+            const fullAddress = [
+                normalizeAddressPart(street),
+                normalizeAddressPart(city),
+                `${normalizeAddressPart(province)} ${normalizeAddressPart(postalCode)}`.trim(),
+            ].filter(Boolean).join(', ');
+            const geocoded = await geocodeAddress(fullAddress);
+            if (geocoded) {
+                lat = geocoded.latitude;
+                lng = geocoded.longitude;
+                setLatitude(lat);
+                setLongitude(lng);
+            }
+        }
+        setSubmitting(false);
+
         setFields({
             roomTitle: normalizeAddressPart(roomTitle),
             price,
@@ -243,8 +264,8 @@ export default function StepOne() {
             city: normalizeAddressPart(city),
             province: normalizeAddressPart(province),
             postalCode: normalizeAddressPart(postalCode),
-            latitude: Number.isFinite(latitude) ? latitude : null,
-            longitude: Number.isFinite(longitude) ? longitude : null,
+            latitude: lat,
+            longitude: lng,
             leaseType,
             deposit,
             roomType,
@@ -507,7 +528,7 @@ export default function StepOne() {
                                                 text: 'Exit without saving',
                                                 style: 'destructive',
                                                 onPress: () => {
-                                                    router.push('/(tabs)/post');
+                                                    router.dismissTo('/(tabs)/post');
                                                 },
                                             },]
                                         );  
@@ -517,6 +538,8 @@ export default function StepOne() {
                             <View style={{ flex: 1 }}>
                                 <AppButton
                                     text="Continue"
+                                    loading={submitting}
+                                    loadingLabel="Locating address"
                                     onPress={continueToStepTwo}
                                 />
                             </View>

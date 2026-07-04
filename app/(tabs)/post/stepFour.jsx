@@ -67,7 +67,7 @@ export default function StepFour() {
                                                 text: 'Exit without saving',
                                                 style: 'destructive',
                                                 onPress: () => {
-                                                    router.push('/(tabs)/post');
+                                                    router.dismissTo('/(tabs)/post');
                                                 },
                                             },]
                                         );  

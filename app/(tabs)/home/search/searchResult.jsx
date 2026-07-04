@@ -6,11 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppText from '@/components/ui/appText';
 import ResultVideoCard from '@/components/ui/resultVideoCard';
 import { colors } from '@/constants/colors';
-import { DATA } from '@/data/mockListData';
+import { useListings } from '@/hooks/use-listings';
+import { filterListings } from '@/lib/listingFilters';
 
 export default function SearchResultScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const { data: listings } = useListings();
 
   const roomTypes = useMemo(() => parseParamArray(params.roomTypes), [params.roomTypes]);
   const lifestyleMatches = useMemo(
@@ -18,35 +20,18 @@ export default function SearchResultScreen() {
     [params.lifestyleMatches]
   );
 
-  const results = useMemo(() => {
-    const location = getParamString(params.location).trim().toLowerCase();
-    const budgetFrom = getParamString(params.budgetFrom);
-    const budgetTo = getParamString(params.budgetTo);
-    const gender = getParamString(params.gender);
-    const min = Number(budgetFrom);
-    const max = Number(budgetTo);
-    const hasMin = budgetFrom.trim().length > 0 && Number.isFinite(min);
-    const hasMax = budgetTo.trim().length > 0 && Number.isFinite(max);
-
-    return DATA.filter((item) => {
-      const price = Number(item?.price);
-      const locationText = `${item?.street ?? ''} ${item?.city ?? ''} ${item?.province ?? ''} ${item?.postalCode ?? ''}`.toLowerCase();
-      const lifestyleText = `${item?.owner?.lifestyle ?? ''} ${item?.owner?.personality ?? ''}`.toLowerCase();
-      const roomText = `${item?.roomType ?? ''} ${item?.bathroomType ?? ''} ${item?.furnished ? 'Furnished' : 'Unfurnished'} ${item?.amenities ?? ''}`.toLowerCase();
-
-      const matchesLocation = location.length === 0 || locationText.includes(location);
-      const matchesBudget = (!hasMin || price >= min) && (!hasMax || price <= max);
-      const matchesGender = !gender || item?.owner?.gender === gender;
-      const matchesRoom =
-        roomTypes.length === 0 ||
-        roomTypes.some((type) => roomText.includes(String(type).toLowerCase()));
-      const matchesLifestyle =
-        lifestyleMatches.length === 0 ||
-        lifestyleMatches.some((type) => lifestyleText.includes(String(type).toLowerCase()));
-
-      return matchesLocation && matchesBudget && matchesGender && matchesRoom && matchesLifestyle;
-    });
-  }, [lifestyleMatches, params.budgetFrom, params.budgetTo, params.gender, params.location, roomTypes]);
+  const results = useMemo(
+    () =>
+      filterListings(listings, {
+        location: getParamString(params.location),
+        budgetFrom: getParamString(params.budgetFrom),
+        budgetTo: getParamString(params.budgetTo),
+        gender: getParamString(params.gender),
+        roomTypes,
+        lifestyleMatches,
+      }),
+    [listings, lifestyleMatches, params.budgetFrom, params.budgetTo, params.gender, params.location, roomTypes]
+  );
 
   const handlePressListing = (id) => {
     router.push({
