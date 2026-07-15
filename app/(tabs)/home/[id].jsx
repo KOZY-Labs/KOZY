@@ -9,6 +9,10 @@ import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import ProfileSection from '@/components/ui/profileSection';
+import { useAuth } from '@/context/AuthContext';
+import { requestChat } from '@/lib/db/chats';
+import { useExistingChat } from '@/hooks/use-chats';
+import { ownerFromProfile } from '@/lib/listingDraft';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -17,7 +21,35 @@ export default function DetailScreen() {
   const { id, backTo } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
   const { data: item, loading } = useListing(listingId);
+  const { uid, profile } = useAuth();
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const [requesting, setRequesting] = React.useState(false);
+  const existingChat = useExistingChat(listingId, uid);
+
+  const handleChatRequest = async () => {
+    if (!uid) {
+      router.push({ pathname: '/(auth)/login', params: { redirect: `/home/${listingId}` } });
+      return;
+    }
+    if (uid === item?.ownerId) {
+      Alert.alert('This is your listing', 'You can’t send a chat request to yourself.');
+      return;
+    }
+    setRequesting(true);
+    try {
+      const chatId = await requestChat({
+        listing: item,
+        requesterId: uid,
+        requesterInfo: ownerFromProfile(profile),
+        firstMessage: `Hi, I'm interested in your listing at ${item.street}, ${item.city}. Is it still available?`,
+      });
+      router.push(`/(tabs)/chat/${chatId}`);
+    } catch (e) {
+      Alert.alert('Request failed', e?.message ?? 'Please try again.');
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   const handleBack = useCallback(() => {
     // Prefer popping the stack — returns to whichever screen pushed this one (reel, map
@@ -174,26 +206,21 @@ export default function DetailScreen() {
             <AppText variant='body-sm' style={{lineHeight: 14}}>• Deposit: ${item.deposit}</AppText>
           </View>
         </View>
-        <AppButton 
-          text="Send Chat Request" 
-          type="primary" 
-          onPress={() => {
-            Alert.alert(
-              'Complete your profile to start chatting ✨',
-              'Add a few more details so we can build trust and better matches.',
-              [{
-                text: 'Close',
-                style: 'cancel',
-              },
-              {
-                text: 'Complete Profile',
-                onPress: () => {
-                  router.push('/(tabs)/account/editProfile');
-                },
-              },]
-            );
-          }}
-        />
+        {/* No chat CTA on the viewer's own listing */}
+        {uid !== item.ownerId && (
+          <AppButton
+            text={
+              existingChat
+                ? (existingChat.requestStatus === 'accepted' ? 'Chat in Progress' : 'Chat Request Sent')
+                : 'Send Chat Request'
+            }
+            type="primary"
+            state={existingChat ? 'disabled' : 'normal'}
+            loading={requesting}
+            loadingLabel="Sending request"
+            onPress={handleChatRequest}
+          />
+        )}
       </ScrollView>
     </>
   );

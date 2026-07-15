@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Text, Pressable, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 
 import AppIconButton from '@/components/ui/appIconButton';
@@ -12,43 +12,12 @@ import { useListing } from '@/hooks/use-listings';
 const { height } = Dimensions.get('window');
 
 export default function MyList() {
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
   const { data: item, loading } = useListing(listingId);
 
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      parent?.setOptions({
-        tabBarStyle: { display: 'none' },
-      });
-
-      return () => {
-        parent?.setOptions({
-          tabBarStyle: {
-            position: 'absolute',
-            alignSelf: 'center',
-            bottom: insets.bottom + 10,
-            overflow: 'hidden',
-            borderRadius: 16,
-            borderTopWidth: 0,
-            height: 56,
-            maxWidth: 400,
-            width: '100%',
-            paddingTop: 7,
-            marginHorizontal: 16,
-            shadowColor: '#000',
-            shadowOpacity: 0.2,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 5 },
-            elevation: 10,
-          },
-        });
-      };
-    }, [navigation, insets.bottom])
-  );
+  // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
   return (
     <View style={styles.container}>

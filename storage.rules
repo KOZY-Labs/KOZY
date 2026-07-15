@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// KOZY Storage rules — derived from [IMAGE_POLICY] in CLAUDE.md.
+// Public read (media URLs are shown in the feed). Writes require auth, size + type limits.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function withinSize() {
+      // max_size_mb: 10
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    // Listing images
+    match /listings/{listingId}/images/{file} {
+      allow read: if true;
+      allow write: if isSignedIn() && withinSize() && isImage();
+    }
+
+    // Listing video — videos may exceed the image limit; allow up to 50MB.
+    match /listings/{listingId}/video/{file} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.resource.size < 50 * 1024 * 1024
+        && isVideo();
+    }
+
+    // User avatar — only the owner can write.
+    match /users/{uid}/avatar/{file} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == uid && withinSize() && isImage();
+    }
+
+    // Default: deny.
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

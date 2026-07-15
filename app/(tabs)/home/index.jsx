@@ -8,15 +8,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import AppIconButton from '@/components/ui/appIconButton';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
-import { useListings } from '@/hooks/use-listings';
+import { useBrowseListings } from '@/hooks/use-listings';
 
 const { height } = Dimensions.get('window');
 const SAVED_LISTINGS_KEY = 'savedListings';
 
 export default function HomeScreen() {
-  
+
   const insets = useSafeAreaInsets();
-  const { data: listings, loading, error, reload } = useListings();
+  const { data: listings, loading, error, reload } = useBrowseListings();
   const [activeIndex, setActiveIndex] = useState(0);
   const [, setSavedListings] = useState([]);
   const [savedIds, setSavedIds] = useState(new Set());

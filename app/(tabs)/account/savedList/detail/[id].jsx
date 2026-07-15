@@ -1,12 +1,15 @@
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { router, useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import React, { useCallback, useMemo } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useMemo } from 'react';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { useListing } from '@/hooks/use-listings';
 import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
+import { useAuth } from '@/context/AuthContext';
+import { requestChat } from '@/lib/db/chats';
+import { useExistingChat } from '@/hooks/use-chats';
+import { ownerFromProfile } from '@/lib/listingDraft';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ITEM_WIDTH = SCREEN_WIDTH * 0.8;
@@ -14,38 +17,13 @@ const ITEM_SPACING = 12;
 const IMAGE_HEIGHT = 228;
 
 export default function SavedListDetail() {
-  const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
   const { data: item, loading } = useListing(listingId);
-  const userVerified = true; // TODO: replace with real verification logic
+  const { uid, profile } = useAuth();
+  const existingChat = useExistingChat(listingId, uid);
 
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      parent?.setOptions({
-        tabBarStyle: { display: 'none' },
-      });
-
-      return () => {
-        parent?.setOptions({
-          tabBarStyle: {
-            position: 'absolute',
-            alignSelf: 'center', 
-            bottom: insets.bottom + 10,
-            borderRadius: 16,
-            borderTopWidth: 0,
-            height: 56,
-            backgroundColor: 'rgba(0,0,0,1)',
-            maxWidth: 400,
-            paddingTop: 7,
-            marginHorizontal: 16,
-          },
-        });
-      };
-    }, [navigation, insets.bottom])
-  );
+  // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
   const defaultRegion = useMemo(() => {
     const initialLatitude = Number(item?.latitude);
@@ -58,41 +36,32 @@ export default function SavedListDetail() {
     };
   }, [item]);
 
-  const sendChatRequest = () => {
-    if(userVerified) {
+  const sendChatRequest = async () => {
+    if (!uid) {
+      router.push('/(auth)/login');
+      return;
+    }
+    if (uid === item?.ownerId) {
+      Alert.alert('This is your listing', 'You can’t send a chat request to yourself.');
+      return;
+    }
+    try {
+      const chatId = await requestChat({
+        listing: item,
+        requesterId: uid,
+        requesterInfo: ownerFromProfile(profile),
+        firstMessage: `Hi, I'm interested in your listing at ${item.street}, ${item.city}. Is it still available?`,
+      });
       Alert.alert(
-        'Chat Request Sent', 
-        `Your request has been sent to the room provider. You’ll be notified once it’s accepted.\n\n🔔 Want to get notified? Turn on chat alerts in your notification settings.`,
+        'Chat Request Sent',
+        `Your request has been sent to the room provider. You’ll be notified once it’s accepted.`,
         [
-          { 
-            text: 'Go to Settings',
-            onPress: () => {
-              router.push('/(tabs)/account/notification');
-          }, 
-          },
-          { 
-            text: 'Close', 
-            style: 'cancel' 
-          },
+          { text: 'Open Chat', onPress: () => router.push(`/(tabs)/chat/${chatId}`) },
+          { text: 'Close', style: 'cancel' },
         ]
       );
-    } else {
-      Alert.alert(
-        '',
-        'To send a chat request, please upload a photo and set your preferences. This helps build trust and improves your match quality.',
-        [
-          {
-            text: 'Close',
-            style: 'cancel',
-        },
-        {
-          text: 'Complete Profile',
-          onPress: () => {
-              router.push('/(tabs)/account/editProfile');
-          },
-        },
-      ]
-      );
+    } catch (e) {
+      Alert.alert('Request failed', e?.message ?? 'Please try again.');
     }
   };
   
@@ -269,11 +238,19 @@ export default function SavedListDetail() {
             </DisplayField>
           </View>
         </View> 
-        <AppButton 
-            text="Send Chat Request" 
-            type="primary" 
-            onPress={sendChatRequest}
-        />
+        {/* No chat CTA on the viewer's own listing */}
+        {uid !== item.ownerId && (
+          <AppButton
+              text={
+                existingChat
+                  ? (existingChat.requestStatus === 'accepted' ? 'Chat in Progress' : 'Chat Request Sent')
+                  : 'Send Chat Request'
+              }
+              type="primary"
+              state={existingChat ? 'disabled' : 'normal'}
+              onPress={sendChatRequest}
+          />
+        )}
       </ScrollView>
   );
 }

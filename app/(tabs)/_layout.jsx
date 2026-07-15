@@ -22,14 +22,22 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const segments = useSegments();
-  // Hide the floating tab bar on any post sub-step (stepOne..confirmPublish/uploadedPost)
-  // and on the home search flow. The post index ('/post') keeps the tab bar.
+  // Single source of truth for hiding the floating tab bar on immersive sub-screens.
+  // Screens must NOT set tabBarStyle imperatively (navigation.getParent().setOptions) —
+  // per-screen restores drift from this style and make the bar jump between tabs.
   const onPostSubScreen =
     segments.includes('post') && segments[segments.length - 1] !== 'post';
   const onHomeSearch = segments.includes('home') && segments.includes('search');
+  const onChatSubScreen =
+    segments.includes('chat') && segments[segments.length - 1] !== 'chat';
+  const onAccountImmersive =
+    pathname.startsWith('/account/editProfile') ||
+    /^\/account\/(myListings|savedList)\/[^/]+/.test(pathname); // deeper than the list index
   const shouldHideTabBar =
     onPostSubScreen ||
     onHomeSearch ||
+    onChatSubScreen ||
+    onAccountImmersive ||
     pathname.startsWith('/post/') ||
     pathname.startsWith('/home/search');
 
@@ -93,7 +101,15 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="chat"
+        listeners={{
+          // Always land on the messages list, even if a thread was open in this tab.
+          tabPress: (event) => {
+            event.preventDefault();
+            router.replace('/(tabs)/chat');
+          },
+        }}
         options={{
+          popToTopOnBlur: true,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="bubble.left.fill" color={color} />,
         }}
       />

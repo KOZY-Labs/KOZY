@@ -1,9 +1,7 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { useFocusEffect } from '@react-navigation/native';
 import { Platform, StyleSheet, View, Dimensions, FlatList, Alert } from 'react-native';
-import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { startPersonaVerification } from '@/services/personaVerification';
@@ -33,8 +31,6 @@ const ITEM_SPACING = 12;
 
 
 export default function EditProfile() {
-    const insets = useSafeAreaInsets();
-    const navigation = useNavigation();
     const { ownerId } = useLocalSearchParams();
     const normalizedOwnerId = Array.isArray(ownerId) ? ownerId[0] : ownerId;
     const { profile, uid, refreshProfile } = useAuth();
@@ -61,32 +57,7 @@ export default function EditProfile() {
     const [photoError, setPhotoError] = useState(null);
     const [saving, setSaving] = useState(false);
 
-    useFocusEffect(
-      useCallback(() => {
-        const parent = navigation.getParent();
-        parent?.setOptions({
-          tabBarStyle: { display: 'none' },
-        });
-
-        return () => {
-          parent?.setOptions({
-            tabBarStyle: { 
-              display: 'flex',
-              position: 'absolute',
-              alignSelf: 'center', 
-              bottom: insets.bottom + 10,
-              borderRadius: 16,
-              borderTopWidth: 0,
-              height: 56,
-              backgroundColor: 'rgba(0,0,0,1)',
-              maxWidth: 400,
-              paddingTop: 7,
-              marginHorizontal: 16,
-            },
-          });
-        };
-      }, [navigation, insets])
-    );
+    // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
   const saveProfile = async () => {
     if (!uid) {

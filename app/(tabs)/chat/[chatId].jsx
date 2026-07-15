@@ -1,99 +1,57 @@
-import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Keyboard, Alert } from "react-native";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Keyboard, Alert, ActivityIndicator, Image, Pressable } from "react-native";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useLocalSearchParams, useNavigation} from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
-import { currentUser, getMockChatThread } from "@/data/mockChatData";
 import MessageBubble from "@/components/ui/chat/MessageBubble";
 import ChatInput from "@/components/ui/chat/ChatInput";
 import AppText from "@/components/ui/appText";
 import AppButton from "@/components/ui/appButton";
-import { DATA } from "@/data/mockListData";
 import { colors } from "@/constants/colors";
 import AppDrawer from "@/components/ui/drawer/AppDrawer";
 import ProfileSection from "@/components/ui/profileSection";
+import { useAuth } from "@/context/AuthContext";
+import { useChatThread } from "@/hooks/use-chats";
+import { chatViewModel, sendMessage, acceptChat } from "@/lib/db/chats";
 
-const KEYBOARD_INPUT_GAP = 100; //setts a gap between keyboard and input
+const KEYBOARD_INPUT_GAP = 100; // gap between keyboard and input
+
+// "Today" / "Yesterday" / "June 28, 2026" for the date separators.
+const formatDayLabel = (date) => {
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+};
 
 export default function ChatScreen() {
-    const navigation = useNavigation();
     const { chatId } = useLocalSearchParams();
+    const threadId = Array.isArray(chatId) ? chatId[0] : chatId;
     const insets = useSafeAreaInsets();
-    const chatThread = getMockChatThread(chatId);
-    const listing = DATA.find((item) => item.id === chatThread.id) ?? DATA[0];
-    const [messages, setMessages] = useState(chatThread.messages);
-    const [requestMeta, setRequestMeta] = useState({
-        status: chatThread.requestStatus,
-        label: chatThread.requestLabel,
-        canAccept: chatThread.canAccept,
-    });
+    const { uid } = useAuth();
+    const { chat, messages, loading } = useChatThread(threadId);
+    const vm = chatViewModel(chat, uid);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-    const isPendingRequest = requestMeta.status?.startsWith("pending");
     const profileDrawerRef = useRef(null);
 
-
-    const handleSend = (text) => {
-    const newMessage = {
-        id: Date.now().toString(),
-        text,
-        senderId: currentUser.id,
-        createdAt: new Date().toISOString(),
+    const handleSend = async (text) => {
+        try {
+            await sendMessage(threadId, { senderId: uid, text });
+        } catch (e) {
+            Alert.alert('Send failed', e?.message ?? 'Please try again.');
+        }
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    const handleAcceptRequest = async () => {
+        try {
+            await acceptChat(threadId, uid);
+        } catch (e) {
+            Alert.alert('Accept failed', e?.message ?? 'Please try again.');
+        }
     };
 
-    useEffect(() => {
-        setMessages(chatThread.messages);
-        setRequestMeta({
-            status: chatThread.requestStatus,
-            label: chatThread.requestLabel,
-            canAccept: chatThread.canAccept,
-        });
-    }, [chatThread]);
-
-    const handleAcceptRequest = () => {
-        setRequestMeta({
-            status: "accepted",
-            label: "Chat request accepted",
-            canAccept: false,
-        });
-        setMessages((prev) => [
-            ...prev,
-            {
-                id: `accepted-${Date.now()}`,
-                type: "system",
-                text: "Chat request accepted",
-                createdAt: new Date().toISOString(),
-            },
-        ]);
-    };
-
-    useFocusEffect(
-        useCallback(() => {
-        const parent = navigation.getParent();
-        parent?.setOptions({
-            tabBarStyle: { display: 'none' },
-        });
-    
-        return () => {
-            parent?.setOptions({
-            tabBarStyle: {
-                position: 'absolute',
-                alignSelf: 'center', 
-                bottom: insets.bottom + 10,
-                borderRadius: 16,
-                borderTopWidth: 0,
-                height: 56,
-                backgroundColor: 'rgba(0,0,0,1)',
-                maxWidth: 400,
-                paddingTop: 7,
-                marginHorizontal: 16,
-            },
-            });
-        };
-        }, [navigation, insets.bottom])
-    );
+    // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
     useEffect(() => {
         const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -106,8 +64,8 @@ export default function ChatScreen() {
             hideSubscription.remove();
         };
     }, []);
-    
-    // Getting the laatest message for display in the chat header
+
+    // Latest message timestamp for the chat header
     const latestMessage = messages[messages.length - 1];
     const formatMessageDate = (dateString) => {
         const date = new Date(dateString);
@@ -127,13 +85,11 @@ export default function ChatScreen() {
         };
 
         if (diffInMins < 60) {
-            return `${diffInMins}m ago`;
+            return `${Math.max(diffInMins, 0)}m ago`;
         } else if (diffInHours < 24) {
             return `Today, ${formatTime(date)}`;
         } else if (diffInDays === 1) {
-            return `Yesterday, ${formatTime(date)}`; 
-        } else if (diffInDays === 2) {
-            return `2 days ago, ${formatTime(date)}`;
+            return `Yesterday, ${formatTime(date)}`;
         } else if (diffInDays < 7) {
             return `${diffInDays} days ago, ${formatTime(date)}`;
         } else {
@@ -143,40 +99,79 @@ export default function ChatScreen() {
 
     const openProfile = () => profileDrawerRef.current?.snapToIndex(0);
 
+    // Messages + date separators ("Today" / "Yesterday" / full date) whenever the
+    // day changes, reversed for the inverted list.
+    const listItems = useMemo(() => {
+        const items = [];
+        let lastDay = null;
+        for (const message of messages) {
+            const date = new Date(message.createdAt);
+            const day = date.toDateString();
+            if (day !== lastDay) {
+                items.push({ id: `date-${day}`, type: 'date', label: formatDayLabel(date) });
+                lastDay = day;
+            }
+            items.push(message);
+        }
+        return items.reverse();
+    }, [messages]);
+
+    if (loading) {
+        return (
+            <View style={[styles.container, styles.center]}>
+                <ActivityIndicator color="#fff" />
+            </View>
+        );
+    }
+
+    if (!chat || !vm) {
+        return (
+            <View style={[styles.container, styles.center]}>
+                <AppText variant="body-md" color="primary">Chat not found</AppText>
+            </View>
+        );
+    }
+
+    const otherAvatar = vm.otherInfo?.avatar?.[0];
+    const myAvatar = chat.participantsInfo?.[uid]?.avatar?.[0];
+
     return (
     <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
         <View style={styles.chatHeader}>
-            <AppText variant="body-sm-strong">{listing.owner.name}</AppText>
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open the listing this chat is about"
+                hitSlop={8}
+                onPress={() => {
+                    if (chat.listingId) {
+                        // Stay inside the chat stack: no home-feed flash, back pops to this thread.
+                        router.push({ pathname: '/chat/listing/[id]', params: { id: chat.listingId } });
+                    }
+                }}
+            >
+                <Image source={{ uri: otherAvatar }} style={styles.headerAvatar} />
+            </Pressable>
+            <AppText variant="body-sm-strong">{vm.otherInfo?.name ?? 'User'}</AppText>
             {latestMessage && (
                 <AppText variant="caption">{formatMessageDate(latestMessage.createdAt)}</AppText>
             )}
-            <AppText variant="caption" color="secondary" style={{marginTop: 10 }}>{requestMeta.label}</AppText>
-            {requestMeta.canAccept && (
+            <AppText variant="caption" style={{ marginTop: 10, color: '#D9D9D9' }}>{vm.statusLabel}</AppText>
+            {vm.canAccept && (
                 <AppButton
                     text="Accept Chat"
                     size="sm"
                     type="secondary"
                     onPress={() =>
                         Alert.alert(
-                            'Have you checked user\'s profile?', 
+                            'Have you checked user\'s profile?',
                             'Review their profile, then accept to start chatting.',
                             [
-                                { 
-                                    text: 'Accept and Start Chat',
-                                    onPress: handleAcceptRequest
-                                , 
-                                },
-                                { 
-                                    text: 'View Profile', 
-                                    onPress: openProfile
-                                },
-                                { 
-                                    text: 'Close', 
-                                    style: 'cancel' 
-                                },
+                                { text: 'Accept and Start Chat', onPress: handleAcceptRequest },
+                                { text: 'View Profile', onPress: openProfile },
+                                { text: 'Close', style: 'cancel' },
                             ]
                         )
                     }
@@ -185,17 +180,28 @@ export default function ChatScreen() {
             )}
         </View>
         <FlatList
-            data={[...messages].reverse()}
+            data={listItems}
             inverted
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-                <MessageBubble
-                    message={item}
-                    isMine={item.senderId === currentUser.id}
-                    avatar={item.senderId === currentUser.id ? currentUser.avatar : chatThread.otherUser.avatar}
-                    onAvatarPress={openProfile}
-                />
-        )}
+            renderItem={({ item }) => {
+                if (item.type === 'date') {
+                    return (
+                        <View style={styles.dateSeparator}>
+                            <AppText variant="caption" style={styles.dateSeparatorText}>
+                                {item.label}
+                            </AppText>
+                        </View>
+                    );
+                }
+                return (
+                    <MessageBubble
+                        message={item}
+                        isMine={item.senderId === uid}
+                        avatar={item.senderId === uid ? myAvatar : otherAvatar}
+                        onAvatarPress={openProfile}
+                    />
+                );
+            }}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
         />
@@ -206,24 +212,20 @@ export default function ChatScreen() {
                 { paddingBottom: isKeyboardVisible ? KEYBOARD_INPUT_GAP : insets.bottom },
             ]}
         >
-            <ChatInput onSend={handleSend} disabled={isPendingRequest} />
+            <ChatInput onSend={handleSend} disabled={vm.isPending || vm.status === 'declined'} />
         </View>
         <AppDrawer
             ref={profileDrawerRef}
-            title={`${listing.owner.name} Profile`}
+            title={`${vm.otherInfo?.name ?? 'User'} Profile`}
             primaryAction={() => {
-                profileDrawerRef.current?.close()
-                if (requestMeta.canAccept) {
+                profileDrawerRef.current?.close();
+                if (vm.canAccept) {
                     handleAcceptRequest();
                 }
             }}
-            primaryActionText={
-                requestMeta.canAccept ? "Accept & Start Chat" : "Close"
-            }
-          >
-            
-            <ProfileSection userId={listing.owner.id} listing={listing} />
-            
+            primaryActionText={vm.canAccept ? "Accept & Start Chat" : "Close"}
+        >
+            <ProfileSection listing={{ owner: vm.otherInfo }} />
         </AppDrawer>
     </KeyboardAvoidingView>
     );
@@ -234,11 +236,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.base.background,
   },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   list: {
     padding: 16,
   },
   chatHeader: {
     alignItems: "center",
+  },
+  headerAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    marginBottom: 8,
+    backgroundColor: colors.base.gray700,
+  },
+  dateSeparator: {
+    alignItems: 'center',
+    marginVertical: 14,
+  },
+  dateSeparatorText: {
+    color: '#D9D9D9',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   acceptButton: {
     marginTop: 12,

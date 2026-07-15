@@ -1,6 +1,8 @@
 // Data hooks for listings — centralize fetch + loading/empty/error so screens stay clean.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { listListings, getListing, subscribeMyListings } from '@/lib/db/listings';
+import { useChats } from '@/hooks/use-chats';
+import { useAuth } from '@/context/AuthContext';
 
 // Browse/feed listings. `options` is passed to listListings (e.g. { max, status }).
 export function useListings(options) {
@@ -24,6 +26,22 @@ export function useListings(options) {
   }, [load]);
 
   return { ...state, reload: load };
+}
+
+// Browse-facing listings (home feed, search, maps): published listings minus the
+// viewer's own and minus ones they already have a chat/request with (those come back
+// if the chat is deleted). Logged-out viewers see everything.
+export function useBrowseListings(options) {
+  const { uid } = useAuth();
+  const base = useListings(options);
+  const { data: chats } = useChats(uid);
+
+  const data = useMemo(() => {
+    const chattedListingIds = new Set(chats.map((c) => c.listingId));
+    return base.data.filter((l) => l.ownerId !== uid && !chattedListingIds.has(l.id));
+  }, [base.data, chats, uid]);
+
+  return { ...base, data };
 }
 
 // A single listing by id.

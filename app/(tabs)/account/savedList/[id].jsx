@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Share, Pressable, ActivityIndicator, Text } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -14,35 +14,12 @@ const { height } = Dimensions.get('window');
 const SAVED_LISTINGS_KEY = 'savedListings';
 
 export default function SavedList() {
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
   const { data: item, loading } = useListing(listingId);
 
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      parent?.setOptions({ tabBarStyle: { display: 'none' } });
-
-      return () => {
-        parent?.setOptions({
-          tabBarStyle: {
-            position: 'absolute',
-            alignSelf: 'center',
-            bottom: insets.bottom + 10,
-            borderRadius: 16,
-            borderTopWidth: 0,
-            height: 56,
-            backgroundColor: 'rgba(0,0,0,1)',
-            maxWidth: 400,
-            paddingTop: 7,
-            marginHorizontal: 16,
-          },
-        });
-      };
-    }, [navigation, insets.bottom])
-  );
+  // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
   return (
     <View style={styles.container}>

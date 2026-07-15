@@ -7,7 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import AppText from '@/components/ui/appText';
 import ListingsClusterMap from '@/components/ui/listingsClusterMap';
 import { colors } from '@/constants/colors';
-import { useListings } from '@/hooks/use-listings';
+import { useBrowseListings } from '@/hooks/use-listings';
 import { filterWithCoordinates } from '@/lib/geo/mapRegion';
 import { filterListings } from '@/lib/listingFilters';
 
@@ -18,7 +18,7 @@ const formatPrice = (price) => `$${Number(price ?? 0).toLocaleString()}`;
 export default function SearchMapScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { data: listings, loading } = useListings();
+  const { data: listings, loading } = useBrowseListings();
   const [selected, setSelected] = useState(null); // listing shown in the bottom card
 
   const mapListings = useMemo(

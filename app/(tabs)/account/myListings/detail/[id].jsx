@@ -1,7 +1,5 @@
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, ActivityIndicator } from 'react-native';
-import { router, useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCallback } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { useListing } from '@/hooks/use-listings';
 import DisplayField from '@/components/ui/displayField';
@@ -14,26 +12,11 @@ const ITEM_SPACING = 12;
 const IMAGE_HEIGHT = 228;
 
 export default function MyPostDetail() {
-  const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
   const { data: item, loading } = useListing(listingId);
 
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      parent?.setOptions({
-        tabBarStyle: { display: 'none' },
-      });
-
-      return () => {
-        parent?.setOptions({
-          tabBarStyle: undefined,
-        });
-      };
-    }, [navigation])
-  );
+  // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
   if (loading) {
     return (

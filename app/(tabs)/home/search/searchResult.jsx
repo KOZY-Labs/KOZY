@@ -6,13 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppText from '@/components/ui/appText';
 import ResultVideoCard from '@/components/ui/resultVideoCard';
 import { colors } from '@/constants/colors';
-import { useListings } from '@/hooks/use-listings';
+import { useBrowseListings } from '@/hooks/use-listings';
 import { filterListings } from '@/lib/listingFilters';
 
 export default function SearchResultScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { data: listings } = useListings();
+  const { data: listings } = useBrowseListings();
 
   const roomTypes = useMemo(() => parseParamArray(params.roomTypes), [params.roomTypes]);
   const lifestyleMatches = useMemo(

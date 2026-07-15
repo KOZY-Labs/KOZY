@@ -15,7 +15,7 @@ import Dropdown from '@/components/ui/input/dropdown';
 import FormField from '@/components/ui/form/formField';
 import ListingsClusterMap from '@/components/ui/listingsClusterMap';
 import { colors } from '@/constants/colors';
-import { useListings } from '@/hooks/use-listings';
+import { useBrowseListings } from '@/hooks/use-listings';
 import { filterWithCoordinates } from '@/lib/geo/mapRegion';
 import { filterListings } from '@/lib/listingFilters';
 
@@ -63,7 +63,7 @@ export default function SearchScreen() {
   const [lifestyleMatches, setLifestyleMatches] = useState([]);
 
   const [error, setError] = useState(null);
-  const { data: listings } = useListings();
+  const { data: listings } = useBrowseListings();
 
   const locationQuery = selectedPlace?.mainText ?? location;
 
