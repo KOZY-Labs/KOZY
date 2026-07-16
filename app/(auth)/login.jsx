@@ -72,7 +72,17 @@ export default function Login() {
       <View style={styles.container}>
         {/* Background shapes */}
         <LoginBackground />
-        <AppHeader />
+        <AppHeader
+          showBack
+          onBack={() => {
+            // Gates push this screen; pop back to where the user was.
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/home');
+            }
+          }}
+        />
         <KeyboardAwareScrollView
           contentContainerStyle={{ flexGrow: 1 }}
           enableOnAndroid
@@ -122,7 +132,11 @@ export default function Login() {
               </AuthCard>
             </View>
             <View style={styles.footerContent}>
-              {authError ? <ErrorMessage message={authError} /> : null}
+              {authError ? (
+                <View style={styles.errorPill}>
+                  <ErrorMessage message={authError} />
+                </View>
+              ) : null}
               <AppButton
                 text="Log In"
                 loading={submitting}
@@ -193,5 +207,13 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     width: '100%',
+  },
+  errorPill: {
+    backgroundColor: colors.base.white,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingBottom: 12,
+    borderRadius: 12,
+    marginBottom: 4,
   },
 });

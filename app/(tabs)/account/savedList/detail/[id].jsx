@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { requestChat } from '@/lib/db/chats';
 import { useExistingChat } from '@/hooks/use-chats';
 import { ownerFromProfile } from '@/lib/listingDraft';
+import { showAuthGate } from '@/lib/authGate';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ITEM_WIDTH = SCREEN_WIDTH * 0.8;
@@ -38,7 +39,10 @@ export default function SavedListDetail() {
 
   const sendChatRequest = async () => {
     if (!uid) {
-      router.push('/(auth)/login');
+      showAuthGate({
+        title: 'Start chatting with your match 💬',
+        message: 'Sign Up or Log In to connect with potential roommates.',
+      });
       return;
     }
     if (uid === item?.ownerId) {

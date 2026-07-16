@@ -67,7 +67,7 @@ export default function SavedList() {
 
   if (!listings || listings.length === 0) {
     return (
-      <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) + 84 }]}>
+      <View style={styles.container}>
         <EmptyListingsState
           heading="Nothing saved yet"
           description="Start exploring and save places you like."

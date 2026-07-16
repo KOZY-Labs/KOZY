@@ -1,10 +1,12 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 
 const DEFAULT_IMAGE = require('../../assets/images/No-Listings.png');
+const TAB_BAR_HEIGHT = 84;
 
 export default function EmptyListingsState({
   heading,
@@ -13,9 +15,15 @@ export default function EmptyListingsState({
   actionText,
   onAction,
   style,
+  // All current usages render behind the floating tab bar; offset so content
+  // centers within the visible area. Pass false on screens without the tab bar.
+  tabBarOffset = true,
 }) {
+  const insets = useSafeAreaInsets();
+  const paddingBottom = tabBarOffset ? Math.max(insets.bottom, 16) + TAB_BAR_HEIGHT : 0;
+
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, { paddingBottom }, style]}>
       <Image source={imageSource} style={styles.image} contentFit="contain" />
       <View style={styles.copy}>
         <AppText variant="headline-md" color="primary" style={styles.heading}>

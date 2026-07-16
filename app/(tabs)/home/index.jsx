@@ -9,6 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppIconButton from '@/components/ui/appIconButton';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 import { useBrowseListings } from '@/hooks/use-listings';
+import { useAuth } from '@/context/AuthContext';
+import { showAuthGate } from '@/lib/authGate';
 
 const { height } = Dimensions.get('window');
 const SAVED_LISTINGS_KEY = 'savedListings';
@@ -16,6 +18,7 @@ const SAVED_LISTINGS_KEY = 'savedListings';
 export default function HomeScreen() {
 
   const insets = useSafeAreaInsets();
+  const { isLoggedIn } = useAuth();
   const { data: listings, loading, error, reload } = useBrowseListings();
   const [activeIndex, setActiveIndex] = useState(0);
   const [, setSavedListings] = useState([]);
@@ -39,6 +42,13 @@ export default function HomeScreen() {
   );
 
   const handleToggleSave = useCallback((item) => {
+    if (!isLoggedIn) {
+      showAuthGate({
+        title: 'Save it for later',
+        message: 'Sign Up or Log In to keep track of places you like.',
+      });
+      return;
+    }
     setSavedListings((prev) => {
       const exists = prev.some((saved) => saved.id === item.id);
       const next = exists
@@ -49,7 +59,7 @@ export default function HomeScreen() {
       AsyncStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
-  }, []);
+  }, [isLoggedIn]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
@@ -68,6 +78,20 @@ export default function HomeScreen() {
       console.error("Share error:", error);
     }
   };
+
+  const onReport = useCallback(() => {
+    if (!isLoggedIn) {
+      showAuthGate({
+        title: 'Report this listing',
+        message: 'Sign Up or Log In to report listings.',
+      });
+      return;
+    }
+    router.push({
+      pathname: '/(tabs)/account/contactUs',
+      params: { backTo: '/(tabs)/home' },
+    });
+  }, [isLoggedIn]);
 
   return (
     <View style={styles.container}>
@@ -107,6 +131,7 @@ export default function HomeScreen() {
               isSaved={savedIds.has(reel.id)}
               onToggleSave={handleToggleSave}
               onShare={onShare}
+              onReport={onReport}
             />
           )}
           pagingEnabled
@@ -123,7 +148,7 @@ export default function HomeScreen() {
 }
 
 /* Reel Item*/
-function ReelItem({ item, isActive, insets, isSaved, onToggleSave, onShare }) {
+function ReelItem({ item, isActive, insets, isSaved, onToggleSave, onShare, onReport }) {
   const player = useVideoPlayer(item.videoUrl, (player) => {
     player.loop = true;
     player.muted = true;
@@ -159,12 +184,7 @@ function ReelItem({ item, isActive, insets, isSaved, onToggleSave, onShare }) {
         onToggleSave={onToggleSave}
         onShare={onShare}
         onPressDetail={() => router.push(`/home/${item.id}`)}
-        onPressReport={() =>
-          router.push({
-            pathname: '/(tabs)/account/contactUs',
-            params: { backTo: '/(tabs)/home' },
-          })
-        }
+        onPressReport={onReport}
         showMoreAction
         showShareAction
         showSaveAction

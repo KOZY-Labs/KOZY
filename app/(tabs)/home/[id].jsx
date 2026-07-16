@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { requestChat } from '@/lib/db/chats';
 import { useExistingChat } from '@/hooks/use-chats';
 import { ownerFromProfile } from '@/lib/listingDraft';
+import { showAuthGate } from '@/lib/authGate';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -28,7 +29,11 @@ export default function DetailScreen() {
 
   const handleChatRequest = async () => {
     if (!uid) {
-      router.push({ pathname: '/(auth)/login', params: { redirect: `/home/${listingId}` } });
+      showAuthGate({
+        title: 'Start chatting with your match 💬',
+        message: 'Sign Up or Log In to connect with potential roommates.',
+        redirect: `/home/${listingId}`,
+      });
       return;
     }
     if (uid === item?.ownerId) {

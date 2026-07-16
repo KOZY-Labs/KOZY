@@ -35,6 +35,7 @@ export default function EditProfile() {
     const normalizedOwnerId = Array.isArray(ownerId) ? ownerId[0] : ownerId;
     const { profile, uid, refreshProfile } = useAuth();
     const existingAvatar = profile?.avatar ?? [];
+    const nicknameDrawerRef = useRef(null);
     const genderDrawerRef = useRef(null);
     const personalityDrawerRef = useRef(null);
     const jobDrawerRef = useRef(null);
@@ -45,6 +46,7 @@ export default function EditProfile() {
     const emailEditDrawerRef = useRef(null);
     const emailCheckDrawerRef = useRef(null);
     const photoDrawerRef = useRef(null);
+    const [nickname, setNickname] = useState(profile?.nickname ?? profile?.firstName ?? '');
     const [personality, setPersonality] = useState(profile?.personality ?? []);
     const [lifestylePreferences, setLifestylePreferences] = useState(profile?.lifestyle ?? []);
     const [gender, setGender] = useState(profile?.gender ?? null);
@@ -73,6 +75,7 @@ export default function EditProfile() {
       const avatar = newAvatarUrls.length ? newAvatarUrls : existingAvatar;
 
       await updateUserDoc(uid, {
+        nickname: nickname.trim() || (profile?.firstName ?? ''),
         gender: gender ?? '',
         occupation: job ?? '',
         personality,
@@ -184,6 +187,13 @@ export default function EditProfile() {
             </DisplayField>
 
             {/* Inputs */}
+            <FormField label="Nickname" error={error}>
+              <DisplayInput
+                value={nickname}
+                placeholder="Enter your nickname"
+                onPress={() => nicknameDrawerRef.current?.snapToIndex(0)}
+              />
+            </FormField>
             <FormField label="Gender" error={error}>
               <DisplayInput
                 value={gender}
@@ -260,6 +270,22 @@ export default function EditProfile() {
         )}
       />
       {/* Drawers */}
+      <AppDrawer
+            ref={nicknameDrawerRef}
+            title="What should we call you?"
+            description="Your nickname is shown to other users instead of your full name."
+            primaryAction={() => nicknameDrawerRef.current?.close()}
+          >
+            <FormField label="" error={error}>
+              <InputRow>
+                <TextField
+                  placeholder="Enter your nickname"
+                  value={nickname}
+                  onChangeText={setNickname}
+                />
+              </InputRow>
+            </FormField>
+      </AppDrawer>
       <AppDrawer
             ref={genderDrawerRef}
             title="What’s your gender?"

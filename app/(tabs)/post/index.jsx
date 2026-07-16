@@ -14,21 +14,19 @@ export default function PostScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppText variant="headline-sm" color="primary">Add New Listing</AppText>
-         <View style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 16) + 84 }}>
-           <EmptyListingsState
-            heading="Let’s List Your Space"
-            description="Just a few quick steps to share your room with the right people."
-            actionText={isLoggedIn ? "Share a room" : "Sign up / Log in"}
-            onAction={() => {
-              if (isLoggedIn) {
-                router.push('/(tabs)/post/stepOne');
-              } else {
-                router.push('/(auth)/login');
-              }
-            }}
-            imageSource = {require('@/assets/images/3d-house.png')}
-          />
-        </View>
+         <EmptyListingsState
+          heading="Let’s List Your Space"
+          description="Just a few quick steps to share your room with the right people."
+          actionText={isLoggedIn ? "Share a room" : "Sign up / Log in"}
+          onAction={() => {
+            if (isLoggedIn) {
+              router.push('/(tabs)/post/stepOne');
+            } else {
+              router.push('/(auth)/login');
+            }
+          }}
+          imageSource = {require('@/assets/images/3d-house.png')}
+        />
     </View>
   );
 }

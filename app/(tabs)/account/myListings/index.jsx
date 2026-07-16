@@ -58,7 +58,7 @@ export default function MyListings() {
 
   if (!listings || listings.length === 0) {
     return (
-      <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) + 84 }]}>
+      <View style={styles.container}>
         <EmptyListingsState
           heading="Have a room to share?"
           description="List it and connect with verified seekers."

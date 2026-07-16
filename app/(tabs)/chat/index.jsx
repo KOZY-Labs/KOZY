@@ -37,17 +37,17 @@ export default function Chat() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppText variant="headline-sm" color="primary">Messages</AppText>
-        <View style={styles.content}>
-          <AppButton
-            text='Sign Up / Log In to Contact'
-            onPress={() => {
-              router.push({
-                pathname: "/(auth)/login",
-                params: { redirect: pathname },
-              });
-            }}
-          />
-        </View>
+        <EmptyListingsState
+          heading="Nothing here yet"
+          description="Sign Up or Log In to start chatting with potential roommates"
+          actionText="Sign Up / Log In"
+          onAction={() => {
+            router.push({
+              pathname: "/(auth)/login",
+              params: { redirect: pathname },
+            });
+          }}
+        />
       </View>
     );
   }

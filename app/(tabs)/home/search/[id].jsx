@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Share, Pressable, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, Dimensions, Share, Pressable, ActivityIndicator, Text, Alert } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -11,7 +11,8 @@ import AppIconButton from '@/components/ui/appIconButton';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import { useListing } from '@/hooks/use-listings';
-import { colors } from '@/constants/colors';
+import { useAuth } from '@/context/AuthContext';
+import { showAuthGate } from '@/lib/authGate';
 
 const { height } = Dimensions.get('window');
 
@@ -74,8 +75,8 @@ export default function SearchResultListItem() {
 }
 
 function Reel({ item, insets, params }) {
+  const { isLoggedIn } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const loadSavedState = useCallback(async () => {
     try {
@@ -94,6 +95,13 @@ function Reel({ item, insets, params }) {
   );
 
   const handleToggleSave = useCallback(async () => {
+    if (!isLoggedIn) {
+      showAuthGate({
+        title: 'Save it for later',
+        message: 'Sign Up or Log In to keep track of places you like.',
+      });
+      return;
+    }
     try {
       const stored = await AsyncStorage.getItem('savedListings');
       const parsed = stored ? JSON.parse(stored) : [];
@@ -107,7 +115,7 @@ function Reel({ item, insets, params }) {
     } catch {
       // noop
     }
-  }, [item]);
+  }, [item, isLoggedIn]);
 
   const onShare = async () => {
     try {
@@ -134,7 +142,30 @@ function Reel({ item, insets, params }) {
   const toggleMute = () => {
     if (player) player.muted = !player.muted;
   };
-  const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
+
+  // Centered modal (native alert) instead of a floating dropdown.
+  const handleMorePress = () => {
+    Alert.alert('More options', undefined, [
+      {
+        text: 'Report Listing',
+        style: 'destructive',
+        onPress: () => {
+          if (!isLoggedIn) {
+            showAuthGate({
+              title: 'Report this listing',
+              message: 'Sign Up or Log In to report listings.',
+            });
+            return;
+          }
+          router.push({
+            pathname: '/(tabs)/account/contactUs',
+            params: { backTo: '/(tabs)/home/search' },
+          });
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   return (
     <Pressable style={styles.reel} onPress={toggleMute}>
@@ -154,20 +185,7 @@ function Reel({ item, insets, params }) {
           onPress={handleToggleSave}
         />
         <AppIconButton icon={<Feather name="share-2" />} type="bare" onPress={onShare} />
-        <AppIconButton icon={<Feather name="more-horizontal" />} type="bare" onPress={toggleDropdown} />
-        {isDropdownOpen && (
-          <Pressable
-            style={styles.rightActionsdDropdown}
-            onPress={() =>
-              router.push({
-                pathname: '/(tabs)/account/contactUs',
-                params: { backTo: '/(tabs)/home/search' },
-              })
-            }
-          >
-            <AppText variant="caption" color="error">Report</AppText>
-          </Pressable>
-        )}
+        <AppIconButton icon={<Feather name="more-horizontal" />} type="bare" onPress={handleMorePress} />
       </View>
 
       {/* Bottom Left */}
@@ -256,16 +274,6 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 22,
     alignItems: 'center',
-  },
-  rightActionsdDropdown: {
-    width: 200,
-    position: 'absolute',
-    top: 28,
-    right: 0,
-    backgroundColor: colors.base.gray700,
-    padding: 12,
-    borderRadius: 10,
-    zIndex: 200,
   },
   bottomInfo: {
     flex: 1,

@@ -1,12 +1,12 @@
-import { router, usePathname } from "expo-router";
-import { Pressable, StyleSheet, View, Image} from 'react-native';
+import { router } from "expo-router";
+import { Pressable, StyleSheet, View, Image, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from "@expo/vector-icons";
 
 import AppText from '@/components/ui/appText';
-import Badge from "@/components/ui/badge";
 import EmptyListingsState from "@/components/ui/emptyListingsState";
 import { useAuth } from "@/context/AuthContext";
+import { logout } from "@/lib/auth";
 
 
 export default function AccountScreen() {
@@ -14,9 +14,26 @@ export default function AccountScreen() {
   const { isLoggedIn, profile } = useAuth();
   const currUser = profile;
 
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+          } catch (e) {
+            Alert.alert('Log out failed', e?.message ?? 'Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   if( !isLoggedIn ) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top,paddingBottom: Math.max(insets.bottom, 16) + 84 }]}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppText variant="headline-sm" color="primary">My Page</AppText>
         <EmptyListingsState
           heading="Make it yours"
@@ -33,15 +50,21 @@ export default function AccountScreen() {
         <AppText variant="headline-sm" color="primary">My Page</AppText>
         <View style={styles.content}>
           <View style={styles.userInfo}>
-            <View style={styles.name}>
+            {/* Avatar/name opens Edit Profile; shows the public display name (nickname). */}
+            <Pressable
+              style={styles.name}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+              onPress={() => router.push('/(tabs)/account/editProfile')}
+            >
               <Image
                 source={{ uri: currUser?.avatar?.[0] }}
                 style={{ width: 55, height: 55, borderRadius: 999 }}
               />
               <AppText variant="body-md" color="primary">
-                {currUser?.name}
+                {currUser?.nickname ?? currUser?.firstName ?? currUser?.name}
               </AppText>
-            </View>
+            </Pressable>
           </View>
         </View>
         <View style={styles.manuContainer}>
@@ -49,7 +72,7 @@ export default function AccountScreen() {
             <View style={styles.manuButton}>
               <Feather name="edit" size={20} color='#fff' />
               <AppText variant="body-md" color="primary">
-                Edit
+                Edit Profile
               </AppText>
             </View>
           </Pressable>
@@ -92,6 +115,16 @@ export default function AccountScreen() {
               <Feather name="mail" size={20} color='#fff' />
               <AppText variant="body-md" color="primary">
                 Contact Us
+              </AppText>
+            </View>
+          </Pressable>
+        </View>
+        <View style={styles.manuContainer}>
+          <Pressable onPress={handleLogout}>
+            <View style={styles.manuButton}>
+              <Feather name="log-out" size={20} color='#fff' />
+              <AppText variant="body-md" color="primary">
+                Log Out
               </AppText>
             </View>
           </Pressable>

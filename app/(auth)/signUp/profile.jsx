@@ -146,7 +146,11 @@ export default function Profile() {
               </AuthCard>
             </View>
             <View style={styles.footerContent}>
-              {authError ? <ErrorMessage message={authError} /> : null}
+              {authError ? (
+                <View style={styles.errorPill}>
+                  <ErrorMessage message={authError} />
+                </View>
+              ) : null}
               <AppButton
                 text="Continue"
                 loading={submitting}
@@ -196,5 +200,13 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     width: '100%',
+  },
+  errorPill: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingBottom: 12,
+    borderRadius: 12,
+    marginBottom: 4,
   },
 });

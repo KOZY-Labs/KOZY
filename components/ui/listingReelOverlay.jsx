@@ -1,12 +1,10 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-elements';
 
 import AppButton from '@/components/ui/appButton';
 import AppIconButton from '@/components/ui/appIconButton';
 import AppText from '@/components/ui/appText';
-import { colors } from '@/constants/colors';
 
 export default function ListingReelOverlay({
   item,
@@ -20,16 +18,14 @@ export default function ListingReelOverlay({
   showMoreAction = false,
   onRepeat,
 }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const hasRightActions = showMoreAction || onToggleSave || onShare;
 
-  const handleToggleDropdown = () => {
-    setIsDropdownOpen((prev) => !prev);
-  };
-
-  const handlePressReport = () => {
-    setIsDropdownOpen(false);
-    onPressReport?.();
+  // Centered modal (native alert) instead of a floating dropdown.
+  const handleMorePress = () => {
+    Alert.alert('More options', undefined, [
+      { text: 'Report Listing', style: 'destructive', onPress: () => onPressReport?.() },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   return (
@@ -51,20 +47,11 @@ export default function ListingReelOverlay({
             />
           ) : null}
           {showMoreAction ? (
-            <>
-              <AppIconButton
-                icon={<Feather name="more-horizontal" />}
-                type="bare"
-                onPress={handleToggleDropdown}
-              />
-              {isDropdownOpen ? (
-                <Pressable style={styles.dropdown} onPress={handlePressReport}>
-                  <AppText variant="caption" color="error">
-                    Report
-                  </AppText>
-                </Pressable>
-              ) : null}
-            </>
+            <AppIconButton
+              icon={<Feather name="more-horizontal" />}
+              type="bare"
+              onPress={handleMorePress}
+            />
           ) : null}
         </View>
         ) : null
@@ -103,16 +90,6 @@ const styles = StyleSheet.create({
     right: 20,
     gap: 22,
     alignItems: 'center',
-  },
-  dropdown: {
-    width: 200,
-    position: 'absolute',
-    top: 28,
-    right: 0,
-    backgroundColor: colors.base.gray700,
-    padding: 12,
-    borderRadius: 10,
-    zIndex: 200,
   },
   bottomLeft: {
     position: 'absolute',
