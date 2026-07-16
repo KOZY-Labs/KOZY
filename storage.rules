@@ -22,21 +22,24 @@ service firebase.storage {
     // Listing images
     match /listings/{listingId}/images/{file} {
       allow read: if true;
-      allow write: if isSignedIn() && withinSize() && isImage();
+      allow create, update: if isSignedIn() && withinSize() && isImage();
+      allow delete: if isSignedIn();
     }
 
     // Listing video — videos may exceed the image limit; allow up to 50MB.
     match /listings/{listingId}/video/{file} {
       allow read: if true;
-      allow write: if isSignedIn()
+      allow create, update: if isSignedIn()
         && request.resource.size < 50 * 1024 * 1024
         && isVideo();
+      allow delete: if isSignedIn();
     }
 
     // User avatar — only the owner can write.
     match /users/{uid}/avatar/{file} {
       allow read: if true;
-      allow write: if isSignedIn() && request.auth.uid == uid && withinSize() && isImage();
+      allow create, update: if isSignedIn() && request.auth.uid == uid && withinSize() && isImage();
+      allow delete: if isSignedIn() && request.auth.uid == uid;
     }
 
     // Default: deny.

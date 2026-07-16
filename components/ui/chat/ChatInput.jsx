@@ -3,7 +3,7 @@ import { useState } from "react";
 import { colors } from '@/constants/colors';
 import AppButton from "../appButton";
 
-export default function ChatInput({ onSend, disabled = false }) {
+export default function ChatInput({ onSend, disabled = false, placeholder }) {
   const [text, setText] = useState("");
 
   const handleSend = () => {
@@ -18,7 +18,7 @@ export default function ChatInput({ onSend, disabled = false }) {
         value={text}
         onChangeText={setText}
         editable={!disabled}
-        placeholder={disabled ? "Chat request pending..." : "Type a message..."}
+        placeholder={placeholder ?? (disabled ? "Chat request pending..." : "Type a message...")}
         placeholderTextColor={colors.semantic.input.textDisabled}
         style={styles.input}
       />

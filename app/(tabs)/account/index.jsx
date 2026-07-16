@@ -128,6 +128,14 @@ export default function AccountScreen() {
               </AppText>
             </View>
           </Pressable>
+          <Pressable onPress={() => router.push('/(tabs)/account/deleteAccount')}>
+            <View style={styles.manuButton}>
+              <Feather name="trash-2" size={20} color='#fff' />
+              <AppText variant="body-md" color="primary">
+                Delete Account
+              </AppText>
+            </View>
+          </Pressable>
         </View>
     </View>
   );

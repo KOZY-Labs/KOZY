@@ -99,7 +99,14 @@ export default function AccountStack() {
             </Pressable>
           )
       })} />
-      <Stack.Screen name="savedList/index" 
+      <Stack.Screen name="deleteAccount"
+        options={{
+          title: 'Delete Account',
+          headerShown: true,
+          headerBackVisible: true,
+          headerBackTitleVisible: false
+      }} />
+      <Stack.Screen name="savedList/index"
         options={{ 
           title: 'Saved Listings',
           headerShown: true,

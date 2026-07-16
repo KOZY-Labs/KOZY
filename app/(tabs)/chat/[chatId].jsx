@@ -97,7 +97,11 @@ export default function ChatScreen() {
         }
     };
 
-    const openProfile = () => profileDrawerRef.current?.snapToIndex(0);
+    // No profile to show for a deleted account.
+    const openProfile = () => {
+        if (vm?.otherDeleted) return;
+        profileDrawerRef.current?.snapToIndex(0);
+    };
 
     // Messages + date separators ("Today" / "Yesterday" / full date) whenever the
     // day changes, reversed for the inverted list.
@@ -145,6 +149,7 @@ export default function ChatScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Open the listing this chat is about"
                 hitSlop={8}
+                disabled={vm.otherDeleted}
                 onPress={() => {
                     if (chat.listingId) {
                         // Stay inside the chat stack: no home-feed flash, back pops to this thread.
@@ -212,7 +217,11 @@ export default function ChatScreen() {
                 { paddingBottom: isKeyboardVisible ? KEYBOARD_INPUT_GAP : insets.bottom },
             ]}
         >
-            <ChatInput onSend={handleSend} disabled={vm.isPending || vm.status === 'declined'} />
+            <ChatInput
+                onSend={handleSend}
+                disabled={vm.isPending || vm.status === 'declined' || vm.otherDeleted}
+                placeholder={vm.otherDeleted ? 'This user is no longer available' : undefined}
+            />
         </View>
         <AppDrawer
             ref={profileDrawerRef}
