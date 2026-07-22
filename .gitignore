@@ -45,3 +45,8 @@ expo-env.d.ts
 # @end expo-cli
 *.md
 /.claude
+
+# Local build credentials (never commit)
+credentials.json
+credentials/
+build/
