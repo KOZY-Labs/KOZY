@@ -25,7 +25,7 @@ export default function Success() {
         <View style={[styles.bottomContent]}>
           <View style={styles.headerContent}>
             <AppText variant="headline-lg" color="secondary" style={{ marginBottom: 12 }}>
-                🎉 You're all set!
+                🎉 You&apos;re all set!
             </AppText>
             <AppText variant="body-sm" color="secondary" style={{ marginBottom: 24, textAlign: 'center' }}>
             Start exploring and connect with your future roommate now!
@@ -33,11 +33,17 @@ export default function Success() {
           </View>
           <AppButton
             text="Boost My Profile"
-            onPress={() => router.push("/(tabs)/account/editProfile")}
+            // Replace so the signup stack is gone; back from Edit Profile lands on My Page.
+            onPress={() =>
+              router.replace({
+                pathname: "/(tabs)/account/editProfile",
+                params: { backTo: "/(tabs)/account" },
+              })
+            }
           />
           <AppButton
             text="Later & Back to Home"
-            onPress={() => router.push("/(tabs)/home")}
+            onPress={() => router.replace("/(tabs)/home")}
           />
         </View>
       </View>

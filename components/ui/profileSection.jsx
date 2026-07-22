@@ -34,6 +34,12 @@ export default function ProfileSection({ listing }) {
       <DisplayField title="Lifestyle" type="pill">
         {owner.lifestyle}
       </DisplayField>
+
+      {owner.aboutMe ? (
+        <DisplayField title="About Me">
+          {owner.aboutMe}
+        </DisplayField>
+      ) : null}
     </View>
   );
 }

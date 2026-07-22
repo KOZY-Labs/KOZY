@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { appTheme } from '@/constants/index';
 import { AuthProvider } from '@/context/AuthContext';
+import ScreenTracker from '@/components/navigation/screenTracker';
 
 const AppDarkTheme = {
   ...DarkTheme,
@@ -40,6 +41,7 @@ export default function RootLayout() {
       >
         <RNEThemeProvider theme={appTheme}>
           <AuthProvider>
+            <ScreenTracker />
             <Slot />
             <StatusBar style="auto" />
           </AuthProvider>

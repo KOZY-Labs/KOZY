@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, View, Image, Alert } from 'react-native';
+import { Pressable, StyleSheet, View, Image, Alert, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from "@expo/vector-icons";
 
@@ -46,7 +46,11 @@ export default function AccountScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView
+      style={[styles.container, { paddingTop: insets.top }]}
+      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 84 }}
+      showsVerticalScrollIndicator={false}
+    >
         <AppText variant="headline-sm" color="primary">My Page</AppText>
         <View style={styles.content}>
           <View style={styles.userInfo}>
@@ -94,6 +98,14 @@ export default function AccountScreen() {
           </Pressable>
         </View>
         <View style={styles.manuContainer}>
+          <Pressable onPress={() => router.push('/(tabs)/account/trustLevelInfo')}>
+            <View style={styles.manuButton}>
+              <Feather name="shield" size={20} color='#fff' />
+              <AppText variant="body-md" color="primary">
+                Trust Level
+              </AppText>
+            </View>
+          </Pressable>
           <Pressable onPress={() => router.push('/(tabs)/account/notification')}>
             <View style={styles.manuButton}>
               <Feather name="bell" size={20} color='#fff' />
@@ -137,7 +149,7 @@ export default function AccountScreen() {
             </View>
           </Pressable>
         </View>
-    </View>
+    </ScrollView>
   );
 }
 

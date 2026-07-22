@@ -34,6 +34,9 @@ export default function DeleteAccount() {
             try {
               await deleteAccount(password);
               Alert.alert('Account deleted', 'Your account and data have been removed.');
+              // Clear this tab's stack first so the account tab can't resurface
+              // the Delete Account screen, then land on the home feed.
+              router.dismissAll();
               router.replace('/(tabs)/home');
             } catch (e) {
               setError(authErrorMessage(e));

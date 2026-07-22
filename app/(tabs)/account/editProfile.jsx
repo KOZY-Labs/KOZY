@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Platform, StyleSheet, View, Dimensions, FlatList, Alert } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { startPersonaVerification } from '@/services/personaVerification';
@@ -22,7 +22,10 @@ import MediaInput from '@/components/ui/input/mediaInput';
 import validateImage from '@/utils/mediaValidation';
 import { useAuth } from '@/context/AuthContext';
 import { updateUserDoc } from '@/lib/db/users';
+import { syncProfileCaches } from '@/lib/db/profileSync';
 import { uploadUserAvatar } from '@/lib/utils/uploadMedia';
+import { requestEmailChange } from '@/lib/auth';
+import { authErrorMessage } from '@/lib/auth/errors';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -31,8 +34,6 @@ const ITEM_SPACING = 12;
 
 
 export default function EditProfile() {
-    const { ownerId } = useLocalSearchParams();
-    const normalizedOwnerId = Array.isArray(ownerId) ? ownerId[0] : ownerId;
     const { profile, uid, refreshProfile } = useAuth();
     const existingAvatar = profile?.avatar ?? [];
     const nicknameDrawerRef = useRef(null);
@@ -53,8 +54,12 @@ export default function EditProfile() {
     const [job, setJob] = useState(profile?.occupation ?? null);
     const [aboutMe, setAboutMe] = useState(profile?.aboutMe ?? '');
     const [error, setError] = useState(null);
-    const [myEmail, setMyEmail] = useState(profile?.email ?? null);
     const [verified, setVerified] = useState(profile?.verified ?? false);
+    const [verifying, setVerifying] = useState(false);
+    const [newEmail, setNewEmail] = useState('');
+    const [emailPassword, setEmailPassword] = useState('');
+    const [emailError, setEmailError] = useState(null);
+    const [changingEmail, setChangingEmail] = useState(false);
     const [photos, setPhotos] = useState([]);
     const [photoError, setPhotoError] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -82,8 +87,9 @@ export default function EditProfile() {
         lifestyle: lifestylePreferences,
         aboutMe,
         avatar,
-        verified,
       });
+      // Push the fresh profile into denormalized copies (listings.owner, chats.participantsInfo).
+      await syncProfileCaches(uid);
       await refreshProfile();
       Alert.alert('Profile updated', 'Your changes have been saved.', [
         { text: 'OK', onPress: () => router.back() },
@@ -92,6 +98,63 @@ export default function EditProfile() {
       Alert.alert('Update failed', e?.message ?? 'Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Persona hosted flow. Writes users.verified immediately on completion — verification
+  // must not depend on the user also pressing Save Changes.
+  const handleStartVerification = async () => {
+    myVerificationDrawerRef.current?.close();
+    setVerifying(true);
+    try {
+      const result = await startPersonaVerification(uid);
+      if (result.type === 'completed') {
+        await updateUserDoc(uid, { verified: true, personaInquiryId: result.inquiryId ?? '' });
+        await syncProfileCaches(uid);
+        await refreshProfile();
+        setVerified(true);
+        verificationConfirmDrawerRef.current?.snapToIndex(0);
+      } else if (result.type === 'pending') {
+        if (result.inquiryId) {
+          await updateUserDoc(uid, { personaInquiryId: result.inquiryId });
+        }
+        Alert.alert(
+          'Verification submitted',
+          'Your ID is being reviewed. Your profile will show as verified once it clears.'
+        );
+      } else if (result.type === 'failed') {
+        Alert.alert('Verification failed', 'We could not verify your ID. Please try again.');
+      }
+      // 'cancel' — user closed the browser; no message needed.
+    } catch (e) {
+      Alert.alert('Verification unavailable', e?.message ?? 'Please try again later.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleEmailChange = async () => {
+    const email = newEmail.trim();
+    if (!email || !email.includes('@')) {
+      setEmailError('Enter a valid email address.');
+      return;
+    }
+    if (!emailPassword) {
+      setEmailError('Enter your current password.');
+      return;
+    }
+    setChangingEmail(true);
+    setEmailError(null);
+    try {
+      await requestEmailChange(email, emailPassword);
+      emailEditDrawerRef.current?.close();
+      emailCheckDrawerRef.current?.snapToIndex(0);
+      setNewEmail('');
+      setEmailPassword('');
+    } catch (e) {
+      setEmailError(authErrorMessage(e));
+    } finally {
+      setChangingEmail(false);
     }
   };
 
@@ -228,24 +291,41 @@ export default function EditProfile() {
                 onPress={() => lifestyleDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
+            <FormField label="About Me" error={error}>
+              <DisplayInput
+                value={aboutMe}
+                placeholder="Tell us your story"
+                onPress={() => aboutMeDrawerRef.current?.snapToIndex(0)}
+              />
+            </FormField>
             <View style={styles.idVerificationContainer}>
               <AppText variant="body-sm-strong" color="primary">
                 ID Verification
               </AppText>
-              <View style={{ width: 92 }}>
-                <AppButton 
-                  text="Verify"
-                  size="sm"
-                  type='primary'
-                  onPress={() => myVerificationDrawerRef.current?.snapToIndex(0)}
-                />
-              </View>
+              {verified ? (
+                <View style={styles.verifiedBadge}>
+                  <Feather name="check-circle" size={16} color="#4ADE80" />
+                  <AppText variant="body-sm-strong" style={{ color: '#4ADE80' }}>
+                    Verified
+                  </AppText>
+                </View>
+              ) : (
+                <View style={{ width: 92 }}>
+                  <AppButton
+                    text="Verify"
+                    size="sm"
+                    type='primary'
+                    loading={verifying}
+                    loadingLabel="Verifying"
+                    onPress={() => myVerificationDrawerRef.current?.snapToIndex(0)}
+                  />
+                </View>
+              )}
             </View>
             <View style={styles.emailContainer}>
               <FormField label="My Email" error={error} style={styles.emailField}>
                 <DisplayInput
-                  value={myEmail}
-                  onChangeText={setMyEmail}
+                  value={profile?.email}
                   placeholder="Please Verify your email."
                 />
               </FormField>
@@ -381,16 +461,7 @@ export default function EditProfile() {
             title="Verify Your Identity"
             align="center"
             primaryActionText="Start Verification"
-            primaryAction={async () => {
-              myVerificationDrawerRef.current?.close();
-            
-              const result = await startPersonaVerification(normalizedOwnerId ?? 'kozy-test-user');
-            
-              if (result.type === 'success') {
-                setVerified(true);
-                verificationConfirmDrawerRef.current?.snapToIndex(0);
-              }
-            }}
+            primaryAction={handleStartVerification}
           >
             <AppText variant='body-xsm' style={{ marginBottom: 16, textAlign: 'center' }}>
               For security and trust, please verify your identity. This only takes a few minutes.
@@ -412,45 +483,61 @@ export default function EditProfile() {
             ref={emailEditDrawerRef}
             title="Update email address"
             align="center"
-            description="Enter Your School or Work Email"
-            primaryActionText="Send Verification Code"
-            primaryAction={() => {
-              emailEditDrawerRef.current?.close()
-              emailCheckDrawerRef.current?.snapToIndex(0)
-            }}
+            description="Enter your new email and current password"
+            primaryActionText={changingEmail ? 'Sending...' : 'Send Verification Link'}
+            primaryAction={handleEmailChange}
           >
             <View>
               <AppText variant='body-xsm'>
-                ✶ We’ll send a verification code to confirm your email.
+                ✶ We’ll send a verification link to your new email.
               </AppText>
               <AppText variant='body-xsm'>
-              ✶ For secure matching, please use your school or work email address.
+                ✶ Your login email changes only after you open that link.
               </AppText>
             </View>
-            <View style={{ marginTop: 54 }}>
-              <FormField label="" error={error}>
-                  <TextField placeholder="youremail@gmail.com" error={!!error} type="auth"/>
+            <View style={{ marginTop: 32 }}>
+              <FormField label="" error={emailError}>
+                <InputRow>
+                  <TextField
+                    placeholder="New email address"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    error={!!emailError}
+                    value={newEmail}
+                    onChangeText={(text) => {
+                      setNewEmail(text);
+                      setEmailError(null);
+                    }}
+                  />
+                </InputRow>
+              </FormField>
+              <FormField label="">
+                <InputRow>
+                  <TextField
+                    placeholder="Current password"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    error={!!emailError}
+                    value={emailPassword}
+                    onChangeText={(text) => {
+                      setEmailPassword(text);
+                      setEmailError(null);
+                    }}
+                  />
+                </InputRow>
               </FormField>
             </View>
       </AppDrawer>
       <AppDrawer
             ref={emailCheckDrawerRef}
-            title="Update email address"
+            title="Check your inbox"
             align="center"
-            description="We’ve sent a 6-digit code to your email. Enter the code to verify your email address."
-            primaryActionText="Verify"
-            secondaryActionText="Resend Code"
+            description="We’ve sent a verification link to your new email. Open it to finish the change, then log in again with your new email."
+            primaryActionText="Done"
             primaryAction={() => {
               emailCheckDrawerRef.current?.close()
             }}
-            secondaryAction={() => {
-              emailCheckDrawerRef.current?.close()
-            }}
           >
-            
-          <FormField label="" error={error}>
-              <TextField placeholder="youremail@gmail.com" error={!!error} type="auth"/>
-          </FormField>
       </AppDrawer>
       <AppDrawer
             ref={photoDrawerRef}
@@ -497,6 +584,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderBottomColor: colors.semantic.input.border.normal.color,
     borderBottomWidth: 1,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   idVerificationContainer:{
     flexDirection: 'row',

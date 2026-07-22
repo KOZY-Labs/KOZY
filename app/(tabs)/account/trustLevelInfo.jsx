@@ -47,14 +47,14 @@ export default function TrustLevelInfo() {
                 🔒 Level 1: Unverified
             </AppText>
             <AppText variant="body-sm" color="primary">
-                You haven't signed up yet, or haven’t completed your basic profile.
+                You haven&apos;t signed up yet, or haven’t completed your basic profile.
               </AppText>
             <View style={{ paddingVertical: 16 }}>
               <AppText variant="body-sm" color="primary">
                   • You’re browsing as a guest
               </AppText>
               <AppText variant="body-sm" color="primary">
-                  • You can't contact others or upload listings
+                  • You can&apos;t contact others or upload listings
               </AppText>  
               <AppText variant="body-sm" color="primary">
                   • Your activity is not visible to other users
@@ -110,8 +110,9 @@ export default function TrustLevelInfo() {
             text='Return to My Page'
             type='secondary'
             onPress={() => {
-              router.push('/(tabs)/account');
-            }} 
+              if (router.canGoBack()) router.back();
+              else router.replace('/(tabs)/account');
+            }}
           />
         </View>
     </ScrollView>

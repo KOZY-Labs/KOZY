@@ -128,6 +128,14 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="account"
+        listeners={{
+          // Always land on My Page root — a stale sub-screen (e.g. Delete Account
+          // after the account is gone) must not survive in this tab's stack.
+          tabPress: (event) => {
+            event.preventDefault();
+            router.replace('/(tabs)/account');
+          },
+        }}
         options={{
           popToTopOnBlur: true,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
