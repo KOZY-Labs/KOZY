@@ -1,4 +1,4 @@
-package com.anonymous.kozy
+package com.aroundent.kozy
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>kozy</string>
-          <string>com.anonymous.kozy</string>
+          <string>com.aroundent.kozy</string>
         </array>
       </dict>
     </array>

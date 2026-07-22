@@ -1,4 +1,4 @@
-package com.anonymous.kozy
+package com.aroundent.kozy
 
 import android.app.Application
 import android.content.res.Configuration
