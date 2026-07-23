@@ -1,5 +1,5 @@
 import { forwardRef, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Keyboard, Pressable } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
@@ -21,6 +21,10 @@ const AppDrawer = forwardRef(
       primaryDisabled,
       secondaryDisabled,
       snapPoints,
+      keyboardBehavior,
+      keyboardBlurBehavior,
+      android_keyboardInputMode,
+      enableDynamicSizing,
     },
     ref
   ) => {
@@ -30,6 +34,11 @@ const AppDrawer = forwardRef(
         ref={ref}
         index={-1}
         snapPoints={snapPoints ?? ['70%', '80%']}
+        enableDynamicSizing={enableDynamicSizing}
+        keyboardBehavior={keyboardBehavior}
+        keyboardBlurBehavior={keyboardBlurBehavior}
+        android_keyboardInputMode={android_keyboardInputMode}
+        onClose={Keyboard.dismiss}
         enablePanDownToClose
         // Don't let dragging the content (e.g. the wheel Picker) move the sheet —
         // only the handle drag / backdrop tap should dismiss it.
@@ -51,15 +60,16 @@ const AppDrawer = forwardRef(
         handleIndicatorStyle ={{ backgroundColor: colors.semantic.bottomSheet.handleIndicator }}
       >
         
-        <BottomSheetScrollView style={ styles.sheetContainer }>
+        <BottomSheetScrollView style={ styles.sheetContainer } keyboardShouldPersistTaps="handled">
+          <Pressable onPress={Keyboard.dismiss}>
             {/* Header */}
             {title && (
               <View style={styles.header}>
                 <AppText variant="headline-md" style={ align == "center" ? {textAlign: 'center'} : null }>{title}</AppText>
               </View>)}
-            
+
             {/* Description */}
-            {description && 
+            {description &&
             <View style={styles.description}>
                 <AppText variant="body-sm" style={ align == "center" ? {textAlign: 'center'} : null }>{description}</AppText>
             </View>}
@@ -68,29 +78,30 @@ const AppDrawer = forwardRef(
             <View style={[styles.content, {marginVertical: title ? 50 : 0}]}>
                 {children}
             </View>
-            <View style={{ marginBottom: 60 }}> 
+            <View style={{ marginBottom: 60 }}>
               {/* Footer */}
               {primaryAction && (
                   <View style={[styles.footer, { marginBottom: 12 }]}>
-                      <AppButton 
-                        text={primaryActionText || "Save"} 
-                        onPress={primaryAction} 
-                        type="primary" 
-                        state={primaryDisabled ? "disabled" : "normal"} 
+                      <AppButton
+                        text={primaryActionText || "Save"}
+                        onPress={primaryAction}
+                        type="primary"
+                        state={primaryDisabled ? "disabled" : "normal"}
                       />
                   </View>
               )}
               {secondaryAction && (
                   <View style={styles.footer}>
-                      <AppButton 
-                        text={secondaryActionText || "Save"} 
-                        onPress={secondaryAction} 
-                        type="secondary" 
+                      <AppButton
+                        text={secondaryActionText || "Save"}
+                        onPress={secondaryAction}
+                        type="secondary"
                         state={secondaryDisabled ? "disabled" : "normal"}
                       />
                   </View>
               )}
             </View>
+          </Pressable>
         </BottomSheetScrollView>
       </BottomSheet>
     );

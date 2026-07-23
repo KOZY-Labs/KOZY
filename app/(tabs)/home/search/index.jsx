@@ -140,7 +140,7 @@ export default function SearchScreen() {
             styles.content,
             { paddingBottom: insets.bottom + 20 },
           ]}
-          keyboardShouldPersistTaps="always"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           renderItem={() => (
             <>

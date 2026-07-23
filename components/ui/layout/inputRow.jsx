@@ -3,10 +3,14 @@
 import { View, StyleSheet } from "react-native";
 import React from "react";
 
-export default function InputRow({ children, isLast = false, style }) {
+export default function InputRow({ 
+  isRow = true,
+  children, 
+  isLast = false, 
+  style }) {
   return (
 
-      <View style={[styles.row, isLast && styles.lastRow, style]}>
+      <View style={[isRow ? styles.row : styles.column, isLast && styles.lastRow, style]}>
         {React.Children.map(children, (child) => (
           <View style={{ flex: 1 }}>{child}</View>
         ))}
@@ -19,8 +23,11 @@ export default function InputRow({ children, isLast = false, style }) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    gap: 4,
-    marginBottom: 12,
+    columnGap: 4,
+  },
+  column: {
+    flexDirection: "column",
+    rowGap: 8,
   },
   lastRow: {
     marginBottom: 0,

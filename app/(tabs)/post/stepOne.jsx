@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Platform, StyleSheet, View, FlatList, Alert } from 'react-native';
+import { Platform, StyleSheet, View, Alert, KeyboardAvoidingView } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 import PillGroup from '@/components/ui/pill/pillGroup';
 import AppText from '@/components/ui/appText';
@@ -285,11 +286,16 @@ export default function StepOne() {
 
   return (
     <View style={{ flex: 1, overflow: 'visible' }}>
-        <FlatList 
-            data={[{ key: 'content' }]}
-            keyExtractor={(item) => item.key}
-            keyboardShouldPersistTaps="always"
-            renderItem={() => ( 
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+        <KeyboardAwareScrollView
+            contentContainerStyle={{ flexGrow: 1 }}
+            enableOnAndroid
+            keyboardShouldPersistTaps="handled"
+            extraScrollHeight={-50}
+        >
                 <View style={styles.container}>
                     <View style={styles.titleContainer}>
                         <AppText variant='headline-md' color='primary'>Step 1</AppText>
@@ -305,7 +311,7 @@ export default function StepOne() {
                             />
                         </FormField>
                         <FormField label="Address" error={error}>
-                            <InputRow style={styles.addressAutocompleteRow}>
+                            <InputRow isRow={false} style={styles.addressAutocompleteRow}>
                                 <GooglePlacesAutocomplete
                                     placeholder="Street"
                                     fetchDetails
@@ -347,32 +353,24 @@ export default function StepOne() {
                                         predefinedPlacesDescription: styles.placesDescription,
                                     }}
                                 />
-                            </InputRow>
-                            <InputRow>
                                 <TextField
                                     value={additionalAddress}
                                     placeholder="Additional Address (e.g., Apt, Suite)"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
                                     onChangeText={setAdditionalAddress}
                                 />
-                            </InputRow>
-                            <InputRow>
                                 <TextField
                                     value={city}
                                     placeholder="City or Town"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
                                     onChangeText={setCity}
                                 />
-                            </InputRow>
-                            <InputRow>
                                 <TextField
                                     value={province}
                                     placeholder="State, Province, or Region"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
                                     onChangeText={setProvince}
                                 />
-                            </InputRow>
-                            <InputRow isLast>
                                 <TextField
                                     value={postalCode}
                                     placeholder="Postal or ZIP Code"
@@ -486,7 +484,6 @@ export default function StepOne() {
                                 value={minimumStay}
                                 placeholder="Enter minimum stay (months)"
                                 placeholderTextColor={colors.semantic.input.textDisabled}
-                                showSoftInputOnFocus={false}
                                 onChangeText={setMinimumStay}
                                 suffixText="months"
                                 keyboardType="number-pad"
@@ -546,8 +543,8 @@ export default function StepOne() {
                         </View>
                     </View>
                 </View>
-             )}
-        />
+        </KeyboardAwareScrollView>
+        </KeyboardAvoidingView>
         <AppDrawer
             ref={availableMonthDrawerRef}
             primaryAction={() => availableMonthDrawerRef.current?.close()}

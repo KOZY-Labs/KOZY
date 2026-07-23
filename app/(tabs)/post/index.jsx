@@ -17,7 +17,7 @@ export default function PostScreen() {
          <EmptyListingsState
           heading="Let’s List Your Space"
           description="Just a few quick steps to share your room with the right people."
-          actionText={isLoggedIn ? "Share a room" : "Sign up / Log in"}
+          actionText={isLoggedIn ? "Share a room" : "Sign Up / Log In"}
           onAction={() => {
             if (isLoggedIn) {
               router.push('/(tabs)/post/stepOne');

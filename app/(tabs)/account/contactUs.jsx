@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Platform, StyleSheet, View, Alert } from 'react-native';
+import { Platform, StyleSheet, View, Alert, KeyboardAvoidingView } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 
 import AppButton from '@/components/ui/appButton';
@@ -52,7 +53,17 @@ export default function ContactUs() {
     };
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+        <KeyboardAwareScrollView
+            contentContainerStyle={styles.container}
+            enableOnAndroid
+            keyboardShouldPersistTaps="handled"
+            extraScrollHeight={-50}
+        >
         <DisplayField title="Have a question, feedback, or need support?" style={{ marginBottom: 16 }}>
         We’re here to help. Reach out and we’ll get back to you as soon as possible.
         </DisplayField>
@@ -89,12 +100,12 @@ export default function ContactUs() {
                             setBody(n);
                             setErrors((currentErrors) => ({ ...currentErrors, body: null }));
                         }}
-                        
+
                     />
                 </FormField>
             </View>
             <View style={styles.buttonContainer}>
-                <AppButton 
+                <AppButton
                     text="Send Message"
                     size="lg"
                     type='primary'
@@ -102,6 +113,8 @@ export default function ContactUs() {
                 />
             </View>
         </View>
+        </KeyboardAwareScrollView>
+        </KeyboardAvoidingView>
     </View>
   );
 }

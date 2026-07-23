@@ -355,6 +355,8 @@ export default function EditProfile() {
             title="What should we call you?"
             description="Your nickname is shown to other users instead of your full name."
             primaryAction={() => nicknameDrawerRef.current?.close()}
+            snapPoints={['100%']}
+            enableDynamicSizing={false}
           >
             <FormField label="" error={error}>
               <InputRow>
@@ -386,8 +388,11 @@ export default function EditProfile() {
             ref={jobDrawerRef}
             title="What do you do for work?"
             description="Tell us what your profession is."
+            snapPoints={['100%']}
+            enableDynamicSizing={false}
             primaryAction={() => {
-              jobDrawerRef.current?.close();             }}
+              jobDrawerRef.current?.close();             
+            }}
           >
             <FormField label="" error={error}>
               <InputRow>
@@ -443,6 +448,8 @@ export default function EditProfile() {
             ref={aboutMeDrawerRef}
             title="What your story?"
             description="Tell us what your short story."
+            snapPoints={['100%']}
+            enableDynamicSizing={false}
             primaryAction={() => {
               aboutMeDrawerRef.current?.close();            }}
           >
@@ -486,6 +493,11 @@ export default function EditProfile() {
             description="Enter your new email and current password"
             primaryActionText={changingEmail ? 'Sending...' : 'Send Verification Link'}
             primaryAction={handleEmailChange}
+            snapPoints={['100%']}
+            enableDynamicSizing={false}
+            keyboardBehavior="interactive"
+            keyboardBlurBehavior="restore"
+            android_keyboardInputMode="adjustResize"
           >
             <View>
               <AppText variant='body-xsm'>
