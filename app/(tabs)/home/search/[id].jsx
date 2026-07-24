@@ -1,18 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Share, Pressable, ActivityIndicator, Text, Alert } from 'react-native';
+import { View, StyleSheet, Dimensions, Share, Pressable, ActivityIndicator, Text } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Avatar } from 'react-native-elements';
 
 import AppIconButton from '@/components/ui/appIconButton';
-import AppButton from '@/components/ui/appButton';
-import AppText from '@/components/ui/appText';
 import { useListing } from '@/hooks/use-listings';
 import { useAuth } from '@/context/AuthContext';
 import { showAuthGate } from '@/lib/authGate';
+import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 
 const { height } = Dimensions.get('window');
 
@@ -143,29 +141,19 @@ function Reel({ item, insets, params }) {
     if (player) player.muted = !player.muted;
   };
 
-  // Centered modal (native alert) instead of a floating dropdown.
-  const handleMorePress = () => {
-    Alert.alert('More options', undefined, [
-      {
-        text: 'Report Listing',
-        style: 'destructive',
-        onPress: () => {
-          if (!isLoggedIn) {
-            showAuthGate({
-              title: 'Report this listing',
-              message: 'Sign Up or Log In to report listings.',
-            });
-            return;
-          }
-          router.push({
-            pathname: '/(tabs)/account/contactUs',
-            params: { backTo: '/(tabs)/home/search' },
-          });
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const onReport = useCallback(() => {
+    if (!isLoggedIn) {
+      showAuthGate({
+        title: 'Report this listing',
+        message: 'Sign Up or Log In to report listings.',
+      });
+      return;
+    }
+    router.push({
+      pathname: '/(tabs)/account/contactUs',
+      params: { backTo: '/(tabs)/home/search' },
+    });
+  }, [isLoggedIn]);
 
   return (
     <Pressable style={styles.reel} onPress={toggleMute}>
@@ -177,61 +165,36 @@ function Reel({ item, insets, params }) {
         pointerEvents="none"
       />
 
-      {/* Right Actions */}
-      <View style={[styles.rightActions, { bottom: insets.bottom + 92 }]}>
-        <AppIconButton
-          icon={<MaterialIcons name={isSaved ? 'favorite' : 'favorite-border'} />}
-          type="bare"
-          onPress={handleToggleSave}
-        />
-        <AppIconButton icon={<Feather name="share-2" />} type="bare" onPress={onShare} />
-        <AppIconButton icon={<Feather name="more-horizontal" />} type="bare" onPress={handleMorePress} />
-      </View>
-
-      {/* Bottom Left */}
-      <View style={[styles.bottomLeft, { bottom: insets.bottom + 92 }]}>
-        <View style={styles.bottomRoomInfo}>
-          <Avatar
-            source={{ uri: item.owner?.avatar?.[0] }}
-            size={44}
-            rounded
-            containerStyle={{ backgroundColor: 'gray' }}
-          />
-          <View style={styles.bottomInfo}>
-            <AppText variant="body-sm-strong">{item.title}</AppText>
-            <AppText variant="body-sm">${item.price} / month</AppText>
-          </View>
-          <View style={styles.bottomCTA}>
-            <AppButton
-              text="Detail"
-              size="sm"
-              type="primary"
-              onPress={() => router.push({
-                pathname: '/home/[id]',
-                params: {
-                  id: item.id,
-                  backTo: JSON.stringify({
-                    pathname: '/home/search/[id]',
-                    params: {
-                      id: item.id,
-                      from: getParamString(params.from),
-                      location: getParamString(params.location),
-                      budgetFrom: getParamString(params.budgetFrom),
-                      budgetTo: getParamString(params.budgetTo),
-                      gender: getParamString(params.gender),
-                      roomTypes: getParamString(params.roomTypes),
-                      lifestyleMatches: getParamString(params.lifestyleMatches),
-                    },
-                  }),
-                },
-              })}
-            />
-          </View>
-        </View>
-        <AppText variant="body-sm-strong" numberOfLines={2}>
-          #{item.city} #{item.province}
-        </AppText>
-      </View>
+      <ListingReelOverlay
+        item={item}
+        bottom={insets.bottom + 12}
+        isSaved={isSaved}
+        onToggleSave={handleToggleSave}
+        onShare={onShare}
+        onPressDetail={() => router.push({
+          pathname: '/home/[id]',
+          params: {
+            id: item.id,
+            backTo: JSON.stringify({
+              pathname: '/home/search/[id]',
+              params: {
+                id: item.id,
+                from: getParamString(params.from),
+                location: getParamString(params.location),
+                budgetFrom: getParamString(params.budgetFrom),
+                budgetTo: getParamString(params.budgetTo),
+                gender: getParamString(params.gender),
+                roomTypes: getParamString(params.roomTypes),
+                lifestyleMatches: getParamString(params.lifestyleMatches),
+              },
+            }),
+          },
+        })}
+        onPressReport={onReport}
+        showMoreAction
+        showShareAction
+        showSaveAction
+      />
     </Pressable>
   );
 }
@@ -260,31 +223,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     zIndex: 10,
-  },
-  bottomLeft: {
-    position: 'absolute',
-    left: 20,
-    maxWidth: '80%',
-  },
-  bottomCTA: {
-    width: 67,
-  },
-  rightActions: {
-    position: 'absolute',
-    right: 20,
-    gap: 22,
-    alignItems: 'center',
-  },
-  bottomInfo: {
-    flex: 1,
-  },
-  bottomRoomInfo: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 8,
   },
 });

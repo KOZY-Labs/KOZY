@@ -58,7 +58,7 @@ export default function ListingReelOverlay({
         </View>
         ) : null
       }
-      <View style={[styles.bottomLeft, { bottom, maxWidth: hasRightActions ? '80%' : '90%', transformOrigin: "top left", transform: isPreview ? [{ scale: 0.9 }] : [{ scale: 1 }] }]}>
+      <View style={[styles.bottomLeft, { bottom, maxWidth: hasRightActions ? '90%' : '95%', transformOrigin: "top left", transform: isPreview ? [{ scale: 0.9 }] : [{ scale: 1 }] }]}>
         <View style={styles.bottomRoomInfo}>
           <Avatar
             source={item?.owner?.avatar?.[0] ? { uri: item.owner.avatar[0] } : AVATAR_PLACEHOLDER}
