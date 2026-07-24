@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert, Pressable, ActivityIndicator } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Feather } from '@expo/vector-icons';
 
@@ -9,9 +10,11 @@ import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import ProfileSection from '@/components/ui/profileSection';
+import ListingDetailHeaderActions from '@/components/ui/listingDetailHeaderActions';
 import { useAuth } from '@/context/AuthContext';
 import { requestChat } from '@/lib/db/chats';
 import { useExistingChat } from '@/hooks/use-chats';
+import { useListingActions } from '@/hooks/use-listing-actions';
 import { ownerFromProfile } from '@/lib/listingDraft';
 import { showAuthGate } from '@/lib/authGate';
 
@@ -19,6 +22,7 @@ import { showAuthGate } from '@/lib/authGate';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function DetailScreen() {
+  const insets = useSafeAreaInsets();
   const { id, backTo } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
   const { data: item, loading } = useListing(listingId);
@@ -26,6 +30,9 @@ export default function DetailScreen() {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [requesting, setRequesting] = React.useState(false);
   const existingChat = useExistingChat(listingId, uid);
+  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, {
+    reportBackTo: '/(tabs)/home',
+  });
 
   const handleChatRequest = async () => {
     if (!uid) {
@@ -105,23 +112,24 @@ export default function DetailScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerBackVisible: false,
-          headerLeft: () => (
-            <Pressable
-              onPress={handleBack}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              hitSlop={10}
-            >
-              <Feather name="chevron-left" size={28} color="white" style={{marginLeft: 2}}/>
-            </Pressable>
-          ),
-        }}
-      />
-      <ScrollView 
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={handleBack}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={10}
+        >
+          <Feather name="chevron-left" size={28} color="white" />
+        </Pressable>
+        <ListingDetailHeaderActions
+          isSaved={isSaved}
+          onToggleSave={onToggleSave}
+          onShare={onShare}
+          onReport={onReport}
+        />
+      </View>
+      <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
@@ -243,11 +251,19 @@ function parseBackRoute(target) {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    backgroundColor: 'black', 
+  container: {
+    backgroundColor: 'black',
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === 'ios' ? 120 : 16,
     overflow: 'hidden'
+  },
+  topBar: {
+    backgroundColor: 'black',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   title: {
     color: 'white',

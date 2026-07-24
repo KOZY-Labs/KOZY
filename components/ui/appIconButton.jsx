@@ -8,6 +8,8 @@ export default function AppIconButton({
   type = 'primary',   // primary | secondary | ghost | bare
   state = 'normal',   // normal | disabled | pressed
   onPress,
+  accessibilityLabel,
+  ...props
 }) {
   const isDisabled = state === 'disabled';
   const isBare = type === 'bare';
@@ -21,8 +23,12 @@ export default function AppIconButton({
 
   return (
     <Pressable
+      {...props}
       disabled={isDisabled}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: isDisabled }}
       style={({ pressed }) => [
         styles.base,
         styles[size],
