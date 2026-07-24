@@ -209,17 +209,17 @@ export default function StepOne() {
         setLongitude(location?.lng ?? null);
         setError(null);
 
-        console.log('[StepOne] Google place selected', {
-            description: data.description,
-            placeId: data.place_id,
-            addressParts,
-            coordinates: {
-                latitude: location?.lat ?? null,
-                longitude: location?.lng ?? null,
-            },
-            rawData: data,
-            rawDetails: details,
-        });
+        // console.log('[StepOne] Google place selected', {
+        //     description: data.description,
+        //     placeId: data.place_id,
+        //     addressParts,
+        //     coordinates: {
+        //         latitude: location?.lat ?? null,
+        //         longitude: location?.lng ?? null,
+        //     },
+        //     rawData: data,
+        //     rawDetails: details,
+        // });
     };
 
     const continueToStepTwo = async () => {
@@ -320,6 +320,7 @@ export default function StepOne() {
                                     enablePoweredByContainer={false}
                                     keyboardShouldPersistTaps="always"
                                     listViewDisplayed="auto"
+                                    disableScroll
                                     query={{
                                         key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
                                         language: 'en',

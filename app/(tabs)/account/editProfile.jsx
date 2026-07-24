@@ -217,7 +217,9 @@ export default function EditProfile() {
                 }}
                 ListEmptyComponent={(
                   <View style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}>
-                    <View style={[styles.image, { backgroundColor: colors.semantic.bg.grey }]} />
+                    <View style={[styles.image, styles.placeholderImage, { backgroundColor: colors.semantic.bg.grey }]} >
+                      <Feather name="image" size={32} color={colors.semantic.text.primary} />
+                    </View>
                   </View>
                 )}
                 renderItem={({ item: image, index }) => {
@@ -631,6 +633,11 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     borderRadius: 4,
+  },
+  placeholderImage:{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sliderContainer: {
     position: 'relative',

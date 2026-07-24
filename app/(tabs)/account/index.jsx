@@ -8,6 +8,8 @@ import EmptyListingsState from "@/components/ui/emptyListingsState";
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/lib/auth";
 
+const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
+
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
@@ -62,7 +64,7 @@ export default function AccountScreen() {
               onPress={() => router.push('/(tabs)/account/editProfile')}
             >
               <Image
-                source={{ uri: currUser?.avatar?.[0] }}
+                source={currUser?.avatar?.[0] ? { uri: currUser.avatar[0] } : AVATAR_PLACEHOLDER}
                 style={{ width: 55, height: 55, borderRadius: 999 }}
               />
               <AppText variant="body-md" color="primary">

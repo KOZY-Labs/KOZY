@@ -6,6 +6,8 @@ import AppButton from '@/components/ui/appButton';
 import AppIconButton from '@/components/ui/appIconButton';
 import AppText from '@/components/ui/appText';
 
+const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
+
 export default function ListingReelOverlay({
   item,
   bottom,
@@ -59,7 +61,7 @@ export default function ListingReelOverlay({
       <View style={[styles.bottomLeft, { bottom, maxWidth: hasRightActions ? '80%' : '90%', transformOrigin: "top left", transform: isPreview ? [{ scale: 0.9 }] : [{ scale: 1 }] }]}>
         <View style={styles.bottomRoomInfo}>
           <Avatar
-            source={{ uri: item?.owner?.avatar?.[0] }}
+            source={item?.owner?.avatar?.[0] ? { uri: item.owner.avatar[0] } : AVATAR_PLACEHOLDER}
             size={44}
             rounded
             containerStyle={styles.avatar}

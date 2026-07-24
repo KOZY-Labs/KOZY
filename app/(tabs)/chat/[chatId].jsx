@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useChatThread } from "@/hooks/use-chats";
 import { chatViewModel, sendMessage, acceptChat } from "@/lib/db/chats";
 
+const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
 const KEYBOARD_INPUT_GAP = 100; // gap between keyboard and input
 
 // "Today" / "Yesterday" / "June 28, 2026" for the date separators.
@@ -157,7 +158,10 @@ export default function ChatScreen() {
                     }
                 }}
             >
-                <Image source={{ uri: otherAvatar }} style={styles.headerAvatar} />
+                <Image
+                    source={otherAvatar ? { uri: otherAvatar } : AVATAR_PLACEHOLDER}
+                    style={styles.headerAvatar}
+                />
             </Pressable>
             <AppText variant="body-sm-strong">{vm.otherInfo?.name ?? 'User'}</AppText>
             {latestMessage && (

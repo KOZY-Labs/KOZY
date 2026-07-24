@@ -3,6 +3,8 @@ import { Image, StyleSheet, View } from 'react-native';
 import AppText from '@/components/ui/appText';
 import DisplayField from '@/components/ui/displayField';
 
+const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
+
 export default function ProfileSection({ listing }) {
   const owner = listing?.owner;
 
@@ -13,7 +15,7 @@ export default function ProfileSection({ listing }) {
   return (
     <View style={styles.profileSection}>
       <Image
-        source={{ uri: owner.avatar?.[0] }}
+        source={owner.avatar?.[0] ? { uri: owner.avatar[0] } : AVATAR_PLACEHOLDER}
         style={styles.avatarImage}
         resizeMode="cover"
       />

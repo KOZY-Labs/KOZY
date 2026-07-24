@@ -12,6 +12,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useChats } from '@/hooks/use-chats';
 import { chatViewModel, deleteChat } from '@/lib/db/chats';
 
+const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
+
 function formatRelative(iso) {
   if (!iso) return '';
   const date = new Date(iso);
@@ -166,7 +168,7 @@ export default function Chat() {
                 {/* Other participant */}
                 <View>
                   <Image
-                    source={{ uri: vm?.otherInfo?.avatar?.[0] }}
+                    source={vm?.otherInfo?.avatar?.[0] ? { uri: vm.otherInfo.avatar[0] } : AVATAR_PLACEHOLDER}
                     style={styles.image}
                   />
                 </View>
@@ -231,9 +233,8 @@ const styles = StyleSheet.create({
   },
   image: {
     width: 55,
-    aspectRatio: 1,
+    height: 55,
     borderRadius: 999,
-    backgroundColor: colors.base.gray700,
   },
   infoWrapper: {
     flex: 1,
