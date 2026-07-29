@@ -35,9 +35,6 @@ export default function StepFour() {
                         {/* Owner */}
                         <View style={styles.section}>
                             <ProfileSection userId={item.owner.id} listing={item}/>
-                            <DisplayField title="About Room & House" type="pill">
-                                {[`${item.bedrooms} Bed`, `${item.bathrooms} Bath`, `${item.roomType}`, `${item.sizeSqft} sqft`, item.furnished ? 'Furnished' : 'Unfurnished', ...item.roomDetail]}
-                            </DisplayField>
                         </View>
                         <Pressable 
                             style={styles.replaceButton} 

@@ -23,13 +23,23 @@ const DEPOSIT_TBD_VALUE = 'TBD';
 const TBD_DEPOSIT_OPTION = { label: DEPOSIT_TBD_VALUE, value: DEPOSIT_TBD_VALUE };
 
 {/* dropdown options */}
-const KEYDETAIL_OPTIONS = [
-    { label: 'Wi-Fi', value: 'wifi' },
-    { label: 'Laundry', value: 'laundry' },
+const ROOMTYPE_OPTIONS = [
+    { label: 'Private Room', value: 'private' },
+    { label: 'Shared room', value: 'shared' },
+];
+
+const FURNISHEDTYPE_OPTIONS = [
     { label: 'Furnished', value: 'furnished' },
     { label: 'Unfurnished', value: 'unfurnished' },
+];
+
+const KEYDETAIL_OPTIONS = [
+    { label: 'Wi-Fi', value: 'wifi' },
+    { label: 'Laundry in building', value: 'laundry' },
     { label: 'Kitchen access', value: 'kitchen-access' },
     { label: 'Pet friendly', value: 'pet-friendly' },
+    { label: 'Parking', value: 'parking' },
+    { label: 'Shared Bathroom', value: 'shared-bathroom' },
 ];
 
 const LOOKINGFOR_OPTIONS = [
@@ -48,6 +58,12 @@ const LOOKINGFOR_OPTIONS = [
 {/* utility functions */}
 const formatCurrency = (amount) => `$${Number(amount).toLocaleString()}`;
 
+const getRoomTypeLabel = (value) => (
+    ROOMTYPE_OPTIONS.find((item) => item.value === value)?.label ?? value
+);
+const getFurnishedTypeLabel = (value) => (
+    FURNISHEDTYPE_OPTIONS.find((item) => item.value === value)?.label ?? value
+);
 const getKeyDetailLabel = (value) => (
     KEYDETAIL_OPTIONS.find((item) => item.value === value)?.label ?? value
 );
@@ -121,7 +137,7 @@ export default function StepOne() {
     const [leaseType, setLeaseType] = useState(draft.leaseType || '');
     const [deposit, setDeposit] = useState(draft.deposit || '');
     const [roomType, setRoomType] = useState(draft.roomType || '');
-    const [bathroomType, setBathroomType] = useState(draft.bathroomType || '');
+    const [furnishedType, setFurnishedType] = useState(draft.furnishedType || '');
     const [keyDetail, setKeyDetail] = useState(draft.keyDetail ?? []);
     const [lookingFor, setLookingFor] = useState(draft.lookingFor ?? []);
     const [availableMonth, setAvailableMonth] = useState(draft.availableMonth ?? null);
@@ -141,9 +157,13 @@ export default function StepOne() {
     const depositOptions = useMemo(() => createDepositOptions(price), [price]);
 
     {/* memoized selected labels for display inputs */}
-    const selectedKeyDetailLabels = useMemo(
-        () => keyDetail.map(getKeyDetailLabel),
-        [keyDetail]
+    const selectedAboutRoomLabels = useMemo(
+        () => [
+            roomType && getRoomTypeLabel(roomType),
+            furnishedType && getFurnishedTypeLabel(furnishedType),
+            ...keyDetail.map(getKeyDetailLabel),
+        ].filter(Boolean),
+        [roomType, furnishedType, keyDetail]
     );
     const selectedLookingForLabels = useMemo(
         () => lookingFor.map(getLookingForLabel),
@@ -270,7 +290,7 @@ export default function StepOne() {
             leaseType,
             deposit,
             roomType,
-            bathroomType,
+            furnishedType,
             keyDetail,
             lookingFor,
             availableMonth,
@@ -457,29 +477,6 @@ export default function StepOne() {
                                 rightIcon={<Feather name="chevron-down" size={22} color={colors.semantic.text.primary} />}
                             />
                         </FormField>
-                        <FormField label="Bathroom Type" error={error}>
-                            <PillGroup
-                                items={[
-                                    { label: "Private", value: "private-room" },
-                                    { label: "Shared", value: "shared-room" },
-                                ]}
-                                value={bathroomType}
-                                onChange={setBathroomType}
-                                isMulti={false}
-
-                            />
-                        </FormField>
-                        <FormField label="Room Type" error={error}>
-                            <PillGroup
-                                items={[
-                                    { label: "Private", value: "private" },
-                                    { label: "Shared", value: "shared" },
-                                ]}
-                                value={roomType}
-                                onChange={setRoomType}
-                                isMulti={false}
-                            />
-                        </FormField>
                         <FormField label="Minimum Stay" error={error}>
                             <TextField
                                 value={minimumStay}
@@ -493,7 +490,7 @@ export default function StepOne() {
                         <FormField label="About Room & House" error={error}>
                             <DisplayInput
                                 error={error}
-                                value={selectedKeyDetailLabels}
+                                value={selectedAboutRoomLabels}
                                 isMulti={true}
                                 max={3}
                                 placeholder="+"
@@ -666,11 +663,29 @@ export default function StepOne() {
             description="Add key details about the room and home. Select all that apply"
             primaryAction={() => keyDetailDrawerRef.current?.close()}
         >
-            <PillGroup
-                items={KEYDETAIL_OPTIONS}
-                value={keyDetail}
-                onChange={setKeyDetail}
-            />
+            <FormField label="Room Type">
+                <PillGroup
+                    items={ROOMTYPE_OPTIONS}
+                    value={roomType}
+                    onChange={setRoomType}
+                    isMulti={false}
+                />
+            </FormField>
+            <FormField label="Furnished Type">
+                <PillGroup
+                    items={FURNISHEDTYPE_OPTIONS}
+                    value={furnishedType}
+                    onChange={setFurnishedType}
+                    isMulti={false}
+                />
+            </FormField>
+            <FormField label="Amenities" lastField>
+                <PillGroup
+                    items={KEYDETAIL_OPTIONS}
+                    value={keyDetail}
+                    onChange={setKeyDetail}
+                />
+            </FormField>
         </AppDrawer>
         <AppDrawer
             ref={lookingForDrawerRef}

@@ -19,7 +19,7 @@ const initialDraft = {
   leaseType: '',
   deposit: '',
   roomType: '',
-  bathroomType: '',
+  furnishedType: '',
   keyDetail: [],
   lookingFor: [],
   availableMonth: null,
