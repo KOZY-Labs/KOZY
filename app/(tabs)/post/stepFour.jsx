@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { Platform, StyleSheet, View, Alert, FlatList, Pressable } from 'react-native';
+import { Platform, StyleSheet, View, FlatList, Pressable } from 'react-native';
 import { router } from 'expo-router';
 
 import { useListingDraft } from '@/context/ListingDraftContext';
+import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
 import { useAuth } from '@/context/AuthContext';
 import { draftToPreview } from '@/lib/listingDraft';
 import AppText from '@/components/ui/appText';
@@ -13,6 +14,7 @@ import ProfileSection from '@/components/ui/profileSection';
 // Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 export default function StepFour() {
     const { draft } = useListingDraft();
+    const { confirmExit } = usePostFlowExit();
     const { profile } = useAuth();
     const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
 
@@ -53,22 +55,7 @@ export default function StepFour() {
                                 <AppButton
                                     text="Cancel"
                                     type='secondary'
-                                    onPress={() => {
-                                        Alert.alert(
-                                            'Exit without saving?',
-                                            'Are you sure you want to exit? Your changes may not be saved.',
-                                            [{
-                                                text: 'Stay'
-                                            },
-                                            {
-                                                text: 'Exit without saving',
-                                                style: 'destructive',
-                                                onPress: () => {
-                                                    router.dismissTo('/(tabs)/post');
-                                                },
-                                            },]
-                                        );  
-                                    }}
+                                    onPress={confirmExit}
                                 />
                             </View>
                             <View style={{ flex: 1 }}>

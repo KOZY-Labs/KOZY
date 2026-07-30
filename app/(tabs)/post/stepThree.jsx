@@ -7,6 +7,7 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 
 import { useListingDraft } from '@/context/ListingDraftContext';
+import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
 import { useAuth } from '@/context/AuthContext';
 import { draftToPreview } from '@/lib/listingDraft';
 
@@ -14,8 +15,10 @@ import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
 import InfoList from '@/components/ui/appList';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
+import FormField from '@/components/ui/form/formField';
 import { colors } from '@/constants/colors';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
+import { validateVideo } from '@/utils/mediaValidation';
 
 const SAMPLE_VIDEOS = [
     {
@@ -57,8 +60,10 @@ function SampleVideo({ source, isActive, isScreenFocused, width }) {
 export default function StepThree() {
     const isScreenFocused = useIsFocused();
     const { draft, setVideo } = useListingDraft();
+    const { exit } = usePostFlowExit();
     const { profile } = useAuth();
     const [selectedVideo, setSelectedVideo] = useState(draft.video ?? null);
+    const [videoError, setVideoError] = useState(null);
     const [activeSampleIndex, setActiveSampleIndex] = useState(0);
     const { width: screenWidth } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -97,19 +102,27 @@ export default function StepThree() {
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+            mediaTypes: ['videos'],
             allowsEditing: false,
             quality: 1,
         });
 
-        if (!result.canceled) {
-            const asset = result.assets[0];
+        if (result.canceled) return;
 
-            setSelectedVideo(asset);
-            setVideo(asset); // persist to the draft immediately
-            // Open the preview at the top snap point so it's fully visible right away.
-            drawerRef.current?.snapToIndex(1);
+        const asset = result.assets[0];
+        // Reject before saving to the draft — a bad video must not reach the preview or upload.
+        const problem = validateVideo(asset);
+
+        if (problem) {
+            setVideoError(problem);
+            return;
         }
+
+        setVideoError(null);
+        setSelectedVideo(asset);
+        setVideo(asset); // persist to the draft immediately
+        // Open the preview at the top snap point so it's fully visible right away.
+        drawerRef.current?.snapToIndex(1);
     };
 
 
@@ -197,7 +210,12 @@ export default function StepThree() {
                             </View>
                         </View>
                         <View style={{ marginTop: 20 }}>
-                            <AppButton text="Upload File" onPress={openAlbum}/>
+                            <FormField label="" error={videoError} lastField>
+                                <AppButton
+                                    text={selectedVideo ? 'Replace File' : 'Upload File'}
+                                    onPress={openAlbum}
+                                />
+                            </FormField>
                         </View>
                     </View>
                 </View>
@@ -249,14 +267,16 @@ export default function StepThree() {
                             onPress={() => {
                                 setSelectedVideo(null)
                                 drawerRef.current?.close();
-                                router.dismissTo('/(tabs)/post');
+                                exit();
                             }}
                         />
                     </View>
                     <View style={{ flex: 1 }}>
                         <AppButton
                             text="Continue"
+                            state={selectedVideo ? 'normal' : 'disabled'}
                             onPress={() => {
+                                if (!selectedVideo) return;
                                 setVideo(selectedVideo);
                                 drawerRef.current?.close();
                                 router.push('post/stepFour');

@@ -37,7 +37,7 @@ export default function AddedPhotoGrid({
               pressed && styles.pressed,
             ]}
           >
-            <Feather name="trash-2" size={16} color={colors.base.white} />
+            <Feather name="trash" size={16} color={colors.base.white} />
           </Pressable>
         </View>
       ))}
@@ -96,8 +96,10 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    borderRadius: 4,
+    backgroundColor: colors.base.gray800Alpha,
+    boarderwidth: 1,
+    borderColor: colors.base.gray800Alpha,
   },
   pressed: {
     opacity: 0.7,

@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -19,7 +19,7 @@ export default function MyPostDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
-  const { data: item, loading } = useListing(listingId);
+  const { data: item, loading, reload } = useListing(listingId);
   const [activeIndex, setActiveIndex] = useState(0);
   const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, {
     reportBackTo: '/(tabs)/account/myListings',
@@ -35,6 +35,19 @@ export default function MyPostDetail() {
       longitudeDelta: 0.08,
     };
   }, [item]);
+
+  // Pick up edits made in the post flow. The initial fetch already runs on mount, so
+  // only refetch on later focuses (i.e. coming back from /post/edit/[id]).
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      reload();
+    }, [reload])
+  );
 
   // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
@@ -168,7 +181,15 @@ export default function MyPostDetail() {
       <AppButton
         text="Edit Listing"
         type="secondary"
-        onPress={() => router.push('/(tabs)/post')}
+        onPress={() =>
+          router.push({
+            pathname: '/(tabs)/post/edit/[id]',
+            params: {
+              id: item.id,
+              backTo: `/(tabs)/account/myListings/detail/${item.id}`,
+            },
+          })
+        }
       />
     </ScrollView>
     </>

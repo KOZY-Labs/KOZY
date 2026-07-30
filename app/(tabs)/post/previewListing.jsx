@@ -14,17 +14,117 @@ import AppText from '@/components/ui/appText';
 import ProfileSection from '@/components/ui/profileSection';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MIN_PHOTOS = 3;
+
+// Last gate before anything is written to Firestore/Storage. A draft can still be incomplete
+// here — the flow allows jumping back to any step — and a listing missing media or an address
+// is broken in the feed, so name the step that needs fixing instead of publishing it.
+function findDraftProblem(draft) {
+  if (!draft.roomTitle?.trim()) {
+    return 'Your listing needs a room title. Go back to step 1 to add one.';
+  }
+  if (!draft.street?.trim() || !draft.city?.trim() || !draft.province?.trim()) {
+    return 'Your listing needs a full address. Go back to step 1 to add one.';
+  }
+  if (!draft.price) {
+    return 'Your listing needs a monthly rent. Go back to step 1 to add one.';
+  }
+  if ((draft.photos?.length ?? 0) < MIN_PHOTOS) {
+    return `Your listing needs at least ${MIN_PHOTOS} photos. Go back to step 2 to add more.`;
+  }
+  if (!draft.video) {
+    return 'Your listing needs a tour video. Go back to step 3 to add one.';
+  }
+  return null;
+}
 
 export default function PreviewListing() {
-  const { draft, resetDraft } = useListingDraft();
+  const { draft, editingId, returnTo, resetDraft } = useListingDraft();
   const { profile, uid } = useAuth();
   const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [publishing, setPublishing] = useState(false);
+  // Set once the listing is live so re-pressing the button re-opens the alert
+  // instead of publishing a duplicate.
+  const [publishedId, setPublishedId] = useState(null);
+  const isEditing = !!editingId;
+
+  const showUpdatedAlert = () => {
+    // Capture before resetDraft() clears the edit state.
+    const backTo = returnTo ?? `/(tabs)/account/myListings/detail/${editingId}`;
+    Alert.alert(
+      'Your listing is updated ✅',
+      'Your changes are live.',
+      [
+        {
+          text: 'View My listing',
+          onPress: () => {
+            resetDraft();
+            router.replace(backTo);
+          },
+        },
+      ],
+    );
+  };
+
+  // Edit flow: write back onto the existing doc. Media already in Storage is reused —
+  // uploadListing* skips assets that carry a remoteUrl — so only new picks upload.
+  const handleUpdate = async () => {
+    if (!uid) {
+      Alert.alert('Sign in required', 'Please log in again to update your listing.');
+      return;
+    }
+    const problem = findDraftProblem(draft);
+    if (problem) {
+      Alert.alert('Listing incomplete', problem);
+      return;
+    }
+    setPublishing(true);
+    try {
+      const images = draft.photos?.length ? await uploadListingImages(editingId, draft.photos) : [];
+      const videoUrl = draft.video ? await uploadListingVideo(editingId, draft.video) : '';
+      await updateListing(editingId, {
+        ...normalizeDraft(draft),
+        owner: ownerFromProfile(profile),
+        images,
+        videoUrl,
+      });
+      showUpdatedAlert();
+    } catch (e) {
+      Alert.alert('Update failed', e?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const showPublishedAlert = (listingId) => {
+    Alert.alert(
+      'Your listing is live 🎉',
+      'Your room is ready to be discovered. You can update it anytime.',
+      [
+        {
+          text: 'View My listing',
+          onPress: () => {
+            resetDraft();
+            router.replace(`/(tabs)/post/uploadedPost/${listingId}`);
+          },
+        },
+      ],
+    );
+  };
 
   const handlePublish = async () => {
+    if (publishedId) {
+      showPublishedAlert(publishedId);
+      return;
+    }
     if (!uid) {
       Alert.alert('Sign in required', 'Please log in again to publish your listing.');
+      return;
+    }
+    const problem = findDraftProblem(draft);
+    if (problem) {
+      Alert.alert('Listing incomplete', problem);
       return;
     }
     setPublishing(true);
@@ -38,8 +138,8 @@ export default function PreviewListing() {
       const videoUrl = draft.video ? await uploadListingVideo(createdId, draft.video) : '';
       // 3) attach media + publish
       await updateListing(createdId, { images, videoUrl, status: 'published', publishedDate: new Date().toISOString() });
-      resetDraft();
-      router.replace({ pathname: '/(tabs)/post/confirmPublish', params: { id: createdId } });
+      setPublishedId(createdId);
+      showPublishedAlert(createdId);
     } catch (e) {
       // Clean up the half-created draft so failed publishes don't leave orphans.
       if (createdId) {
@@ -169,11 +269,11 @@ export default function PreviewListing() {
           })}}
         />
         <AppButton
-          text="Confirm & Publish"
+          text={isEditing ? 'Save Changes' : 'Confirm & Publish'}
           type="primary"
           loading={publishing}
-          loadingLabel="Publishing"
-          onPress={handlePublish}
+          loadingLabel={isEditing ? 'Saving' : 'Publishing'}
+          onPress={isEditing ? handleUpdate : handlePublish}
         />
       </ScrollView>
   );

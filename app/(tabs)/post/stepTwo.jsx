@@ -12,6 +12,7 @@ import InfoList from '@/components/ui/appList';
 import { colors } from '@/constants/colors';
 import validateImage from '@/utils/mediaValidation';
 import { useListingDraft } from '@/context/ListingDraftContext';
+import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
 
 const MIN_PHOTOS = 3;
 const MAX_PHOTOS = 9;
@@ -35,6 +36,7 @@ function createPendingPhoto(asset, index) {
 
 export default function StepTwo() {
     const { draft, setPhotos: savePhotosToDraft } = useListingDraft();
+    const { confirmExit } = usePostFlowExit();
     const [error, setError] = useState(null);
     const [photos, setPhotos] = useState(draft.photos ?? []);
 
@@ -168,25 +170,10 @@ export default function StepTwo() {
         </View>
         <View style={styles.buttonContainer}>
             <View style={{ flex: 1 }}>
-                <AppButton 
-                    text="Cancel" 
-                    type="secondary" 
-                    onPress={() => {
-                        Alert.alert(
-                            'Exit without saving?',
-                            'Are you sure you want to exit? Your changes may not be saved.',
-                            [{
-                                text: 'Stay'
-                            },
-                            {
-                                text: 'Exit without saving',
-                                style: 'destructive',
-                                onPress: () => {
-                                    router.dismissTo('/(tabs)/post');
-                                },
-                            },]
-                        );  
-                    }}
+                <AppButton
+                    text="Cancel"
+                    type="secondary"
+                    onPress={confirmExit}
                 />
             </View>
             <View style={{ flex: 1 }}>

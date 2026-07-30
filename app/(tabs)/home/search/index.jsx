@@ -67,7 +67,6 @@ export default function SearchScreen() {
   const [roomTypes, setRoomTypes] = useState([]);
   const [lifestyleMatches, setLifestyleMatches] = useState([]);
 
-  const [error, setError] = useState(null);
   const { data: listings } = useBrowseListings();
 
   const locationQuery = selectedPlace?.mainText ?? location;
@@ -262,7 +261,7 @@ export default function SearchScreen() {
                 />
               </View>
             </SearchSection>
-            <FormField label="Gender Preference" error={error}>
+            <FormField label="Gender Preference">
               <DisplayInput
                 value={gender}
                 placeholder="Open to any"
@@ -271,14 +270,14 @@ export default function SearchScreen() {
                 accessibilityLabel="Gender Preference filter"
               />
             </FormField>
-            <FormField label="Room & House Type" error={error}>
+            <FormField label="Room & House Type">
               <DisplayInput
                 value={roomTypes}
                 onPress={() => roomTypeDrawerRef.current?.snapToIndex(0)}
                 isMulti
               />
             </FormField>
-            <FormField label="Lifestyle Match" error={error}>
+            <FormField label="Lifestyle Match">
               <DisplayInput
                 value={lifestyleMatches}
                 onPress={() => lifestyleDrawerRef.current?.snapToIndex(0)}

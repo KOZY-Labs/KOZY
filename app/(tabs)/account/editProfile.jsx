@@ -53,7 +53,8 @@ export default function EditProfile() {
     const [gender, setGender] = useState(profile?.gender ?? null);
     const [job, setJob] = useState(profile?.occupation ?? null);
     const [aboutMe, setAboutMe] = useState(profile?.aboutMe ?? '');
-    const [error, setError] = useState(null);
+    // One message per field so each FormField explains its own problem.
+    const [errors, setErrors] = useState({});
     const [verified, setVerified] = useState(profile?.verified ?? false);
     const [verifying, setVerifying] = useState(false);
     const [newEmail, setNewEmail] = useState('');
@@ -66,11 +67,30 @@ export default function EditProfile() {
 
     // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
+  const clearFieldError = (field) => {
+    setErrors((current) => (current[field] ? { ...current, [field]: null } : current));
+  };
+
+  // The nickname is the public display name shown on listings and chats, so it can't be blank.
+  const validate = () => {
+    const nextErrors = {};
+
+    if (!nickname.trim()) {
+      nextErrors.nickname = 'Enter a nickname — this is the name other users see.';
+    } else if (nickname.trim().length < 2) {
+      nextErrors.nickname = 'Nickname must be at least 2 characters.';
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const saveProfile = async () => {
     if (!uid) {
       Alert.alert('Sign in required', 'Please log in again to update your profile.');
       return;
     }
+    if (!validate()) return;
     setSaving(true);
     try {
       // Upload any newly picked profile photos to Storage; otherwise keep existing avatar.
@@ -252,14 +272,14 @@ export default function EditProfile() {
             </DisplayField>
 
             {/* Inputs */}
-            <FormField label="Nickname" error={error}>
+            <FormField label="Nickname" error={errors.nickname}>
               <DisplayInput
                 value={nickname}
                 placeholder="Enter your nickname"
                 onPress={() => nicknameDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
-            <FormField label="Gender" error={error}>
+            <FormField label="Gender">
               <DisplayInput
                 value={gender}
                 placeholder="Select an option"
@@ -268,14 +288,14 @@ export default function EditProfile() {
                 accessibilityLabel="Gender Preference filter"
               />
             </FormField>
-            <FormField label="Job or Profession" error={error}>
+            <FormField label="Job or Profession">
               <DisplayInput
                 value={job}
                 placeholder="Enter your job or profession"
                 onPress={() => jobDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
-            <FormField label="Personality" error={error}>
+            <FormField label="Personality">
               <DisplayInput
                 value={personality}
                 isMulti={true}
@@ -284,7 +304,7 @@ export default function EditProfile() {
                 onPress={() => personalityDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
-            <FormField label="Lifestyle" error={error}>
+            <FormField label="Lifestyle">
               <DisplayInput
                 value={lifestylePreferences}
                 isMulti={true}
@@ -293,7 +313,7 @@ export default function EditProfile() {
                 onPress={() => lifestyleDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
-            <FormField label="About Me" error={error}>
+            <FormField label="About Me">
               <DisplayInput
                 value={aboutMe}
                 placeholder="Tell us your story"
@@ -325,7 +345,7 @@ export default function EditProfile() {
               )}
             </View>
             <View style={styles.emailContainer}>
-              <FormField label="My Email" error={error} style={styles.emailField}>
+              <FormField label="My Email" style={styles.emailField}>
                 <DisplayInput
                   value={profile?.email}
                   placeholder="Please Verify your email."
@@ -360,12 +380,16 @@ export default function EditProfile() {
             snapPoints={['100%']}
             enableDynamicSizing={false}
           >
-            <FormField label="" error={error}>
+            <FormField label="" error={errors.nickname}>
               <InputRow>
                 <TextField
                   placeholder="Enter your nickname"
                   value={nickname}
-                  onChangeText={setNickname}
+                  error={!!errors.nickname}
+                  onChangeText={(text) => {
+                    setNickname(text);
+                    clearFieldError('nickname');
+                  }}
                 />
               </InputRow>
             </FormField>
@@ -396,9 +420,9 @@ export default function EditProfile() {
               jobDrawerRef.current?.close();             
             }}
           >
-            <FormField label="" error={error}>
+            <FormField label="">
               <InputRow>
-                <TextField placeholder="ex: Software Engineer" error={!!error} value={job} onChangeText={setJob}/>
+                <TextField placeholder="ex: Software Engineer" value={job} onChangeText={setJob}/>
               </InputRow>
             </FormField>
       </AppDrawer>
@@ -455,10 +479,9 @@ export default function EditProfile() {
             primaryAction={() => {
               aboutMeDrawerRef.current?.close();            }}
           >
-            <FormField label="" error={error}>
-                <TextArea 
-                  placeholder="Tell us your story." 
-                  error={!!error} 
+            <FormField label="">
+                <TextArea
+                  placeholder="Tell us your story."
                   maxLength={750}
                   onChangeText={setAboutMe}
                   value={aboutMe}

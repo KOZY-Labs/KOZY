@@ -36,13 +36,14 @@ export default function PostStack() {
         headerShown: true,
         headerBackVisible: true,    
       }} />
-      <Stack.Screen name="confirmPublish" 
+      <Stack.Screen
+        name="edit/[id]"
         options={{
-        title:'',
-        headerShown: true,
-        headerBackVisible: true,    
-      }} />
-      <Stack.Screen 
+          title: '',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="uploadedPost/[id]" 
         options={{ 
           title: '',

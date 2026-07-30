@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Platform, StyleSheet, View, Alert, KeyboardAvoidingView } from 'react-native';
+import { Platform, StyleSheet, View, KeyboardAvoidingView } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -16,6 +16,7 @@ import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import Dropdown from '@/components/ui/input/dropdown';
 import DisplayInput from '@/components/ui/input/displayInput';
 import { useListingDraft } from '@/context/ListingDraftContext';
+import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
 import { geocodeAddress } from '@/lib/geo/geocode';
 
 const DEPOSIT_INCREMENT = 100;
@@ -121,6 +122,7 @@ const createDepositOptions = (priceValue) => {
 {/* main component */}
 export default function StepOne() {
     const { draft, setFields } = useListingDraft();
+    const { confirmExit } = usePostFlowExit();
     // Initialize from the shared draft so going back/forward (and "Edit Listing") keeps values.
     const [roomTitle, setRoomTitle] = useState(draft.roomTitle || null);
     const [price, setPrice] = useState(draft.price || null);
@@ -129,7 +131,8 @@ export default function StepOne() {
     const [city, setCity] = useState(draft.city || null);
     const [province, setProvince] = useState(draft.province || null);
     const [postalCode, setPostalCode] = useState(draft.postalCode || null);
-    const [error, setError] = useState(null);
+    // One message per field so each FormField explains its own problem.
+    const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
     const [, setPlaceId] = useState(null);
     const [latitude, setLatitude] = useState(draft.latitude ?? null);
@@ -155,6 +158,10 @@ export default function StepOne() {
     const utilitiesDrawerRef = useRef(null);
 
     const depositOptions = useMemo(() => createDepositOptions(price), [price]);
+
+    const clearFieldError = (field) => {
+        setErrors((current) => (current[field] ? { ...current, [field]: null } : current));
+    };
 
     {/* memoized selected labels for display inputs */}
     const selectedAboutRoomLabels = useMemo(
@@ -195,6 +202,7 @@ export default function StepOne() {
     const openDepositDrawer = () => {
         // Default to the first option (TBD) so opening + closing (even via handle/backdrop) commits a value.
         if (!deposit) setDeposit(DEPOSIT_TBD_VALUE);
+        clearFieldError('deposit');
         depositDrawerRef.current?.snapToIndex(0);
     };
 
@@ -227,7 +235,7 @@ export default function StepOne() {
         setPlaceId(data.place_id);
         setLatitude(location?.lat ?? null);
         setLongitude(location?.lng ?? null);
-        setError(null);
+        clearFieldError('address');
 
         // console.log('[StepOne] Google place selected', {
         //     description: data.description,
@@ -242,21 +250,58 @@ export default function StepOne() {
         // });
     };
 
-    const continueToStepTwo = async () => {
-        // Require the essentials. Coordinates come from Google Places autocomplete when
-        // a suggestion is tapped; otherwise we geocode the typed address as a fallback.
+    // Collects every problem at once so the renter sees all of them instead of one at a time.
+    const validate = () => {
+        const nextErrors = {};
+
         if (!normalizeAddressPart(roomTitle)) {
-            setError('Enter a room title before continuing.');
-            return;
+            nextErrors.roomTitle = 'Enter a room title.';
         }
-        if (!normalizeAddressPart(street) || !normalizeAddressPart(city) || !normalizeAddressPart(province)) {
-            setError('Enter the address (street, city, and state/province) before continuing.');
-            return;
+
+        if (!normalizeAddressPart(street)) {
+            nextErrors.address = 'Enter the street address.';
+        } else if (!normalizeAddressPart(city)) {
+            nextErrors.address = 'Enter the city or town.';
+        } else if (!normalizeAddressPart(province)) {
+            nextErrors.address = 'Enter the state, province, or region.';
         }
+
+        if (!availableMonth || !availableDay || !availableYear) {
+            nextErrors.availableFrom = 'Select the month, day, and year.';
+        }
+
+        if (!leaseType) {
+            nextErrors.leaseType = 'Choose one of the options.';
+        }
+
         if (!price) {
-            setError('Enter the monthly rent before continuing.');
-            return;
+            nextErrors.price = 'Enter the monthly rent.';
+        } else if (Number(price) <= 0) {
+            nextErrors.price = 'Monthly rent must be more than $0.';
         }
+
+        if (!deposit) {
+            nextErrors.deposit = 'Choose a deposit amount, or pick TBD if it is not decided yet.';
+        }
+
+        if (!minimumStay) {
+            nextErrors.minimumStay = 'Enter the shortest stay in months.';
+        } else if (!Number.isFinite(Number(minimumStay)) || Number(minimumStay) < 1) {
+            nextErrors.minimumStay = 'Minimum stay must be at least 1 month.';
+        }
+
+        if (!roomType || !furnishedType) {
+            nextErrors.aboutRoom = 'Select the room type.';
+        }
+
+        setErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    };
+
+    const continueToStepTwo = async () => {
+        // Coordinates come from Google Places autocomplete when a suggestion is tapped;
+        // otherwise we geocode the typed address as a fallback.
+        if (!validate()) return;
 
         setSubmitting(true);
         let lat = Number.isFinite(latitude) ? latitude : null;
@@ -300,7 +345,7 @@ export default function StepOne() {
             isUtilityIncluded,
         });
 
-        setError(null);
+        setErrors({});
         router.push('/post/stepTwo');
     };
 
@@ -322,15 +367,19 @@ export default function StepOne() {
                         <AppText variant='body-md' color='primary'>Share key details about your room</AppText>
                     </View>
                     <View style={styles.contentContainer}>
-                        <FormField label="Room Title" error={error}>
+                        <FormField label="Room Title" error={errors.roomTitle}>
                             <TextField
                                 value={roomTitle}
                                 placeholder="e.g., Spacious Master Room in Downtown NYC"
                                 placeholderTextColor={colors.semantic.input.textDisabled}
-                                onChangeText={setRoomTitle}
+                                error={!!errors.roomTitle}
+                                onChangeText={(text) => {
+                                    setRoomTitle(text);
+                                    clearFieldError('roomTitle');
+                                }}
                             />
                         </FormField>
-                        <FormField label="Address" error={error}>
+                        <FormField label="Address" error={errors.address}>
                             <InputRow isRow={false} style={styles.addressAutocompleteRow}>
                                 <GooglePlacesAutocomplete
                                     placeholder="Street"
@@ -352,16 +401,20 @@ export default function StepOne() {
                                         onChangeText: (text) => {
                                             setStreet(text);
                                             clearSelectedPlace();
+                                            clearFieldError('address');
                                         },
                                         accessibilityLabel: 'Street address',
                                     }}
                                     onPress={handlePlaceSelect}
                                     // onFail={(placesError) => {
                                     //     console.log('[StepOne] Google Places autocomplete failed', placesError);
-                                    //     setError('Address lookup failed. Please try again.');
+                                    //     setErrors((current) => ({ ...current, address: 'Address lookup failed. Please try again.' }));
                                     // }}
                                     onNotFound={() => {
-                                        setError('No matching address found. Try a more specific address.');
+                                        setErrors((current) => ({
+                                            ...current,
+                                            address: 'No matching address found. Try a more specific address.',
+                                        }));
                                     }}
                                     styles={{
                                         container: styles.placesContainer,
@@ -384,13 +437,19 @@ export default function StepOne() {
                                     value={city}
                                     placeholder="City or Town"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
-                                    onChangeText={setCity}
+                                    onChangeText={(text) => {
+                                        setCity(text);
+                                        clearFieldError('address');
+                                    }}
                                 />
                                 <TextField
                                     value={province}
                                     placeholder="State, Province, or Region"
                                     placeholderTextColor={colors.semantic.input.textDisabled}
-                                    onChangeText={setProvince}
+                                    onChangeText={(text) => {
+                                        setProvince(text);
+                                        clearFieldError('address');
+                                    }}
                                 />
                                 <TextField
                                     value={postalCode}
@@ -400,7 +459,7 @@ export default function StepOne() {
                                 />
                             </InputRow>
                         </FormField>
-                        <FormField label="Available From" error={error}>
+                        <FormField label="Available From" error={errors.availableFrom}>
                             <InputRow>
                                 <DisplayInput
                                     value={availableMonth}
@@ -409,6 +468,7 @@ export default function StepOne() {
                                     showSoftInputOnFocus={false}
                                     onPress={() => {
                                         if (!availableMonth) setAvailableMonth('Jan');
+                                        clearFieldError('availableFrom');
                                         availableMonthDrawerRef.current?.snapToIndex(0);
                                     }}
                                 />
@@ -419,6 +479,7 @@ export default function StepOne() {
                                     showSoftInputOnFocus={false}
                                     onPress={() => {
                                         if (!availableDay) setAvailableDay('1');
+                                        clearFieldError('availableFrom');
                                         availableDayDrawerRef.current?.snapToIndex(0);
                                     }}
                                 />
@@ -429,35 +490,41 @@ export default function StepOne() {
                                     showSoftInputOnFocus={false}
                                     onPress={() => {
                                         if (!availableYear) setAvailableYear('2026');
+                                        clearFieldError('availableFrom');
                                         availableYearDrawerRef.current?.snapToIndex(0);
                                     }}
                                 />
                             </InputRow>
                         </FormField>
-                        <FormField label="Lease Type" error={error}>
+                        <FormField label="Lease Type" error={errors.leaseType}>
                             <PillGroup
                                 items={[
                                     { label: "Month-to-month", value: "month-to-month" },
                                     { label: "Fixed-term", value: "fixed-term" },
                                 ]}
                                 value={leaseType}
-                                onChange={setLeaseType}
+                                onChange={(value) => {
+                                    setLeaseType(value);
+                                    clearFieldError('leaseType');
+                                }}
                                 isMulti={false}
                             />
                         </FormField>
-                        <FormField label="Monthly Rent" error={error}>
+                        <FormField label="Monthly Rent" error={errors.price}>
                             <TextField
                                 value={formattedPrice}
                                 placeholder="Enter the rent (USD)"
                                 placeholderTextColor={colors.semantic.input.textDisabled}
+                                error={!!errors.price}
                                 onChangeText={(text) => {
                                     const numbersOnly = text.replace(/[^0-9]/g, '');
                                     setPrice(numbersOnly);
+                                    clearFieldError('price');
                                 }}
                                 keyboardType="number-pad"
                             />
                         </FormField>
-                        <FormField label="Deposit" error={error}>
+                        <FormField label="Deposit" error={errors.deposit}>
                             <DisplayInput
                                 value={formattedDeposit}
                                 placeholder="Choose the deposit (USD)"
@@ -467,7 +534,7 @@ export default function StepOne() {
                                 onPress={openDepositDrawer}
                             />
                         </FormField>
-                        <FormField label="Utilities" error={error}>
+                        <FormField label="Utilities">
                             <DisplayInput
                                 value={isUtilityIncluded ? 'Included' : 'Not Included'}
                                 placeholder="Select Options"
@@ -477,19 +544,22 @@ export default function StepOne() {
                                 rightIcon={<Feather name="chevron-down" size={22} color={colors.semantic.text.primary} />}
                             />
                         </FormField>
-                        <FormField label="Minimum Stay" error={error}>
+                        <FormField label="Minimum Stay" error={errors.minimumStay}>
                             <TextField
                                 value={minimumStay}
                                 placeholder="Enter minimum stay (months)"
                                 placeholderTextColor={colors.semantic.input.textDisabled}
-                                onChangeText={setMinimumStay}
+                                error={!!errors.minimumStay}
+                                onChangeText={(text) => {
+                                    setMinimumStay(text);
+                                    clearFieldError('minimumStay');
+                                }}
                                 suffixText="months"
                                 keyboardType="number-pad"
                             />
                         </FormField>
-                        <FormField label="About Room & House" error={error}>
+                        <FormField label="About Room & House" error={errors.aboutRoom}>
                             <DisplayInput
-                                error={error}
                                 value={selectedAboutRoomLabels}
                                 isMulti={true}
                                 max={3}
@@ -497,9 +567,8 @@ export default function StepOne() {
                                 onPress={() => keyDetailDrawerRef.current?.snapToIndex(0)}
                             />
                         </FormField>
-                        <FormField label="Looking For" error={error}>
+                        <FormField label="Looking For" >
                             <DisplayInput
-                                error={error}
                                 value={selectedLookingForLabels}
                                 isMulti={true}
                                 max={3}
@@ -509,25 +578,10 @@ export default function StepOne() {
                         </FormField>
                         <View style={styles.buttonContainer}>
                             <View style={{ flex: 1 }}>
-                                <AppButton 
-                                    text="Cancel" 
-                                    type="secondary" 
-                                    onPress={() => {
-                                        Alert.alert(
-                                            'Exit without saving?',
-                                            'Are you sure you want to exit? Your changes may not be saved.',
-                                            [{
-                                                text: 'Stay'
-                                            },
-                                            {
-                                                text: 'Exit without saving',
-                                                style: 'destructive',
-                                                onPress: () => {
-                                                    router.dismissTo('/(tabs)/post');
-                                                },
-                                            },]
-                                        );  
-                                    }}
+                                <AppButton
+                                    text="Cancel"
+                                    type="secondary"
+                                    onPress={confirmExit}
                                 />
                             </View>
                             <View style={{ flex: 1 }}>
@@ -667,7 +721,10 @@ export default function StepOne() {
                 <PillGroup
                     items={ROOMTYPE_OPTIONS}
                     value={roomType}
-                    onChange={setRoomType}
+                    onChange={(value) => {
+                        setRoomType(value);
+                        clearFieldError('aboutRoom');
+                    }}
                     isMulti={false}
                 />
             </FormField>
@@ -675,7 +732,10 @@ export default function StepOne() {
                 <PillGroup
                     items={FURNISHEDTYPE_OPTIONS}
                     value={furnishedType}
-                    onChange={setFurnishedType}
+                    onChange={(value) => {
+                        setFurnishedType(value);
+                        clearFieldError('aboutRoom');
+                    }}
                     isMulti={false}
                 />
             </FormField>
