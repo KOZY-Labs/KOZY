@@ -1,17 +1,15 @@
-import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ActivityIndicator, Image } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
 
 import AppText from '@/components/ui/appText';
+import ListingsAreaSheet from '@/components/ui/drawer/ListingsAreaSheet';
 import ListingsClusterMap from '@/components/ui/listingsClusterMap';
 import { colors } from '@/constants/colors';
 import { useBrowseListings } from '@/hooks/use-listings';
 import { filterWithCoordinates } from '@/lib/geo/mapRegion';
 import { filterListings } from '@/lib/listingFilters';
-
-const formatPrice = (price) => `$${Number(price ?? 0).toLocaleString()}`;
 
 // Full-screen clustered map. Inherits the search screen's filters and the preview
 // map's position via route params, so it opens exactly where the user left off.
@@ -19,7 +17,10 @@ export default function SearchMapScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const { data: listings, loading } = useBrowseListings();
-  const [selected, setSelected] = useState(null); // listing shown in the bottom card
+  const areaSheetRef = useRef(null);
+
+  // Listings behind the last-tapped map marker (single pin or grouped cluster).
+  const [areaListings, setAreaListings] = useState([]);
 
   const mapListings = useMemo(
     () =>
@@ -49,17 +50,31 @@ export default function SearchMapScreen() {
     };
   }, [params.centerLat, params.centerLng, params.latDelta, params.lngDelta]);
 
+  const handleOpenArea = (items) => {
+    if (items.length === 0) return;
+    setAreaListings(items);
+    areaSheetRef.current?.snapToIndex(0);
+  };
+
+  const handleOpenListing = (listing) => {
+    areaSheetRef.current?.close();
+    router.push({
+      pathname: '/home/[id]',
+      params: { id: listing.id, backTo: '/home/search/map' },
+    });
+  };
+
   return (
     <View style={styles.container}>
       <ListingsClusterMap
         listings={mapListings}
         style={StyleSheet.absoluteFill}
         centerRegion={centerRegion}
-        selectedId={selected?.id ?? null}
-        onPressListing={setSelected}
-        onPressMap={() => setSelected(null)}
+        onPressListing={(listing) => handleOpenArea([listing])}
+        onPressCluster={handleOpenArea}
+        onPressMap={() => areaSheetRef.current?.close()}
         showZoomControls
-        zoomControlsOffset={Math.max(insets.bottom, 16) + 120}
+        zoomControlsOffset={Math.max(insets.bottom, 16) + 16}
       />
 
       {loading && (
@@ -76,46 +91,12 @@ export default function SearchMapScreen() {
         </View>
       )}
 
-      {/* Airbnb-style bottom listing card */}
-      {selected && (
-        <Pressable
-          style={[styles.card, { bottom: Math.max(insets.bottom, 16) + 8 }]}
-          accessibilityRole="button"
-          accessibilityLabel={`Open listing ${selected.title}`}
-          onPress={() =>
-            router.push({
-              pathname: '/home/[id]',
-              params: { id: selected.id, backTo: '/home/search/map' },
-            })
-          }
-        >
-          <Image
-            source={{ uri: selected.images?.[0] }}
-            style={styles.cardImage}
-            resizeMode="cover"
-          />
-          <View style={styles.cardInfo}>
-            <AppText variant="body-sm-strong" numberOfLines={1} style={styles.cardTitle}>
-              {selected.title}
-            </AppText>
-            <AppText variant="body-xsm" numberOfLines={1} style={styles.cardSubtitle}>
-              {selected.city}{selected.province ? `, ${selected.province}` : ''}
-            </AppText>
-            <AppText variant="body-sm-strong" style={styles.cardPrice}>
-              {formatPrice(selected.price)} / month
-            </AppText>
-          </View>
-          <Pressable
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Close listing card"
-            onPress={() => setSelected(null)}
-            style={styles.cardClose}
-          >
-            <Feather name="x" size={18} color={colors.base.background} />
-          </Pressable>
-        </Pressable>
-      )}
+      <ListingsAreaSheet
+        ref={areaSheetRef}
+        listings={areaListings}
+        onPressListing={handleOpenListing}
+        onClose={() => setAreaListings([])}
+      />
     </View>
   );
 }
@@ -160,51 +141,5 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  card: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    backgroundColor: colors.base.white,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  cardImage: {
-    width: 96,
-    height: 96,
-    backgroundColor: '#e5e5e5',
-  },
-  cardInfo: {
-    flex: 1,
-    padding: 12,
-    justifyContent: 'center',
-    gap: 2,
-  },
-  cardTitle: {
-    color: colors.base.background,
-  },
-  cardSubtitle: {
-    color: '#666',
-  },
-  cardPrice: {
-    color: colors.base.background,
-    marginTop: 4,
-  },
-  cardClose: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

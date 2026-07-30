@@ -13,6 +13,7 @@ import PillGroup from '@/components/ui/pill/pillGroup';
 import TextField from '@/components/ui/input/textField';
 import Dropdown from '@/components/ui/input/dropdown';
 import FormField from '@/components/ui/form/formField';
+import ListingsAreaSheet from '@/components/ui/drawer/ListingsAreaSheet';
 import ListingsClusterMap from '@/components/ui/listingsClusterMap';
 import { colors } from '@/constants/colors';
 import { useBrowseListings } from '@/hooks/use-listings';
@@ -50,6 +51,10 @@ export default function SearchScreen() {
   const genderDrawerRef = useRef(null);
   const roomTypeDrawerRef = useRef(null);
   const lifestyleDrawerRef = useRef(null);
+  const areaSheetRef = useRef(null);
+
+  // Listings behind the last-tapped map marker (single pin or grouped cluster).
+  const [areaListings, setAreaListings] = useState([]);
 
   const [location, setLocation] = useState('');
   // Set when an autocomplete suggestion is picked: { mainText, latitude, longitude }.
@@ -95,6 +100,22 @@ export default function SearchScreen() {
 
   const handleOpenResults = () => {
     router.push({ pathname: '/home/search/searchResult', params: filterParams() });
+  };
+
+  // Marker taps preview the area's listings in a sheet; opening a listing from there
+  // keeps the existing reel navigation (from:'search' → back returns to this screen).
+  const handleOpenArea = (items) => {
+    if (items.length === 0) return;
+    setAreaListings(items);
+    areaSheetRef.current?.snapToIndex(0);
+  };
+
+  const handleOpenListing = (listing) => {
+    areaSheetRef.current?.close();
+    router.push({
+      pathname: '/home/search/[id]',
+      params: { id: listing.id, from: 'search', ...filterParams() },
+    });
   };
 
   const handleOpenFullMap = () => {
@@ -200,13 +221,8 @@ export default function SearchScreen() {
                 listings={mapListings}
                 style={StyleSheet.absoluteFill}
                 centerRegion={previewCenter}
-                onPressListing={(listing) =>
-                  router.push({
-                    pathname: '/home/search/[id]',
-                    // from:'search' → the reel's back button returns here, not to searchResult
-                    params: { id: listing.id, from: 'search', ...filterParams() },
-                  })
-                }
+                onPressListing={(listing) => handleOpenArea([listing])}
+                onPressCluster={handleOpenArea}
                 onRegionChange={(region) => {
                   lastRegionRef.current = region;
                 }}
@@ -269,7 +285,7 @@ export default function SearchScreen() {
                 isMulti
               />
             </FormField>
-            <AppButton text="Search" onPress={handleOpenResults} style={styles.searchButton} />
+            {/* <AppButton text="Search" onPress={handleOpenResults} style={styles.searchButton} /> */}
           </View>
             </>
           )}
@@ -313,12 +329,19 @@ export default function SearchScreen() {
           title="Lifestyle Match"
           description={'Find homes that match your lifestyle\nSelect all that apply'}
         >
-          <PillGroup 
-            items={LIFESTYLE_OPTIONS} 
-            value={lifestyleMatches} 
-            onChange={setLifestyleMatches} 
+          <PillGroup
+            items={LIFESTYLE_OPTIONS}
+            value={lifestyleMatches}
+            onChange={setLifestyleMatches}
           />
         </AppDrawer>
+
+        <ListingsAreaSheet
+          ref={areaSheetRef}
+          listings={areaListings}
+          onPressListing={handleOpenListing}
+          onClose={() => setAreaListings([])}
+        />
       </View>
     </>
   );

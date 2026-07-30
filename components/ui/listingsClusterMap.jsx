@@ -20,6 +20,7 @@ export default function ListingsClusterMap({
   centerRegion = null, // externally requested center (e.g. a picked address) — animates on change
   selectedId = null, // listing id to render as the selected (dark) pill
   onPressListing, // (listing) => void
+  onPressCluster, // (listings) => void — when set, a count badge tap reports its listings instead of zooming in
   onPressMap, // () => void — real map taps only (marker taps are filtered out)
   onRegionChange, // (region) => void — reports the latest region (e.g. to hand off to the full map)
   showZoomControls = true,
@@ -30,7 +31,6 @@ export default function ListingsClusterMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const initialRegion = useMemo(() => centerRegion ?? boundingRegion(listings), []);
   const regionRef = useRef(initialRegion);
-  const fittedRef = useRef(false);
   const [clusters, setClusters] = useState([]);
 
   // Cluster index — rebuilt only when the listing set changes (filters, data load).
@@ -46,20 +46,25 @@ export default function ListingsClusterMap({
     return new Supercluster({ radius: 60, maxZoom: MAX_ZOOM }).load(points);
   }, [listings]);
 
+  // Held in a ref so an inline `onRegionChange` from the parent doesn't change
+  // `recompute`'s identity — that would re-run the refit effect on every render.
+  const onRegionChangeRef = useRef(onRegionChange);
+  onRegionChangeRef.current = onRegionChange;
+
   const recompute = useCallback(
     (region) => {
       regionRef.current = region;
       setClusters(index.getClusters(regionToBBox(region), regionToZoom(region, MAX_ZOOM)));
-      onRegionChange?.(region);
+      onRegionChangeRef.current?.(region);
     },
-    [index, onRegionChange]
+    [index]
   );
 
-  // Whenever the listing set changes (data arrives / filters change), re-cluster the
-  // current viewport. Fit-to-listings only once, and only when no external center is set.
+  // Whenever the listing set changes (data arrives / filters change), refit the camera
+  // to the new results and re-cluster, so the count badges always describe what matches
+  // the current filters. An externally requested center wins over the auto-fit.
   useEffect(() => {
-    if (!fittedRef.current && listings.length > 0 && !centerRegion) {
-      fittedRef.current = true;
+    if (listings.length > 0 && !centerRegion) {
       const region = boundingRegion(listings);
       regionRef.current = region;
       mapRef.current?.animateToRegion(region, 300);
@@ -77,6 +82,14 @@ export default function ListingsClusterMap({
   }, [centerRegion?.latitude, centerRegion?.longitude]);
 
   const handleClusterPress = (cluster) => {
+    // Preferred flow: hand the grouped listings to the caller (opens a bottom sheet).
+    if (onPressCluster) {
+      const leaves = index.getLeaves(cluster.properties.cluster_id, Infinity);
+      onPressCluster(leaves.map((leaf) => leaf.properties.listing));
+      return;
+    }
+
+    // Fallback: zoom into the cluster until it splits apart.
     const [longitude, latitude] = cluster.geometry.coordinates;
     const expansionZoom = Math.min(
       index.getClusterExpansionZoom(cluster.properties.cluster_id) + 0.5,
@@ -125,6 +138,8 @@ export default function ListingsClusterMap({
                 key={`cluster-${feature.properties.cluster_id}`}
                 coordinate={{ latitude, longitude }}
                 anchor={{ x: 0.5, y: 0.5 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${feature.properties.point_count} listings in this area`}
                 onPress={(e) => {
                   e?.stopPropagation?.();
                   handleClusterPress(feature);
@@ -146,6 +161,8 @@ export default function ListingsClusterMap({
               key={`listing-${listing.id}`}
               coordinate={{ latitude, longitude }}
               anchor={{ x: 0.5, y: 0.5 }}
+              accessibilityRole="button"
+              accessibilityLabel={`${listing.title ?? 'Listing'}, ${formatPrice(listing.price)} per month`}
               onPress={(e) => {
                 e?.stopPropagation?.();
                 onPressListing?.(listing);
