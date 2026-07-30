@@ -9,11 +9,18 @@ import { ThemeProvider as RNEThemeProvider, } from 'react-native-elements';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as ExpoSplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { appTheme } from '@/constants/index';
 import { AuthProvider } from '@/context/AuthContext';
 import ScreenTracker from '@/components/navigation/screenTracker';
+import SplashGate from '@/components/ui/splashGate';
+
+// Hold the native splash until fonts are ready; SplashGate then takes over with
+// the matching JS splash so there is no flash between the two.
+ExpoSplashScreen.preventAutoHideAsync().catch(() => {});
 
 const AppDarkTheme = {
   ...DarkTheme,
@@ -32,6 +39,12 @@ export default function RootLayout() {
     OpenSans_700Bold: require('../assets/fonts/OpenSans-Bold.ttf'),
   });
 
+  // Fonts are ready: drop the native splash. SplashGate keeps the same artwork
+  // on screen while auth resolves.
+  useEffect(() => {
+    if (fontsLoaded) ExpoSplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded]);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -41,9 +54,11 @@ export default function RootLayout() {
       >
         <RNEThemeProvider theme={appTheme}>
           <AuthProvider>
-            <ScreenTracker />
-            <Slot />
-            <StatusBar style="auto" />
+            <SplashGate>
+              <ScreenTracker />
+              <Slot />
+              <StatusBar style="auto" />
+            </SplashGate>
           </AuthProvider>
         </RNEThemeProvider>
       </NavigationThemeProvider>
