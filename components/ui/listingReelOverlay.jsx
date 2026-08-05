@@ -1,10 +1,11 @@
-import { Alert, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-elements';
 
 import AppButton from '@/components/ui/appButton';
 import AppIconButton from '@/components/ui/appIconButton';
 import AppText from '@/components/ui/appText';
+import { showConfirmModal } from '@/components/ui/confirmModalHost';
 
 const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
 
@@ -22,12 +23,14 @@ export default function ListingReelOverlay({
 }) {
   const hasRightActions = showMoreAction || onToggleSave || onShare;
 
-  // Centered modal (native alert) instead of a floating dropdown.
+  // Centered app-styled modal instead of a floating dropdown.
   const handleMorePress = () => {
-    Alert.alert('More options', undefined, [
-      { text: 'Report Listing', style: 'destructive', onPress: () => onPressReport?.() },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    showConfirmModal({
+      title: 'More options',
+      primaryText: 'Report Listing',
+      secondaryText: 'Cancel',
+      onPrimary: () => onPressReport?.(),
+    });
   };
 
   return (
@@ -59,28 +62,36 @@ export default function ListingReelOverlay({
         ) : null
       }
       <View style={[styles.bottomLeft, { bottom, maxWidth: hasRightActions ? '90%' : '95%', transformOrigin: "top left", transform: isPreview ? [{ scale: 0.9 }] : [{ scale: 1 }] }]}>
-        <View style={styles.bottomRoomInfo}>
-          <Avatar
-            source={item?.owner?.avatar?.[0] ? { uri: item.owner.avatar[0] } : AVATAR_PLACEHOLDER}
-            size={44}
-            rounded
-            containerStyle={styles.avatar}
-          />
-          <View style={styles.bottomInfo}>
-            <AppText variant="body-sm-strong" numberOfLines={1}>
-              {item?.title}
-            </AppText>
-            <AppText variant="body-sm">
-              ${item?.price} / month
-            </AppText>
+        {/* The whole info block (avatar, title, price, tags) opens the detail, not just the button */}
+        <Pressable
+          onPress={onPressDetail}
+          disabled={!onPressDetail}
+          accessibilityRole={onPressDetail ? 'button' : undefined}
+          accessibilityLabel="Open listing detail"
+        >
+          <View style={styles.bottomRoomInfo}>
+            <Avatar
+              source={item?.owner?.avatar?.[0] ? { uri: item.owner.avatar[0] } : AVATAR_PLACEHOLDER}
+              size={44}
+              rounded
+              containerStyle={styles.avatar}
+            />
+            <View style={styles.bottomInfo}>
+              <AppText variant="body-sm-strong" numberOfLines={1}>
+                {item?.title}
+              </AppText>
+              <AppText variant="body-sm">
+                ${item?.price} / month
+              </AppText>
+            </View>
+            <View style={styles.bottomCTA}>
+              <AppButton text="Detail" size="sm" type="primary" onPress={onPressDetail} />
+            </View>
           </View>
-          <View style={styles.bottomCTA}>
-            <AppButton text="Detail" size="sm" type="primary" onPress={onPressDetail} />
-          </View>
-        </View>
-        <AppText variant="body-sm-strong" numberOfLines={2}>
-          #{item?.city} #{item?.province}
-        </AppText>
+          <AppText variant="body-sm-strong" numberOfLines={2}>
+            #{item?.city} #{item?.province}
+          </AppText>
+        </Pressable>
       </View>
     </>
   );

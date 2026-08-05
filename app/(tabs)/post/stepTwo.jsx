@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, StyleSheet, View, ScrollView, Alert } from 'react-native';
+import { Platform, StyleSheet, View, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -9,6 +9,7 @@ import AppButton from '@/components/ui/appButton';
 import MediaInput from '@/components/ui/input/mediaInput';
 import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
 import InfoList from '@/components/ui/appList';
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
 import validateImage from '@/utils/mediaValidation';
 import { useListingDraft } from '@/context/ListingDraftContext';
@@ -54,10 +55,10 @@ export default function StepTwo() {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (!permission.granted) {
-                Alert.alert(
-                    'Photo access required',
-                    'Allow photo library access to add photos to your listing.'
-                );
+                showAlertModal({
+                    title: 'Photo access required',
+                    message: 'Allow photo library access to add photos to your listing.',
+                });
                 return;
             }
 
@@ -85,31 +86,26 @@ export default function StepTwo() {
             });
             setError(null);
         } catch {
-            Alert.alert(
-                'Unable to open gallery',
-                'Please try selecting your photos again.'
-            );
+            showAlertModal({
+                title: 'Unable to open gallery',
+                message: 'Please try selecting your photos again.',
+            });
         }
     };
 
     const confirmDeletePhoto = (photo) => {
-        Alert.alert(
-            'Delete photo?',
-            'This photo will be removed from your listing.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        setPhotos(currentPhotos =>
-                            currentPhotos.filter(item => item.id !== photo.id)
-                        );
-                        setError(null);
-                    },
-                },
-            ]
-        );
+        showConfirmModal({
+            title: 'Delete photo?',
+            message: 'This photo will be removed from your listing.',
+            primaryText: 'Delete',
+            secondaryText: 'Cancel',
+            onPrimary: () => {
+                setPhotos(currentPhotos =>
+                    currentPhotos.filter(item => item.id !== photo.id)
+                );
+                setError(null);
+            },
+        });
     };
 
     const continueToNextStep = () => {

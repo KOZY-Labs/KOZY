@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useListing } from '@/hooks/use-listings';
 import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
+import ListingLocationMap from '@/components/ui/listingLocationMap';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ITEM_WIDTH = SCREEN_WIDTH * 0.8;
@@ -65,14 +66,17 @@ export default function UploadedPostDetail() {
           <DisplayField title="Location">
             {`${item.street}, ${item.city}, ${item.province}`}
           </DisplayField>
-          <Image 
-            source={require('@/assets/images/map-placeholder.png')}
-            style={styles.mapImage}
-            resizeMode="cover"
-          />
+          {/* Tap opens a full-screen map with just this listing's pin */}
+          <ListingLocationMap latitude={item.latitude} longitude={item.longitude} />
           <DisplayField title="Price">
             ${item.price} / month
           </DisplayField>
+
+          {item.description ? (
+            <DisplayField title="Description">
+              {item.description}
+            </DisplayField>
+          ) : null}
 
           <DisplayField title="Room Type">
             {item.roomType}
@@ -214,11 +218,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: IMAGE_HEIGHT,
-    borderRadius: 4,
-  },
-  mapImage: {
-    width: '100%',
-    height: 78,
     borderRadius: 4,
   },
   content: {

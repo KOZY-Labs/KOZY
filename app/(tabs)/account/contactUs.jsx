@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, StyleSheet, View, Alert, KeyboardAvoidingView } from 'react-native';
+import { Platform, StyleSheet, View, KeyboardAvoidingView } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 
@@ -8,6 +8,7 @@ import TextField from '@/components/ui/input/textField';
 import FormField from '@/components/ui/form/formField';
 import TextArea from '@/components/ui/input/textArea';
 import DisplayField from '@/components/ui/displayField';
+import { showAlertModal } from '@/components/ui/confirmModalHost';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -42,14 +43,12 @@ export default function ContactUs() {
     const handleSubmit = () => {
         if (!validateForm()) return;
 
-        Alert.alert(
-            'Thank you for reaching out! We\'ll review your message and respond within 1–2 business days.',
-            `Still need help? \n Email us at \n [support@kozy.com]`,
-            {
-                text: 'Close',
-                style: 'cancel',
-            }
-        );
+        showAlertModal({
+            title: 'Thank you for reaching out!',
+            message:
+                'We\'ll review your message and respond within 1–2 business days.\n\nStill need help? Email us at support@kozy.com',
+            buttonText: 'Close',
+        });
     };
 
   return (

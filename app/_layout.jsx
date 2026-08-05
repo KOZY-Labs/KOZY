@@ -17,6 +17,7 @@ import { appTheme } from '@/constants/index';
 import { AuthProvider } from '@/context/AuthContext';
 import ScreenTracker from '@/components/navigation/screenTracker';
 import SplashGate from '@/components/ui/splashGate';
+import ConfirmModalHost from '@/components/ui/confirmModalHost';
 
 // Hold the native splash until fonts are ready; SplashGate then takes over with
 // the matching JS splash so there is no flash between the two.
@@ -57,6 +58,7 @@ export default function RootLayout() {
             <SplashGate>
               <ScreenTracker />
               <Slot />
+              <ConfirmModalHost />
               <StatusBar style="auto" />
             </SplashGate>
           </AuthProvider>

@@ -10,13 +10,17 @@ export default function ConfirmModal({
   visible,
   title,
   message,
+  bullets, // optional string[] rendered as a left-aligned bullet list under the message
+  children, // optional custom content rendered between message/bullets and the buttons
   primaryText = 'Confirm',
-  secondaryText = 'Cancel',
+  secondaryText, // omit to render a single (primary) CTA
+  tertiaryText, // optional third, low-emphasis action (rendered as a bare text button)
   onPrimary,
   onSecondary,
+  onTertiary,
   onRequestClose, // backdrop tap / Android back — defaults to the secondary action
 }) {
-  const handleClose = onRequestClose ?? onSecondary;
+  const handleClose = onRequestClose ?? onSecondary ?? onPrimary;
 
   return (
     <Modal
@@ -38,9 +42,24 @@ export default function ConfirmModal({
               {message}
             </AppText>
           ) : null}
+          {bullets?.length ? (
+            <View style={styles.bulletList}>
+              {bullets.map((bullet) => (
+                <AppText key={bullet} variant="body-sm" style={styles.bulletItem}>
+                  •  {bullet}
+                </AppText>
+              ))}
+            </View>
+          ) : null}
+          {children}
           <View style={styles.buttons}>
             <AppButton text={primaryText} type="primary" onPress={onPrimary} />
-            <AppButton text={secondaryText} type="secondary" onPress={onSecondary} />
+            {secondaryText ? (
+              <AppButton text={secondaryText} type="secondary" onPress={onSecondary} />
+            ) : null}
+            {tertiaryText ? (
+              <AppButton text={tertiaryText} type="bare" underline onPress={onTertiary} />
+            ) : null}
           </View>
         </Pressable>
       </Pressable>
@@ -71,6 +90,14 @@ const styles = StyleSheet.create({
   message: {
     textAlign: 'center',
     color: colors.base.gray600,
+  },
+  bulletList: {
+    alignSelf: 'stretch',
+    paddingHorizontal: 8,
+    gap: 6,
+  },
+  bulletItem: {
+    textAlign: 'left',
   },
   buttons: {
     marginTop: 12,

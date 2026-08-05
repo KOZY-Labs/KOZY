@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView } from 'react-native';
 import { router  } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 
@@ -12,6 +12,7 @@ import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import ProfileSection from '@/components/ui/profileSection';
 import ListingLocationMap from '@/components/ui/listingLocationMap';
+import { showAlertModal } from '@/components/ui/confirmModalHost';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MIN_PHOTOS = 3;
@@ -52,31 +53,27 @@ export default function PreviewListing() {
   const showUpdatedAlert = () => {
     // Capture before resetDraft() clears the edit state.
     const backTo = returnTo ?? `/(tabs)/account/myListings/detail/${editingId}`;
-    Alert.alert(
-      'Your listing is updated ✅',
-      'Your changes are live.',
-      [
-        {
-          text: 'View My listing',
-          onPress: () => {
-            resetDraft();
-            router.replace(backTo);
-          },
-        },
-      ],
-    );
+    showAlertModal({
+      title: 'Your listing is updated ✅',
+      message: 'Your changes are live.',
+      buttonText: 'View My listing',
+      onPress: () => {
+        resetDraft();
+        router.replace(backTo);
+      },
+    });
   };
 
   // Edit flow: write back onto the existing doc. Media already in Storage is reused —
   // uploadListing* skips assets that carry a remoteUrl — so only new picks upload.
   const handleUpdate = async () => {
     if (!uid) {
-      Alert.alert('Sign in required', 'Please log in again to update your listing.');
+      showAlertModal({ title: 'Sign in required', message: 'Please log in again to update your listing.' });
       return;
     }
     const problem = findDraftProblem(draft);
     if (problem) {
-      Alert.alert('Listing incomplete', problem);
+      showAlertModal({ title: 'Listing incomplete', message: problem });
       return;
     }
     setPublishing(true);
@@ -91,26 +88,22 @@ export default function PreviewListing() {
       });
       showUpdatedAlert();
     } catch (e) {
-      Alert.alert('Update failed', e?.message ?? 'Something went wrong. Please try again.');
+      showAlertModal({ title: 'Update failed', message: e?.message ?? 'Something went wrong. Please try again.' });
     } finally {
       setPublishing(false);
     }
   };
 
   const showPublishedAlert = (listingId) => {
-    Alert.alert(
-      'Your listing is live 🎉',
-      'Your room is ready to be discovered. You can update it anytime.',
-      [
-        {
-          text: 'View My listing',
-          onPress: () => {
-            resetDraft();
-            router.replace(`/(tabs)/post/uploadedPost/${listingId}`);
-          },
-        },
-      ],
-    );
+    showAlertModal({
+      title: 'Your listing is live 🎉',
+      message: 'Your room is ready to be discovered. You can update it anytime.',
+      buttonText: 'View My listing',
+      onPress: () => {
+        resetDraft();
+        router.replace(`/(tabs)/post/uploadedPost/${listingId}`);
+      },
+    });
   };
 
   const handlePublish = async () => {
@@ -119,12 +112,12 @@ export default function PreviewListing() {
       return;
     }
     if (!uid) {
-      Alert.alert('Sign in required', 'Please log in again to publish your listing.');
+      showAlertModal({ title: 'Sign in required', message: 'Please log in again to publish your listing.' });
       return;
     }
     const problem = findDraftProblem(draft);
     if (problem) {
-      Alert.alert('Listing incomplete', problem);
+      showAlertModal({ title: 'Listing incomplete', message: problem });
       return;
     }
     setPublishing(true);
@@ -145,7 +138,7 @@ export default function PreviewListing() {
       if (createdId) {
         try { await deleteListing(createdId); } catch { /* best effort */ }
       }
-      Alert.alert('Publish failed', e?.message ?? 'Something went wrong. Please try again.');
+      showAlertModal({ title: 'Publish failed', message: e?.message ?? 'Something went wrong. Please try again.' });
     } finally {
       setPublishing(false);
     }

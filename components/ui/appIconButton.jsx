@@ -52,7 +52,7 @@ export default function AppIconButton({
               color: iconColor,
               stroke: iconColor,
               style: [{ color: iconColor }, icon.props.style],
-              size: size === 'lg' ? 20 : 16,
+              size: size === 'lg' ? 25 : 16,
             })
           : icon}
       </View>
@@ -68,9 +68,10 @@ const styles = StyleSheet.create({
   },
 
   /* ---------- Size ---------- */
+  // Keeps the icon-to-box ratio of the original 20px icon in a 44px box.
   lg: {
-    width: 44,
-    height: 44,
+    width: 52,
+    height: 52,
   },
 
   sm: {
@@ -89,20 +90,6 @@ const styles = StyleSheet.create({
   iconWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  icon_lg: {
-    width: 20,
-    height: 20,
-  },
-
-  icon_sm: {
-    width: 16,
-    height: 16,
-  },
-
-  iconDisabled: {
-    opacity: 0.4,
   },
 });
 

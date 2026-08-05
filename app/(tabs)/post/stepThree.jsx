@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { Platform, StyleSheet, View, Alert, FlatList, Pressable, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, View, FlatList, Pressable, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -16,6 +16,7 @@ import AppButton from '@/components/ui/appButton';
 import InfoList from '@/components/ui/appList';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import FormField from '@/components/ui/form/formField';
+import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 import { validateVideo } from '@/utils/mediaValidation';
@@ -94,10 +95,10 @@ export default function StepThree() {
             await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permissionResult.granted) {
-            Alert.alert(
-            'Permission required',
-            'We need access to your photos to upload a file.'
-            );
+            showAlertModal({
+                title: 'Permission required',
+                message: 'We need access to your photos to upload a file.',
+            });
             return;
         }
 

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { router, usePathname } from "expo-router";
-import { StyleSheet, View, FlatList, Pressable, Image, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, FlatList, Pressable, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
 import EmptyListingsState from '@/components/ui/emptyListingsState';
 import CheckBox from '@/components/ui/input/checkbox';
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/AuthContext';
 import { useChats } from '@/hooks/use-chats';
@@ -91,26 +92,21 @@ export default function Chat() {
       toggleEdit();
       return;
     }
-    Alert.alert(
-      'Delete Chats',
-      `Delete ${selectedItems.length} ${selectedItems.length === 1 ? 'chat' : 'chats'}? This cannot be undone.`,
-      [
-        { text: 'Close', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await Promise.all(selectedItems.map((id) => deleteChat(id)));
-            } catch (e) {
-              Alert.alert('Delete failed', e?.message ?? 'Please try again.');
-            }
-            setSelectedItems([]);
-            toggleEdit();
-          },
-        },
-      ]
-    );
+    showConfirmModal({
+      title: 'Delete Chats',
+      message: `Delete ${selectedItems.length} ${selectedItems.length === 1 ? 'chat' : 'chats'}? This cannot be undone.`,
+      primaryText: 'Delete',
+      secondaryText: 'Close',
+      onPrimary: async () => {
+        try {
+          await Promise.all(selectedItems.map((id) => deleteChat(id)));
+        } catch (e) {
+          showAlertModal({ title: 'Delete failed', message: e?.message ?? 'Please try again.' });
+        }
+        setSelectedItems([]);
+        toggleEdit();
+      },
+    });
   };
 
   return (

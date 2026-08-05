@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet, View, Dimensions, FlatList, Alert, Pressable } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View, Dimensions, FlatList, Pressable } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,6 +19,7 @@ import TextField from '@/components/ui/input/textField';
 import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
 import ConfirmModal from '@/components/ui/confirmModal';
+import { showAlertModal } from '@/components/ui/confirmModalHost';
 import ErrorMessage from '@/components/ui/form/errorMessage';
 import validateImage from '@/utils/mediaValidation';
 import { useAuth } from '@/context/AuthContext';
@@ -35,7 +36,25 @@ const ITEM_SPACING = 12;
 const MAX_PHOTOS = 3;
 
 
+// Gate: the form seeds all of its state (including the photo list) from `profile`
+// in one-shot useState initializers, so mounting it while the profile doc is still
+// loading would start from blanks and a Save could wipe the user's real data.
+// AuthContext retries a missing profile on its own; we just wait for it here.
 export default function EditProfile() {
+  const { profile, initializing } = useAuth();
+
+  if (!profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        {initializing || <ActivityIndicator color="#fff" />}
+      </View>
+    );
+  }
+
+  return <EditProfileForm />;
+}
+
+function EditProfileForm() {
     const { profile, uid, refreshProfile } = useAuth();
     const existingAvatar = useMemo(() => profile?.avatar ?? [], [profile?.avatar]);
     const nicknameDrawerRef = useRef(null);
@@ -135,7 +154,7 @@ export default function EditProfile() {
 
   const saveProfile = async () => {
     if (!uid) {
-      Alert.alert('Sign in required', 'Please log in again to update your profile.');
+      showAlertModal({ title: 'Sign in required', message: 'Please log in again to update your profile.' });
       return;
     }
     if (!validate()) return;
@@ -158,17 +177,16 @@ export default function EditProfile() {
       // Push the fresh profile into denormalized copies (listings.owner, chats.participantsInfo).
       await syncProfileCaches(uid);
       await refreshProfile();
-      Alert.alert('Profile updated', 'Your changes have been saved.', [
-        {
-          text: 'OK',
-          onPress: () => {
-            allowLeaveRef.current = true; // saved — don't re-prompt about unsaved changes
-            router.back();
-          },
+      showAlertModal({
+        title: 'Profile updated',
+        message: 'Your changes have been saved.',
+        onPress: () => {
+          allowLeaveRef.current = true; // saved — don't re-prompt about unsaved changes
+          router.back();
         },
-      ]);
+      });
     } catch (e) {
-      Alert.alert('Update failed', e?.message ?? 'Please try again.');
+      showAlertModal({ title: 'Update failed', message: e?.message ?? 'Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -191,16 +209,16 @@ export default function EditProfile() {
         if (result.inquiryId) {
           await updateUserDoc(uid, { personaInquiryId: result.inquiryId });
         }
-        Alert.alert(
-          'Verification submitted',
-          'Your ID is being reviewed. Your profile will show as verified once it clears.'
-        );
+        showAlertModal({
+          title: 'Verification submitted',
+          message: 'Your ID is being reviewed. Your profile will show as verified once it clears.',
+        });
       } else if (result.type === 'failed') {
-        Alert.alert('Verification failed', 'We could not verify your ID. Please try again.');
+        showAlertModal({ title: 'Verification failed', message: 'We could not verify your ID. Please try again.' });
       }
       // 'cancel' — user closed the browser; no message needed.
     } catch (e) {
-      Alert.alert('Verification unavailable', e?.message ?? 'Please try again later.');
+      showAlertModal({ title: 'Verification unavailable', message: e?.message ?? 'Please try again later.' });
     } finally {
       setVerifying(false);
     }
@@ -240,7 +258,7 @@ export default function EditProfile() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Photo access required', 'Allow photo library access to add profile photos.');
+        showAlertModal({ title: 'Photo access required', message: 'Allow photo library access to add profile photos.' });
         return;
       }
 
@@ -262,7 +280,7 @@ export default function EditProfile() {
       setPhotos((prev) => [...prev, ...result.assets].slice(0, MAX_PHOTOS));
       setPhotoError(null);
     } catch {
-      Alert.alert('Unable to open gallery', 'Please try selecting your photos again.');
+      showAlertModal({ title: 'Unable to open gallery', message: 'Please try selecting your photos again.' });
     }
   };
 
@@ -666,6 +684,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === 'ios' ? 50 : 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mapContainer: {
     marginBottom: 24,

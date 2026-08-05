@@ -4,9 +4,9 @@
 // Editing an existing listing: clear the loaded copy — otherwise the next new post would
 // still carry `editingId` and overwrite the edited listing — and return where we came from.
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
 import { router } from 'expo-router';
 
+import { showConfirmModal } from '@/components/ui/confirmModalHost';
 import { useListingDraft } from '@/context/ListingDraftContext';
 
 export function usePostFlowExit() {
@@ -21,15 +21,15 @@ export function usePostFlowExit() {
     router.dismissTo('/(tabs)/post');
   }, [editingId, returnTo, resetDraft]);
 
+  // Same shape as the Edit Profile discard prompt: safe option is the primary CTA.
   const confirmExit = useCallback(() => {
-    Alert.alert(
-      'Exit without saving?',
-      'Are you sure you want to exit? Your changes may not be saved.',
-      [
-        { text: 'Stay' },
-        { text: 'Exit without saving', style: 'destructive', onPress: exit },
-      ]
-    );
+    showConfirmModal({
+      title: 'Exit without saving?',
+      message: 'Are you sure you want to exit? Your changes may not be saved.',
+      primaryText: 'Stay',
+      secondaryText: 'Exit without saving',
+      onSecondary: exit,
+    });
   }, [exit]);
 
   return { exit, confirmExit };

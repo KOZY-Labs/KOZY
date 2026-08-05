@@ -1,4 +1,4 @@
-import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Keyboard, Alert, ActivityIndicator, Image, Pressable } from "react-native";
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Keyboard, ActivityIndicator, Image, Pressable } from "react-native";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,6 +10,7 @@ import AppButton from "@/components/ui/appButton";
 import { colors } from "@/constants/colors";
 import AppDrawer from "@/components/ui/drawer/AppDrawer";
 import ProfileSection from "@/components/ui/profileSection";
+import { showAlertModal, showConfirmModal } from "@/components/ui/confirmModalHost";
 import { useAuth } from "@/context/AuthContext";
 import { useChatThread } from "@/hooks/use-chats";
 import { chatViewModel, sendMessage, acceptChat } from "@/lib/db/chats";
@@ -40,7 +41,7 @@ export default function ChatScreen() {
         try {
             await sendMessage(threadId, { senderId: uid, text });
         } catch (e) {
-            Alert.alert('Send failed', e?.message ?? 'Please try again.');
+            showAlertModal({ title: 'Send failed', message: e?.message ?? 'Please try again.' });
         }
     };
 
@@ -48,7 +49,7 @@ export default function ChatScreen() {
         try {
             await acceptChat(threadId, uid);
         } catch (e) {
-            Alert.alert('Accept failed', e?.message ?? 'Please try again.');
+            showAlertModal({ title: 'Accept failed', message: e?.message ?? 'Please try again.' });
         }
     };
 
@@ -174,15 +175,15 @@ export default function ChatScreen() {
                     size="sm"
                     type="secondary"
                     onPress={() =>
-                        Alert.alert(
-                            'Have you checked user\'s profile?',
-                            'Review their profile, then accept to start chatting.',
-                            [
-                                { text: 'Accept and Start Chat', onPress: handleAcceptRequest },
-                                { text: 'View Profile', onPress: openProfile },
-                                { text: 'Close', style: 'cancel' },
-                            ]
-                        )
+                        showConfirmModal({
+                            title: 'Have you checked user\'s profile?',
+                            message: 'Review their profile, then accept to start chatting.',
+                            primaryText: 'Accept and Start Chat',
+                            secondaryText: 'View Profile',
+                            tertiaryText: 'Close',
+                            onPrimary: handleAcceptRequest,
+                            onSecondary: openProfile,
+                        })
                     }
                     style={styles.acceptButton}
                 />

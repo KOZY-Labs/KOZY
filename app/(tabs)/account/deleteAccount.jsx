@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { Platform, StyleSheet, View, Alert, KeyboardAvoidingView } from 'react-native';
+import { Platform, StyleSheet, View, KeyboardAvoidingView } from 'react-native';
 
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import TextField from '@/components/ui/input/textField';
 import FormField from '@/components/ui/form/formField';
 import DisplayField from '@/components/ui/displayField';
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { deleteAccount } from '@/lib/auth';
 import { authErrorMessage } from '@/lib/auth/errors';
 
@@ -20,33 +21,28 @@ export default function DeleteAccount() {
       setError('Enter your password to confirm.');
       return;
     }
-    Alert.alert(
-      'Delete Account',
-      'This permanently deletes your account, listings, and chats. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setSubmitting(true);
-            setError(null);
-            try {
-              await deleteAccount(password);
-              Alert.alert('Account deleted', 'Your account and data have been removed.');
-              // Clear this tab's stack first so the account tab can't resurface
-              // the Delete Account screen, then land on the home feed.
-              router.dismissAll();
-              router.replace('/(tabs)/home');
-            } catch (e) {
-              setError(authErrorMessage(e));
-            } finally {
-              setSubmitting(false);
-            }
-          },
-        },
-      ]
-    );
+    showConfirmModal({
+      title: 'Delete Account',
+      message: 'This permanently deletes your account, listings, and chats. This cannot be undone.',
+      primaryText: 'Delete',
+      secondaryText: 'Cancel',
+      onPrimary: async () => {
+        setSubmitting(true);
+        setError(null);
+        try {
+          await deleteAccount(password);
+          showAlertModal({ title: 'Account deleted', message: 'Your account and data have been removed.' });
+          // Clear this tab's stack first so the account tab can't resurface
+          // the Delete Account screen, then land on the home feed.
+          router.dismissAll();
+          router.replace('/(tabs)/home');
+        } catch (e) {
+          setError(authErrorMessage(e));
+        } finally {
+          setSubmitting(false);
+        }
+      },
+    });
   };
 
   return (

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ import { useListingActions } from '@/hooks/use-listing-actions';
 import { ownerFromProfile } from '@/lib/listingDraft';
 import { showAuthGate } from '@/lib/authGate';
 import { getMissingProfileFields, showProfileGate } from '@/lib/profileCompleteness';
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -45,7 +46,7 @@ export default function SavedListDetail() {
       return;
     }
     if (uid === item?.ownerId) {
-      Alert.alert('This is your listing', 'You can’t send a chat request to yourself.');
+      showAlertModal({ title: 'This is your listing', message: 'You can’t send a chat request to yourself.' });
       return;
     }
     // Chatting requires a complete profile (everything except About Me).
@@ -62,16 +63,15 @@ export default function SavedListDetail() {
         requesterInfo: ownerFromProfile(profile),
         firstMessage: `Hi, I'm interested in your listing at ${item.street}, ${item.city}. Is it still available?`,
       });
-      Alert.alert(
-        'Chat Request Sent',
-        `Your request has been sent to the room provider. You’ll be notified once it’s accepted.`,
-        [
-          { text: 'Open Chat', onPress: () => router.push(`/(tabs)/chat/${chatId}`) },
-          { text: 'Close', style: 'cancel' },
-        ]
-      );
+      showConfirmModal({
+        title: 'Chat Request Sent',
+        message: 'Your request has been sent to the room provider. You’ll be notified once it’s accepted.',
+        primaryText: 'Open Chat',
+        secondaryText: 'Close',
+        onPrimary: () => router.push(`/(tabs)/chat/${chatId}`),
+      });
     } catch (e) {
-      Alert.alert('Request failed', e?.message ?? 'Please try again.');
+      showAlertModal({ title: 'Request failed', message: e?.message ?? 'Please try again.' });
     } finally {
       setRequesting(false);
     }

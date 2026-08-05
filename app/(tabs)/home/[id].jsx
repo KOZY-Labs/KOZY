@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import ListingDetailHeaderActions from '@/components/ui/listingDetailHeaderActio
 import ListingLocationMap from '@/components/ui/listingLocationMap';
 import { useAuth } from '@/context/AuthContext';
 import { getMissingProfileFields, showProfileGate } from '@/lib/profileCompleteness';
+import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { requestChat } from '@/lib/db/chats';
 import { useExistingChat } from '@/hooks/use-chats';
 import { useListingActions } from '@/hooks/use-listing-actions';
@@ -45,7 +46,7 @@ export default function DetailScreen() {
       return;
     }
     if (uid === item?.ownerId) {
-      Alert.alert('This is your listing', 'You can’t send a chat request to yourself.');
+      showAlertModal({ title: 'This is your listing', message: 'You can’t send a chat request to yourself.' });
       return;
     }
     // Chatting requires a complete profile (everything except About Me).
@@ -64,7 +65,7 @@ export default function DetailScreen() {
       });
       router.push(`/(tabs)/chat/${chatId}`);
     } catch (e) {
-      Alert.alert('Request failed', e?.message ?? 'Please try again.');
+      showAlertModal({ title: 'Request failed', message: e?.message ?? 'Please try again.' });
     } finally {
       setRequesting(false);
     }

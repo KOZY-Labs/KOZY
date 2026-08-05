@@ -6,7 +6,6 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   AppState,
   ActivityIndicator,
 } from 'react-native';
@@ -22,6 +21,7 @@ import AppLogo from "@/components/ui/appMainLogo";
 import { colors } from "@/constants/colors";
 import { resendVerificationEmail, reloadUser, isEmailVerified } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
+import { showAlertModal } from "@/components/ui/confirmModalHost";
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000; // stop auto-polling after 5 minutes
@@ -65,10 +65,10 @@ export default function Verify() {
       }
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         clearInterval(id);
-        Alert.alert(
-          "Still not verified",
-          "Please open the verification link in your email, or resend it."
-        );
+        showAlertModal({
+          title: "Still not verified",
+          message: "Please open the verification link in your email, or resend it.",
+        });
       }
     }, POLL_INTERVAL_MS);
 
@@ -89,13 +89,14 @@ export default function Verify() {
   const handleResend = async () => {
     try {
       await resendVerificationEmail();
-      Alert.alert(
-        "Email sent",
-        "A new verification link has been sent to your email. If you don't see it, check your spam folder."
-      );
+      showAlertModal({
+        title: "Email sent",
+        message:
+          "A new verification link has been sent to your email. If you don't see it, check your spam folder.",
+      });
     } catch (e) {
       // Show the real reason (e.g. too-many-requests) instead of a generic message.
-      Alert.alert("Couldn't resend", authErrorMessage(e));
+      showAlertModal({ title: "Couldn't resend", message: authErrorMessage(e) });
     }
   };
 

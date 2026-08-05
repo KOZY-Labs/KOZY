@@ -1,10 +1,11 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, View, Image, Alert, ScrollView } from 'react-native';
+import { Pressable, StyleSheet, View, Image, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from "@expo/vector-icons";
 
 import AppText from '@/components/ui/appText';
 import EmptyListingsState from "@/components/ui/emptyListingsState";
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/lib/auth";
 
@@ -17,20 +18,19 @@ export default function AccountScreen() {
   const currUser = profile;
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-          } catch (e) {
-            Alert.alert('Log out failed', e?.message ?? 'Please try again.');
-          }
-        },
+    showConfirmModal({
+      title: 'Log Out',
+      message: 'Are you sure you want to log out?',
+      primaryText: 'Log Out',
+      secondaryText: 'Cancel',
+      onPrimary: async () => {
+        try {
+          await logout();
+        } catch (e) {
+          showAlertModal({ title: 'Log out failed', message: e?.message ?? 'Please try again.' });
+        }
       },
-    ]);
+    });
   };
 
   if( !isLoggedIn ) {

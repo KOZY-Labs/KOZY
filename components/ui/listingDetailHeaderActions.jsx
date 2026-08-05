@@ -1,14 +1,17 @@
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 
 import AppIconButton from '@/components/ui/appIconButton';
+import { showConfirmModal } from '@/components/ui/confirmModalHost';
 
 export default function ListingDetailHeaderActions({ isSaved, onToggleSave, onShare, onReport }) {
   const handleMorePress = () => {
-    Alert.alert('More options', undefined, [
-      { text: 'Report Listing', style: 'destructive', onPress: () => onReport?.() },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    showConfirmModal({
+      title: 'More options',
+      primaryText: 'Report Listing',
+      secondaryText: 'Cancel',
+      onPrimary: () => onReport?.(),
+    });
   };
 
   return (

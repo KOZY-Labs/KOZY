@@ -1,4 +1,4 @@
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import EmptyListingsState from '@/components/ui/emptyListingsState';
 import ResultVideoCard from '@/components/ui/resultVideoCard';
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
 
 const SAVED_LISTINGS_KEY = 'savedListings';
@@ -39,30 +40,22 @@ export default function SavedList() {
   };
 
   const handleRequestDelete = (listing) => {
-    Alert.alert(
-      'Delete Saved Listing',
-      `Remove ${listing.title ?? 'this listing'} from your saved listings?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const nextListings = listings.filter((item) => item.id !== listing.id);
+    showConfirmModal({
+      title: 'Delete Saved Listing',
+      message: `Remove ${listing.title ?? 'this listing'} from your saved listings?`,
+      primaryText: 'Delete',
+      secondaryText: 'Cancel',
+      onPrimary: async () => {
+        const nextListings = listings.filter((item) => item.id !== listing.id);
 
-            try {
-              await AsyncStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(nextListings));
-              setListings(nextListings);
-            } catch (_error) {
-              Alert.alert('Delete Failed', 'Unable to delete saved listing. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+        try {
+          await AsyncStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(nextListings));
+          setListings(nextListings);
+        } catch (_error) {
+          showAlertModal({ title: 'Delete Failed', message: 'Unable to delete saved listing. Please try again.' });
+        }
+      },
+    });
   };
 
   if (!listings || listings.length === 0) {

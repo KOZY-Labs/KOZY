@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { useListing } from '@/hooks/use-listings';
 
@@ -22,9 +23,11 @@ export default function EditListing() {
     handled.current = true;
 
     if (!listing) {
-      Alert.alert('Listing unavailable', 'We could not load this listing. Please try again.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showAlertModal({
+        title: 'Listing unavailable',
+        message: 'We could not load this listing. Please try again.',
+        onPress: () => router.back(),
+      });
       return;
     }
 

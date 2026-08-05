@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,40 +12,44 @@ import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/AuthContext';
 import { useMyListings } from '@/hooks/use-listings';
 import { deleteListing } from '@/lib/db/listings';
+import { getMissingProfileFields, showProfileGate } from '@/lib/profileCompleteness';
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 
 export default function MyListings() {
   const insets = useSafeAreaInsets();
-  const { uid } = useAuth();
+  const { uid, profile } = useAuth();
   const { data: listings, loading, reload } = useMyListings(uid);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Same gate as the Post tab — this empty state is another entry into the post flow.
+  const startNewPost = () => {
+    const missing = getMissingProfileFields(profile);
+    if (missing.length) {
+      showProfileGate({ missing, backTo: '/(tabs)/account/myListings' });
+      return;
+    }
+    router.push('/(tabs)/post/stepOne');
+  };
 
   const toggleEdit = () => {
     setIsEditMode((prev) => !prev);
   };
 
   const handleRequestDelete = (listing) => {
-    Alert.alert(
-      'Delete Listing',
-      `Are you sure you want to delete ${listing.title ?? 'this listing'}?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteListing(listing.id);
-              reload();
-            } catch (e) {
-              Alert.alert('Delete failed', e?.message ?? 'Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    showConfirmModal({
+      title: 'Delete Listing',
+      message: `Are you sure you want to delete ${listing.title ?? 'this listing'}?`,
+      primaryText: 'Delete',
+      secondaryText: 'Cancel',
+      onPrimary: async () => {
+        try {
+          await deleteListing(listing.id);
+          reload();
+        } catch (e) {
+          showAlertModal({ title: 'Delete failed', message: e?.message ?? 'Please try again.' });
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -63,7 +67,7 @@ export default function MyListings() {
           heading="Have a room to share?"
           description="List it and connect with verified seekers."
           actionText="Share a room"
-          onAction={() => router.push('/(tabs)/post/stepOne')}
+          onAction={startNewPost}
           imageSource = {require('@/assets/images/3d-house.png')}
         />
       </View>
