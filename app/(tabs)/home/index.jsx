@@ -97,12 +97,16 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* 🔝 Top Bar */}
       <View style={[styles.topBar, { top: insets.top + 12 }]}>
-        <AppIconButton
-          icon={<Feather name="search" />}
-          type="ghost"
-          size="lg"
-          onPress={() => router.push('/home/search')}
-        />
+        {/* Dark scrim behind the ghost button so the icon reads on any video frame */}
+        <View style={styles.searchScrim}>
+          <AppIconButton
+            icon={<Feather name="search" />}
+            type="ghost"
+            size="lg"
+            onPress={() => router.push('/home/search')}
+            accessibilityLabel="Search listings"
+          />
+        </View>
       </View>
       {loading ? (
         <View style={styles.center}>
@@ -207,6 +211,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     zIndex: 10,
+  },
+  searchScrim: {
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   center: {
     flex: 1,

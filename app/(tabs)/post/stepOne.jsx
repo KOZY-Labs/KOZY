@@ -11,6 +11,7 @@ import FormField from '@/components/ui/form/formField';
 import InputRow from '@/components/ui/layout/inputRow';
 import { colors } from '@/constants/colors';
 import TextField from '@/components/ui/input/textField';
+import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import Dropdown from '@/components/ui/input/dropdown';
@@ -41,6 +42,9 @@ const KEYDETAIL_OPTIONS = [
     { label: 'Pet friendly', value: 'pet-friendly' },
     { label: 'Parking', value: 'parking' },
     { label: 'Shared Bathroom', value: 'shared-bathroom' },
+    { label: 'Gym', value: 'gym' },
+    { label: 'Swimming Pool', value: 'swimming-pool' },
+    { label: 'Sauna', value: 'sauna' },
 ];
 
 const LOOKINGFOR_OPTIONS = [
@@ -143,6 +147,7 @@ export default function StepOne() {
     const [furnishedType, setFurnishedType] = useState(draft.furnishedType || '');
     const [keyDetail, setKeyDetail] = useState(draft.keyDetail ?? []);
     const [lookingFor, setLookingFor] = useState(draft.lookingFor ?? []);
+    const [description, setDescription] = useState(draft.description ?? '');
     const [availableMonth, setAvailableMonth] = useState(draft.availableMonth ?? null);
     const [availableDay, setAvailableDay] = useState(draft.availableDay ?? null);
     const [availableYear, setAvailableYear] = useState(draft.availableYear ?? null);
@@ -338,6 +343,7 @@ export default function StepOne() {
             furnishedType,
             keyDetail,
             lookingFor,
+            description,
             availableMonth,
             availableDay,
             availableYear,
@@ -574,6 +580,14 @@ export default function StepOne() {
                                 max={3}
                                 placeholder="+"
                                 onPress={() => lookingForDrawerRef.current?.snapToIndex(0)}
+                            />
+                        </FormField>
+                        <FormField label="Description (Optional)">
+                            <TextArea
+                                value={description}
+                                placeholder="Anything else roommates should know — vibe, house rules, neighborhood…"
+                                maxLength={750}
+                                onChangeText={setDescription}
                             />
                         </FormField>
                         <View style={styles.buttonContainer}>

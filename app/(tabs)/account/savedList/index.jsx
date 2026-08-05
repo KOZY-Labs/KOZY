@@ -71,7 +71,7 @@ export default function SavedList() {
         <EmptyListingsState
           heading="Nothing saved yet"
           description="Start exploring and save places you like."
-          actionText="Browse listings"
+          actionText="Explore more"
           onAction={() => router.push('/(tabs)/home')}
         />
       </View>

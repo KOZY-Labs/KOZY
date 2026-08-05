@@ -12,6 +12,9 @@ export default function ProfileSection({ listing }) {
     return null;
   }
 
+  // Prefer the exact age (from dob); older cached owners may only carry ageGroup.
+  const ageLabel = owner.age ?? owner.ageGroup;
+
   return (
     <View style={styles.profileSection}>
       <Image
@@ -21,7 +24,7 @@ export default function ProfileSection({ listing }) {
       />
       <View style={styles.ownerName}>
         <AppText variant="headline-md">
-          {owner.name} {owner.ageGroup ? `, ${owner.ageGroup}` : ''}
+          {owner.name}{ageLabel ? `, ${ageLabel}` : ''}
         </AppText>
       </View>
 

@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet, View, Dimensions, FlatList, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { Platform, StyleSheet, View, Dimensions, FlatList, Alert, Pressable } from 'react-native';
+import { router, useNavigation } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { startPersonaVerification } from '@/services/personaVerification';
@@ -18,7 +18,8 @@ import Dropdown from '@/components/ui/input/dropdown';
 import TextField from '@/components/ui/input/textField';
 import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
-import MediaInput from '@/components/ui/input/mediaInput';
+import ConfirmModal from '@/components/ui/confirmModal';
+import ErrorMessage from '@/components/ui/form/errorMessage';
 import validateImage from '@/utils/mediaValidation';
 import { useAuth } from '@/context/AuthContext';
 import { updateUserDoc } from '@/lib/db/users';
@@ -31,11 +32,12 @@ import { authErrorMessage } from '@/lib/auth/errors';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ITEM_WIDTH = SCREEN_WIDTH * 0.8;
 const ITEM_SPACING = 12;
+const MAX_PHOTOS = 3;
 
 
 export default function EditProfile() {
     const { profile, uid, refreshProfile } = useAuth();
-    const existingAvatar = profile?.avatar ?? [];
+    const existingAvatar = useMemo(() => profile?.avatar ?? [], [profile?.avatar]);
     const nicknameDrawerRef = useRef(null);
     const genderDrawerRef = useRef(null);
     const personalityDrawerRef = useRef(null);
@@ -46,7 +48,6 @@ export default function EditProfile() {
     const verificationConfirmDrawerRef = useRef(null);
     const emailEditDrawerRef = useRef(null);
     const emailCheckDrawerRef = useRef(null);
-    const photoDrawerRef = useRef(null);
     const [nickname, setNickname] = useState(profile?.nickname ?? profile?.firstName ?? '');
     const [personality, setPersonality] = useState(profile?.personality ?? []);
     const [lifestylePreferences, setLifestylePreferences] = useState(profile?.lifestyle ?? []);
@@ -61,11 +62,58 @@ export default function EditProfile() {
     const [emailPassword, setEmailPassword] = useState('');
     const [emailError, setEmailError] = useState(null);
     const [changingEmail, setChangingEmail] = useState(false);
-    const [photos, setPhotos] = useState([]);
+    // Unified photo list: existing avatar URLs carry `remoteUrl`; new picks are local assets.
+    const [photos, setPhotos] = useState(() =>
+      existingAvatar.map((url) => ({ uri: url, remoteUrl: url }))
+    );
     const [photoError, setPhotoError] = useState(null);
     const [saving, setSaving] = useState(false);
 
     // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
+
+    // ----- Unsaved-changes guard -----
+    const navigation = useNavigation();
+    const [discardVisible, setDiscardVisible] = useState(false);
+    const pendingNavRef = useRef(null); // navigation action blocked by the guard
+    const allowLeaveRef = useRef(false); // set after save/discard so leaving isn't re-blocked
+
+    const isDirty = useMemo(() => {
+      const photosChanged =
+        photos.length !== existingAvatar.length ||
+        photos.some((p, i) => p.remoteUrl !== existingAvatar[i]);
+      return (
+        nickname !== (profile?.nickname ?? profile?.firstName ?? '') ||
+        (gender || null) !== (profile?.gender || null) ||
+        (job || null) !== (profile?.occupation || null) ||
+        JSON.stringify(personality) !== JSON.stringify(profile?.personality ?? []) ||
+        JSON.stringify(lifestylePreferences) !== JSON.stringify(profile?.lifestyle ?? []) ||
+        aboutMe !== (profile?.aboutMe ?? '') ||
+        photosChanged
+      );
+    }, [nickname, gender, job, personality, lifestylePreferences, aboutMe, photos, profile, existingAvatar]);
+
+    const isDirtyRef = useRef(false);
+    isDirtyRef.current = isDirty;
+
+    // Intercept every way of leaving (header back, swipe gesture, hardware back)
+    // and show the discard modal while there are unsaved changes.
+    useEffect(() => {
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        if (allowLeaveRef.current || !isDirtyRef.current) return;
+        e.preventDefault();
+        pendingNavRef.current = e.data.action;
+        setDiscardVisible(true);
+      });
+      return unsubscribe;
+    }, [navigation]);
+
+    const discardChanges = () => {
+      setDiscardVisible(false);
+      allowLeaveRef.current = true;
+      const action = pendingNavRef.current;
+      pendingNavRef.current = null;
+      if (action) navigation.dispatch(action);
+    };
 
   const clearFieldError = (field) => {
     setErrors((current) => (current[field] ? { ...current, [field]: null } : current));
@@ -93,11 +141,10 @@ export default function EditProfile() {
     if (!validate()) return;
     setSaving(true);
     try {
-      // Upload any newly picked profile photos to Storage; otherwise keep existing avatar.
-      const newAvatarUrls = photos.length
-        ? await Promise.all(photos.map((p) => uploadUserAvatar(uid, p)))
-        : [];
-      const avatar = newAvatarUrls.length ? newAvatarUrls : existingAvatar;
+      // Upload newly picked photos; photos already in Storage keep their URL.
+      const avatar = await Promise.all(
+        photos.map((p) => (p.remoteUrl ? p.remoteUrl : uploadUserAvatar(uid, p)))
+      );
 
       await updateUserDoc(uid, {
         nickname: nickname.trim() || (profile?.firstName ?? ''),
@@ -112,7 +159,13 @@ export default function EditProfile() {
       await syncProfileCaches(uid);
       await refreshProfile();
       Alert.alert('Profile updated', 'Your changes have been saved.', [
-        { text: 'OK', onPress: () => router.back() },
+        {
+          text: 'OK',
+          onPress: () => {
+            allowLeaveRef.current = true; // saved — don't re-prompt about unsaved changes
+            router.back();
+          },
+        },
       ]);
     } catch (e) {
       Alert.alert('Update failed', e?.message ?? 'Please try again.');
@@ -179,8 +232,8 @@ export default function EditProfile() {
   };
 
   const addPhoto = async () => {
-    if (photos.length >= 2) {
-      setPhotoError('You can upload up to 2 profile photos.');
+    if (photos.length >= MAX_PHOTOS) {
+      setPhotoError(`You can upload up to ${MAX_PHOTOS} profile photos.`);
       return;
     }
 
@@ -194,7 +247,7 @@ export default function EditProfile() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: true,
-        selectionLimit: 2 - photos.length,
+        selectionLimit: MAX_PHOTOS - photos.length,
         quality: 1,
       });
 
@@ -206,11 +259,16 @@ export default function EditProfile() {
         return;
       }
 
-      setPhotos((prev) => [...prev, ...result.assets].slice(0, 2));
+      setPhotos((prev) => [...prev, ...result.assets].slice(0, MAX_PHOTOS));
       setPhotoError(null);
     } catch {
       Alert.alert('Unable to open gallery', 'Please try selecting your photos again.');
     }
+  };
+
+  const removePhoto = (index) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPhotoError(null);
   };
 
 
@@ -223,48 +281,60 @@ export default function EditProfile() {
         renderItem={() => (
           <View style={styles.container}>
             <View style={styles.sliderContainer}>
-              {/* Image carousel */}
+              {/* Image carousel — scroll to the end and tap + to add (max 3 photos) */}
               <FlatList
-                data={photos.length ? photos.map((p) => p.uri) : existingAvatar}
+                data={[
+                  ...photos.map((p, index) => ({ key: `${p.uri}-${index}`, type: 'photo', uri: p.uri, index })),
+                  ...(photos.length < MAX_PHOTOS ? [{ key: 'add', type: 'add' }] : []),
+                ]}
                 horizontal
-                pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 snapToInterval={ITEM_WIDTH + ITEM_SPACING}
                 decelerationRate="fast"
-                keyExtractor={(uri, index) => `${uri}-${index}`}
+                keyExtractor={(entry) => entry.key}
                 contentContainerStyle={{
                   paddingVertical: 20,
                 }}
-                ListEmptyComponent={(
-                  <View style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}>
-                    <View style={[styles.image, styles.placeholderImage, { backgroundColor: colors.semantic.bg.grey }]} >
-                      <Feather name="image" size={32} color={colors.semantic.text.primary} />
-                    </View>
-                  </View>
-                )}
-                renderItem={({ item: image, index }) => {
-                  const total = photos.length ? photos.length : existingAvatar.length;
-                  const isLastItem = index === total - 1;
+                renderItem={({ item: entry }) => {
+                  if (entry.type === 'add') {
+                    return (
+                      <Pressable
+                        style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}
+                        onPress={addPhoto}
+                        accessibilityRole="button"
+                        accessibilityLabel="Add a profile photo"
+                      >
+                        <View style={[styles.image, styles.addTile]}>
+                          <Feather name="plus" size={40} color={colors.semantic.text.primary} />
+                          <AppText variant="body-xsm" style={{ color: colors.base.gray600 }}>
+                            {photos.length + 1}/{MAX_PHOTOS} photos
+                          </AppText>
+                        </View>
+                      </Pressable>
+                    );
+                  }
 
                   return (
                     <View style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}>
                       <Image
-                        source={{ uri: image }}
-                        style={[styles.image, isLastItem && { marginRight: 0 }]}
+                        source={{ uri: entry.uri }}
+                        style={styles.image}
                         contentFit="cover"
                       />
+                      <Pressable
+                        style={styles.removePhotoButton}
+                        onPress={() => removePhoto(entry.index)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove this photo"
+                        hitSlop={8}
+                      >
+                        <Feather name="x" size={16} color={colors.base.white} />
+                      </Pressable>
                     </View>
                   );
                 }}
               />
-              <View style={styles.uploadButtonContainer}>
-                <AppButton 
-                  text="Upload" 
-                  onPress={() => photoDrawerRef.current?.snapToIndex(0)} 
-                  type="primary" 
-                  size='sm'
-                />
-              </View>
+              {photoError ? <ErrorMessage message={photoError} /> : null}
             </View>
             {/* Help Text */}
             <DisplayField title="My Profile" style={{ marginBottom: 16 }}>
@@ -576,25 +646,17 @@ export default function EditProfile() {
             }}
           >
       </AppDrawer>
-      <AppDrawer
-            ref={photoDrawerRef}
-            title="Upload Profile Pictures"
-            align="center"
-            description="Upload 2 clear face photos to build trust and increase your match chances."
-            primaryActionText="Save"
-            primaryDisabled={photos.length === 0}
-            primaryAction={() => {
-              photoDrawerRef.current?.close();
-            }}
-          >
-          <FormField label="" error={photoError}>
-            <MediaInput 
-              error={!!photoError}
-              onPress={addPhoto}
-              photos={photos.map(p => p.uri)}
-            />
-          </FormField>
-      </AppDrawer>
+      {/* Unsaved-changes confirmation (shown when leaving with edits pending) */}
+      <ConfirmModal
+        visible={discardVisible}
+        title="Discard changes?"
+        message="You have unsaved changes. If you leave now, your edits will be lost."
+        primaryText="Keep Editing"
+        secondaryText="Discard"
+        onPrimary={() => setDiscardVisible(false)}
+        onSecondary={discardChanges}
+        onRequestClose={() => setDiscardVisible(false)}
+      />
     </View>
   );
 }
@@ -657,17 +719,29 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 4,
   },
-  placeholderImage:{
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   sliderContainer: {
     position: 'relative',
   },
-  uploadButtonContainer:{
+  addTile: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.semantic.input.border.normal.color,
+    backgroundColor: colors.semantic.bg.greyAlpha,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  removePhotoButton: {
     position: 'absolute',
-    bottom: 28,
-    right: 12,
-  }
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

@@ -1,9 +1,8 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { useListing } from '@/hooks/use-listings';
 import DisplayField from '@/components/ui/displayField';
@@ -11,6 +10,7 @@ import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import ProfileSection from '@/components/ui/profileSection';
 import ListingDetailHeaderActions from '@/components/ui/listingDetailHeaderActions';
+import ListingLocationMap from '@/components/ui/listingLocationMap';
 import { useListingActions } from '@/hooks/use-listing-actions';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -24,17 +24,6 @@ export default function MyPostDetail() {
   const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, {
     reportBackTo: '/(tabs)/account/myListings',
   });
-
-  const defaultRegion = useMemo(() => {
-    const initialLatitude = Number(item?.latitude);
-    const initialLongitude = Number(item?.longitude);
-    return {
-      latitude: Number.isFinite(initialLatitude) ? initialLatitude : 49.2827,
-      longitude: Number.isFinite(initialLongitude) ? initialLongitude : -123.1207,
-      latitudeDelta: 0.08,
-      longitudeDelta: 0.08,
-    };
-  }, [item]);
 
   // Pick up edits made in the post flow. The initial fetch already runs on mount, so
   // only refetch on later focuses (i.e. coming back from /post/edit/[id]).
@@ -135,28 +124,8 @@ export default function MyPostDetail() {
         <DisplayField title="Location">
           {`${item.street}, ${item.city}, ${item.province}`}
         </DisplayField>
-        <View style={styles.mapContainer}>
-          {/* Static location preview — not pannable/zoomable */}
-          <MapView
-            provider={PROVIDER_GOOGLE}
-            style={StyleSheet.absoluteFill}
-            region={defaultRegion}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            rotateEnabled={false}
-            pitchEnabled={false}
-            pointerEvents="none"
-          >
-            <Marker
-              key={item.id}
-              coordinate={{
-                latitude: Number(item.latitude),
-                longitude: Number(item.longitude),
-              }}
-            >
-            </Marker>
-          </MapView>
-        </View>
+        {/* Tap opens a full-screen map with just this listing's pin */}
+        <ListingLocationMap latitude={item.latitude} longitude={item.longitude} />
 
         {/* Owner */}
         <View style={styles.section}>
@@ -171,6 +140,12 @@ export default function MyPostDetail() {
           <DisplayField title="Looking For" type="pill">
             {item.lookingFor}
           </DisplayField>
+
+          {item.description ? (
+            <DisplayField title="Description">
+              {item.description}
+            </DisplayField>
+          ) : null}
           <AppText variant="body-sm-strong">Move-in Details</AppText>
           <AppText variant='body-sm' style={{lineHeight: 14}}>• {item.availableFrom}</AppText>
           <AppText variant='body-sm' style={{lineHeight: 14}}>• Rent: ${item.price} / {item.leaseType === "Month-to-Month" ? "Month" : "Fixed Term"}</AppText>

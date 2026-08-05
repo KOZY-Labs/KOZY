@@ -1,7 +1,6 @@
 import { View, Text, StyleSheet, Platform, FlatList, Image, Dimensions, ScrollView, Alert } from 'react-native';
 import { router  } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { useAuth } from '@/context/AuthContext';
@@ -12,6 +11,7 @@ import DisplayField from '@/components/ui/displayField';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import ProfileSection from '@/components/ui/profileSection';
+import ListingLocationMap from '@/components/ui/listingLocationMap';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MIN_PHOTOS = 3;
@@ -151,17 +151,6 @@ export default function PreviewListing() {
     }
   };
 
-  const defaultRegion = useMemo(() => {
-  const initialLatitude = Number(item?.latitude);
-  const initialLongitude = Number(item?.longitude);
-    return {
-      latitude: Number.isFinite(initialLatitude) ? initialLatitude : 49.2827,
-      longitude: Number.isFinite(initialLongitude) ? initialLongitude : -123.1207,
-      latitudeDelta: 0.08,
-      longitudeDelta: 0.08,
-    };
-  }, [item]);
-
   if (!item) {
     return (
       <View style={styles.center}>
@@ -218,28 +207,8 @@ export default function PreviewListing() {
           <DisplayField title="Location">
             {`${item.street}, ${item.city}, ${item.province}`}
           </DisplayField>
-          <View style={styles.mapContainer}>
-            {/* Static location preview — not pannable/zoomable */}
-            <MapView
-              provider={PROVIDER_GOOGLE}
-              style={StyleSheet.absoluteFill}
-              region={defaultRegion}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              rotateEnabled={false}
-              pitchEnabled={false}
-              pointerEvents="none"
-            >
-              <Marker
-                key={item.id}
-                coordinate={{
-                  latitude: Number(item.latitude),
-                  longitude: Number(item.longitude),
-                }}
-              >
-              </Marker>
-            </MapView>
-          </View>
+          {/* Tap opens a full-screen map with just this listing's pin */}
+          <ListingLocationMap latitude={item.latitude} longitude={item.longitude} />
 
           {/* Owner */}
           <View style={styles.section}>
@@ -252,6 +221,12 @@ export default function PreviewListing() {
             <DisplayField title="Looking For" type="pill">
               {item.lookingFor}
             </DisplayField>
+
+            {item.description ? (
+              <DisplayField title="Description">
+                {item.description}
+              </DisplayField>
+            ) : null}
             <AppText variant="body-sm-strong">Move-in Details</AppText>
             <AppText variant='body-sm' style={{lineHeight: 14}}>• {item.availableFrom}</AppText>
             <AppText variant='body-sm' style={{lineHeight: 14}}>• Rent: ${item.price} / {item.leaseType === "Month-to-Month" ? "Month" : "Fixed Term"}</AppText>

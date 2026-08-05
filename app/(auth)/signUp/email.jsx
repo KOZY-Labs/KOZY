@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSignup } from "@/context/SignupContext";
 import { router } from "expo-router";
-import { StyleSheet, View, Pressable, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
@@ -14,11 +14,13 @@ import AuthCard from "@/components/ui/authInputCard";
 import { LoginBackground } from "@/components/ui/loginBackground";
 import AppHeader from "@/components/ui/appHeader";
 import AppLogo from "@/components/ui/appMainLogo";
+import { isEmailInUse } from "@/lib/auth";
 
 export default function EmailScreen() {
   const insets = useSafeAreaInsets();
   const { signup, setEmail } = useSignup();
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
 
   const validate = () => {
     if (!signup.email) {
@@ -33,6 +35,28 @@ export default function EmailScreen() {
 
     setError(null);
     return true;
+  };
+
+  // Surface "account already exists" here instead of at the end of the flow.
+  const handleContinue = async () => {
+    if (!validate()) return;
+    setChecking(true);
+    try {
+      if (await isEmailInUse(signup.email.trim())) {
+        setError("An account with this email already exists. Log in instead.");
+        return;
+      }
+    } catch (e) {
+      if (e?.code === "auth/invalid-email") {
+        setError("Enter a valid email address.");
+        return;
+      }
+      // Network or other transient error — don't block signup; the final
+      // create-account step still rejects duplicate emails.
+    } finally {
+      setChecking(false);
+    }
+    router.push("/(auth)/signUp/password");
   };
 
   return (
@@ -77,10 +101,9 @@ export default function EmailScreen() {
             <View style={styles.footerContent}>
               <AppButton
                 text="Continue"
-                onPress={() => {
-                  if (!validate()) return;
-                  router.push("/(auth)/signUp/password");
-                }}
+                loading={checking}
+                loadingLabel="Checking email"
+                onPress={handleContinue}
               />
               <AppText variant="body-sm" color="primary" style={{ textAlign: "center", marginBottom: 8, marginTop: 20 }}>
                 Already have an account?

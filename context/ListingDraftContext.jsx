@@ -27,6 +27,7 @@ const initialDraft = {
   furnishedType: '',
   keyDetail: [],
   lookingFor: [],
+  description: '',
   availableMonth: null,
   availableDay: null,
   availableYear: null,

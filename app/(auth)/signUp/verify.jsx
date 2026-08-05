@@ -21,6 +21,7 @@ import AuthCard from "@/components/ui/authInputCard";
 import AppLogo from "@/components/ui/appMainLogo";
 import { colors } from "@/constants/colors";
 import { resendVerificationEmail, reloadUser, isEmailVerified } from "@/lib/auth";
+import { authErrorMessage } from "@/lib/auth/errors";
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000; // stop auto-polling after 5 minutes
@@ -88,9 +89,13 @@ export default function Verify() {
   const handleResend = async () => {
     try {
       await resendVerificationEmail();
-      Alert.alert("Email sent", "A new verification link has been sent to your email.");
-    } catch {
-      Alert.alert("Couldn't resend", "Please wait a moment and try again.");
+      Alert.alert(
+        "Email sent",
+        "A new verification link has been sent to your email. If you don't see it, check your spam folder."
+      );
+    } catch (e) {
+      // Show the real reason (e.g. too-many-requests) instead of a generic message.
+      Alert.alert("Couldn't resend", authErrorMessage(e));
     }
   };
 
@@ -133,11 +138,6 @@ export default function Verify() {
                 onPress={handleResend}
                 type="bare"
                 underline
-              />
-              <AppButton
-                text="Skip for now"
-                onPress={() => router.replace("/(tabs)/home")}
-                type="bare"
               />
             </View>
           </View>
