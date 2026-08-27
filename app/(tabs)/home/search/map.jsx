@@ -50,8 +50,13 @@ export default function SearchMapScreen() {
     };
   }, [params.centerLat, params.centerLng, params.latDelta, params.lngDelta]);
 
+  // A single listing skips the sheet and opens directly.
   const handleOpenArea = (items) => {
     if (items.length === 0) return;
+    if (items.length === 1) {
+      handleOpenListing(items[0]);
+      return;
+    }
     setAreaListings(items);
     areaSheetRef.current?.snapToIndex(0);
   };

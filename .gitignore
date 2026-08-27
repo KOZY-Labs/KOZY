@@ -50,3 +50,4 @@ expo-env.d.ts
 credentials.json
 credentials/
 build/
+/.vscode

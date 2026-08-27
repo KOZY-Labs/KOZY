@@ -9,7 +9,7 @@ import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHo
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/lib/auth";
 
-const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
+import { avatarSource } from '@/lib/avatar';
 
 
 export default function AccountScreen() {
@@ -56,7 +56,7 @@ export default function AccountScreen() {
         <AppText variant="headline-sm" color="primary">My Page</AppText>
         <View style={styles.content}>
           <View style={styles.userInfo}>
-            {/* Avatar/name opens Edit Profile; shows the public display name (nickname). */}
+            {/* Avatar/name opens Edit Profile; shows the public display name (first name). */}
             <Pressable
               style={styles.name}
               accessibilityRole="button"
@@ -64,11 +64,11 @@ export default function AccountScreen() {
               onPress={() => router.push('/(tabs)/account/editProfile')}
             >
               <Image
-                source={currUser?.avatar?.[0] ? { uri: currUser.avatar[0] } : AVATAR_PLACEHOLDER}
+                source={avatarSource(currUser?.avatar)}
                 style={{ width: 55, height: 55, borderRadius: 999 }}
               />
               <AppText variant="body-md" color="primary">
-                {currUser?.nickname ?? currUser?.firstName ?? currUser?.name}
+                {currUser?.firstName || currUser?.name}
               </AppText>
             </Pressable>
           </View>

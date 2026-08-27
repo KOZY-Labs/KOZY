@@ -33,7 +33,22 @@ export default function ListingsClusterMap({
   const regionRef = useRef(initialRegion);
   const [clusters, setClusters] = useState([]);
 
-  // Cluster index — rebuilt only when the listing set changes (filters, data load).
+  // Identity-stable fingerprints of the result set. Upstream memos hand us a NEW array
+  // for unrelated state changes (every filter keystroke, every realtime chat snapshot).
+  // idKey (set membership) gates the camera refit — the camera stays still unless the
+  // set of listings changed; contentKey additionally tracks the fields the map renders
+  // (coords, price) so in-place edits rebuild the cluster index without moving the camera.
+  const { idKey, contentKey } = useMemo(() => {
+    // One pass + one sort (by id, so a price edit can't reorder and fake a set change).
+    const entries = listings.map((l) => [String(l.id), `${l.latitude}:${l.longitude}:${l.price}`]);
+    entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    return {
+      idKey: entries.map((e) => e[0]).join(','),
+      contentKey: entries.map((e) => `${e[0]}:${e[1]}`).join(','),
+    };
+  }, [listings]);
+
+  // Cluster index — rebuilt when the listing set or its rendered fields change.
   const index = useMemo(() => {
     const points = listings.map((item) => ({
       type: 'Feature',
@@ -44,7 +59,8 @@ export default function ListingsClusterMap({
       },
     }));
     return new Supercluster({ radius: 60, maxZoom: MAX_ZOOM }).load(points);
-  }, [listings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentKey]);
 
   // Held in a ref so an inline `onRegionChange` from the parent doesn't change
   // `recompute`'s identity — that would re-run the refit effect on every render.
@@ -60,18 +76,24 @@ export default function ListingsClusterMap({
     [index]
   );
 
-  // Whenever the listing set changes (data arrives / filters change), refit the camera
-  // to the new results and re-cluster, so the count badges always describe what matches
-  // the current filters. An externally requested center wins over the auto-fit.
+  // Refit the camera only when the SET of listings changes (data arrives / filters
+  // change) — never for in-place edits. An externally requested center wins.
+  // Declared BEFORE the recompute effect: both run in declaration order within a
+  // commit, so regionRef already points at the refitted region when clustering runs.
   useEffect(() => {
     if (listings.length > 0 && !centerRegion) {
       const region = boundingRegion(listings);
       regionRef.current = region;
       mapRef.current?.animateToRegion(region, 300);
     }
-    recompute(regionRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listings, recompute]);
+  }, [idKey]);
+
+  // Re-cluster at the current camera whenever the index was rebuilt (set OR in-place
+  // content change) — price pills and cluster counts always reflect the latest data.
+  useEffect(() => {
+    recompute(regionRef.current);
+  }, [recompute]);
 
   // Animate to an externally requested center (e.g. the user picked an address).
   useEffect(() => {

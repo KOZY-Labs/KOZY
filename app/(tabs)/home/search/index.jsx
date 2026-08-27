@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
-import AppButton from '@/components/ui/appButton';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import AppText from '@/components/ui/appText';
 import DisplayInput from '@/components/ui/input/displayInput';
@@ -19,32 +18,7 @@ import { colors } from '@/constants/colors';
 import { useBrowseListings } from '@/hooks/use-listings';
 import { filterWithCoordinates } from '@/lib/geo/mapRegion';
 import { filterListings } from '@/lib/listingFilters';
-
-const ROOM_TYPE_OPTIONS = [
-  { label: 'Private Room', value: 'Private Room' },
-  { label: 'Shared room', value: 'Shared room' },
-  { label: 'Master bedroom', value: 'Master bedroom' },
-  { label: 'Furnished', value: 'Furnished' },
-  { label: 'Unfurnished', value: 'Unfurnished' },
-  { label: 'Shared bathroom', value: 'Shared bathroom' },
-  { label: 'Ensuite bathroom', value: 'Ensuite bathroom' },
-  { label: 'Kitchen access', value: 'Kitchen access' },
-  { label: 'Laundry in building', value: 'Laundry in building' },
-  { label: 'Laundry in unit', value: 'Laundry in unit' },
-];
-
-const LIFESTYLE_OPTIONS = [
-  { label: 'Early Bird', value: 'Early Bird' },
-  { label: 'Night Owl', value: 'Night Owl' },
-  { label: 'Homebody', value: 'Homebody' },
-  { label: 'Out & About', value: 'Out & About' },
-  { label: 'Clean & Tidy', value: 'Clean & Tidy' },
-  { label: 'Easygoing', value: 'Easygoing' },
-  { label: 'Smoker', value: 'Smoker' },
-  { label: 'Non-Smoker', value: 'Non-Smoker' },
-  { label: 'Work from Home', value: 'Work from Home' },
-  { label: 'Go to Office', value: 'Go to Office' },
-];
+import { SEARCH_ROOM_TYPE_OPTIONS, SEARCH_LIFESTYLE_OPTIONS, GENDER_OPTIONS } from '@/constants/data';
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -97,14 +71,15 @@ export default function SearchScreen() {
     lifestyleMatches: JSON.stringify(lifestyleMatches),
   });
 
-  const handleOpenResults = () => {
-    router.push({ pathname: '/home/search/searchResult', params: filterParams() });
-  };
-
   // Marker taps preview the area's listings in a sheet; opening a listing from there
-  // keeps the existing reel navigation (from:'search' → back returns to this screen).
+  // pushes the reel — back pops the stack and returns here with state intact.
+  // A single listing skips the sheet and opens directly.
   const handleOpenArea = (items) => {
     if (items.length === 0) return;
+    if (items.length === 1) {
+      handleOpenListing(items[0]);
+      return;
+    }
     setAreaListings(items);
     areaSheetRef.current?.snapToIndex(0);
   };
@@ -113,7 +88,7 @@ export default function SearchScreen() {
     areaSheetRef.current?.close();
     router.push({
       pathname: '/home/search/[id]',
-      params: { id: listing.id, from: 'search', ...filterParams() },
+      params: { id: listing.id },
     });
   };
 
@@ -284,7 +259,6 @@ export default function SearchScreen() {
                 isMulti
               />
             </FormField>
-            {/* <AppButton text="Search" onPress={handleOpenResults} style={styles.searchButton} /> */}
           </View>
             </>
           )}
@@ -298,12 +272,7 @@ export default function SearchScreen() {
           <Dropdown
             value={gender}
             onChange={setGender}
-            options={[
-              { label: "Open to any", value: "" },
-              { label: "Female", value: "Female" },
-              { label: "Male", value: "Male" },
-              { label: "Non-binary", value: "Non-binary" },
-            ]}
+            options={[{ label: 'Open to any', value: '' }, ...GENDER_OPTIONS]}
           />
         </AppDrawer>
 
@@ -315,7 +284,7 @@ export default function SearchScreen() {
           primaryActionText="Save"
         >
           <PillGroup 
-            items={ROOM_TYPE_OPTIONS} 
+            items={SEARCH_ROOM_TYPE_OPTIONS}
             value={roomTypes} 
             onChange={setRoomTypes} 
           />
@@ -329,7 +298,7 @@ export default function SearchScreen() {
           description={'Find homes that match your lifestyle\nSelect all that apply'}
         >
           <PillGroup
-            items={LIFESTYLE_OPTIONS}
+            items={SEARCH_LIFESTYLE_OPTIONS}
             value={lifestyleMatches}
             onChange={setLifestyleMatches}
           />
@@ -472,9 +441,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingTop: 12,
     backgroundColor: colors.base.background,
-  },
-  searchButton: {
-    marginTop: 12,
   },
   genderDrawer: {
     gap: 20,

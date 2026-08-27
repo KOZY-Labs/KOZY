@@ -1,20 +1,15 @@
 // Global auth state for KOZY. Wraps Firebase Auth + the users/{uid} profile doc.
 // Replaces the hardcoded isLoggedIn / isLogedIn booleans across screens.
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { subscribeToAuth } from '@/lib/auth';
-import { getUserDoc } from '@/lib/db/users';
+import { getUserDoc, subscribeToUserDoc } from '@/lib/db/users';
 
 const AuthContext = createContext(null);
-
-const PROFILE_RETRY_LIMIT = 3;
-const PROFILE_RETRY_DELAY_MS = 1500;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // Firebase Auth user (or null)
   const [profile, setProfile] = useState(null); // users/{uid} doc (or null)
   const [initializing, setInitializing] = useState(true); // true until first auth callback
-  const profileRetriesRef = useRef(0);
-  const [profileRetryTick, setProfileRetryTick] = useState(0); // re-arms the retry effect after a failed attempt
 
   useEffect(() => {
     const unsubscribe = subscribeToAuth(({ user: nextUser, profile: nextProfile }) => {
@@ -25,41 +20,31 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  // Self-heal a missing profile: the one-shot fetch in subscribeToAuth can miss the
-  // users doc (network hiccup, or right after signup before createUserDoc lands).
-  // Without this, `profile` stays null for the whole session and everything that
-  // reads it (edit profile, gates, owner caches) misbehaves.
+  // Live users/{uid} subscription. This is the profile's source of truth for the whole
+  // session: it self-heals a fetch that failed at cold start (the SDK retries
+  // connectivity internally), delivers the doc the moment createUserDoc lands after
+  // signup, and propagates server-side changes (verified flag, admin edits) without
+  // any manual refresh. Never clobbers with null — the doc briefly "not existing"
+  // (signup window) keeps the last known value until real data arrives.
+  const uid = user?.uid ?? null;
   useEffect(() => {
-    if (initializing || !user || profile) {
-      profileRetriesRef.current = 0;
-      return undefined;
-    }
-    if (profileRetriesRef.current >= PROFILE_RETRY_LIMIT) return undefined;
+    if (!uid) return undefined;
+    return subscribeToUserDoc(uid, (fresh) => {
+      if (fresh) setProfile(fresh);
+    });
+  }, [uid]);
 
-    const timer = setTimeout(async () => {
-      profileRetriesRef.current += 1;
-      try {
-        const fresh = await getUserDoc(user.uid);
-        if (fresh) {
-          setProfile(fresh);
-          return;
-        }
-      } catch {
-        // fall through to re-arm
-      }
-      setProfileRetryTick((tick) => tick + 1); // re-arm for the next attempt
-    }, PROFILE_RETRY_DELAY_MS * (profileRetriesRef.current + 1));
-
-    return () => clearTimeout(timer);
-  }, [initializing, user, profile, profileRetryTick]);
-
-  // Re-fetch the profile doc (e.g. after editProfile saves).
-  const refreshProfile = async () => {
-    if (!user) return null;
-    const fresh = await getUserDoc(user.uid);
-    setProfile(fresh);
-    return fresh;
-  };
+  // Re-fetch the profile doc (e.g. after editProfile saves). Accepts an already-fetched
+  // doc so callers that just loaded it (syncProfileCaches) don't pay a second read.
+  const refreshProfile = React.useCallback(
+    async (preloaded) => {
+      if (!user) return null;
+      const fresh = preloaded ?? (await getUserDoc(user.uid));
+      setProfile(fresh);
+      return fresh;
+    },
+    [user]
+  );
 
   const value = useMemo(
     () => ({
@@ -70,7 +55,7 @@ export function AuthProvider({ children }) {
       uid: user?.uid ?? null,
       refreshProfile,
     }),
-    [user, profile, initializing]
+    [user, profile, initializing, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

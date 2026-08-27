@@ -32,7 +32,7 @@ export default function Success() {
             </AppText>
           </View>
           <AppButton
-            text="Boost My Profile"
+            text="Complete My Profile"
             // Replace so the signup stack is gone; back from Edit Profile lands on My Page.
             onPress={() =>
               router.replace({

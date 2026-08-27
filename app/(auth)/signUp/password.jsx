@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useSignup } from "@/context/SignupContext";
 import { router } from "expo-router";
-import { StyleSheet, View, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import TextField from "@/components/ui/input/textField";
 import AppButton from "@/components/ui/appButton";
@@ -17,7 +16,7 @@ import AppLogo from "@/components/ui/appMainLogo";
 import AuthCard from "@/components/ui/authInputCard";
 
 export default function Password() {
-  var insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const { signup, setPassword } = useSignup();
 
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -60,11 +59,9 @@ export default function Password() {
         {/* Background shapes */}
         <LoginBackground />
         <AppHeader showBack />
-        <KeyboardAwareScrollView
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
-          enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          extraScrollHeight={-50}
         >
           <View style={[styles.content, { paddingBottom: insets.bottom }]}>
             <View style={styles.topContent}>
@@ -143,7 +140,7 @@ export default function Password() {
               </Text>
             </View>
           </View>
-        </KeyboardAwareScrollView>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );

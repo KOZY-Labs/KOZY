@@ -6,8 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppButton from "@/components/ui/appButton";
 import AppText from "@/components/ui/appText";
 import { colors } from '@/constants/colors';
-import { currentUid } from "@/lib/auth";
-import { updateUserDoc } from "@/lib/db/users";
 
 const AUTO_ADVANCE_MS = 3000;
 
@@ -23,11 +21,8 @@ export default function VerifyComplete() {
     router.replace("/(auth)/signUp/success");
   };
 
-  // Persist verified=true on the user profile (best-effort; auth is the source of truth).
-  useEffect(() => {
-    const uid = currentUid();
-    if (uid) updateUserDoc(uid, { verified: true }).catch(() => {});
-  }, []);
+  // No Firestore write here: email verification lives on auth.currentUser.emailVerified,
+  // and users.verified is reserved for Persona identity verification.
 
   // Auto-advance after a brief celebration.
   useEffect(() => {

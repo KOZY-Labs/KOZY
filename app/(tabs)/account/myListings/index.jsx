@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/AuthContext';
 import { useMyListings } from '@/hooks/use-listings';
 import { deleteListing } from '@/lib/db/listings';
-import { getMissingProfileFields, showProfileGate } from '@/lib/profileCompleteness';
+import { gateProfileComplete } from '@/lib/profileCompleteness';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 
 export default function MyListings() {
@@ -23,11 +23,7 @@ export default function MyListings() {
 
   // Same gate as the Post tab — this empty state is another entry into the post flow.
   const startNewPost = () => {
-    const missing = getMissingProfileFields(profile);
-    if (missing.length) {
-      showProfileGate({ missing, backTo: '/(tabs)/account/myListings' });
-      return;
-    }
+    if (!gateProfileComplete(profile, { backTo: '/(tabs)/account/myListings' })) return;
     router.push('/(tabs)/post/stepOne');
   };
 
@@ -99,48 +95,53 @@ export default function MyListings() {
           />
         )}
       </View>
-      <ScrollView
+      {/* Windowed: each card mounts an autoplaying video player — never all at once. */}
+      <FlatList
+        data={listings}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: Math.max(insets.bottom, 16) + 84 },
         ]}
         showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.grid}>
-          {listings.map((item) => (
-            <ResultVideoCard
-              key={item.id}
-              item={item}
-              onPress={() => {
-                if (isEditMode) {
-                  return;
-                }
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={3}
+        removeClippedSubviews
+        renderItem={({ item }) => (
+          <ResultVideoCard
+            item={item}
+            onPress={() => {
+              if (isEditMode) {
+                return;
+              }
 
-                router.push(`account/myListings/${item.id}`);
-              }}
-              accessibilityLabel={
-                isEditMode ? `My listing ${item.title}` : `Open my listing ${item.title}`
-              }
-              accessory={
-                isEditMode ? (
-                  <Pressable
-                    onPress={() => handleRequestDelete(item)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Delete listing ${item.title}`}
-                    hitSlop={8}
-                    style={({ pressed }) => [
-                      styles.trashButton,
-                      pressed && styles.trashButtonPressed,
-                    ]}
-                  >
-                    <Feather name="trash" size={20} color={colors.base.bodyInverted} />
-                  </Pressable>
-                ) : null
-              }
-            />
-          ))}
-        </View>
-      </ScrollView>
+              router.push(`account/myListings/${item.id}`);
+            }}
+            accessibilityLabel={
+              isEditMode ? `My listing ${item.title}` : `Open my listing ${item.title}`
+            }
+            accessory={
+              isEditMode ? (
+                <Pressable
+                  onPress={() => handleRequestDelete(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete listing ${item.title}`}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.trashButton,
+                    pressed && styles.trashButtonPressed,
+                  ]}
+                >
+                  <Feather name="trash" size={20} color={colors.base.bodyInverted} />
+                </Pressable>
+              ) : null
+            }
+          />
+        )}
+      />
     </View>
   );
 }
@@ -172,9 +173,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 4,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  gridRow: {
     gap: 12,
   },
   trashButton: {

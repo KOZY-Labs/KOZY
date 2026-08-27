@@ -1,10 +1,10 @@
 import { View, StyleSheet, Image, Pressable } from "react-native";
 import AppText from "../appText";
 import { colors } from "@/constants/colors";
+import { avatarSource } from '@/lib/avatar';
 
 const MINE_BUBBLE_COLOR = colors.semantic.bg.info;
 const THEIRS_BUBBLE_COLOR = "#1F2937";
-const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
 
 export default function MessageBubble({ message, isMine, avatar, onAvatarPress }) {
   const formatTime = (dateString) => {
@@ -33,7 +33,7 @@ export default function MessageBubble({ message, isMine, avatar, onAvatarPress }
     <View style={styles.container}>
         {!isMine && (
           <Pressable onPress={onAvatarPress}>
-            <Image source={avatar ? { uri: avatar } : AVATAR_PLACEHOLDER} style={styles.avatar} />
+            <Image source={avatarSource(avatar)} style={styles.avatar} />
           </Pressable>
         )}
         <View style={[styles.messageContainer, isMine ? { alignItems: "flex-end" } : { alignItems: "flex-start" }]}>

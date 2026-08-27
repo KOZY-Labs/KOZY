@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useSignup } from "@/context/SignupContext";
 import { router } from "expo-router";
-import { StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import TextField from "@/components/ui/input/textField";
 import AppButton from "@/components/ui/appButton";
@@ -68,11 +67,9 @@ export default function EmailScreen() {
         {/* Background shapes */}
         <LoginBackground />
         <AppHeader showBack />
-        <KeyboardAwareScrollView
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
-          enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          extraScrollHeight={-90}
         >
           <View style={[styles.content, { paddingBottom: insets.bottom }]}> 
             <View style={styles.topContent}>
@@ -116,7 +113,7 @@ export default function EmailScreen() {
               />
             </View>
           </View>
-        </KeyboardAwareScrollView>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );

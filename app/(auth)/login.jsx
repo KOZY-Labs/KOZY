@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { StyleSheet, View, Text, Image } from "react-native";
+import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAvoidingView, Platform } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import TextField from "@/components/ui/input/textField";
 import AppButton from "@/components/ui/appButton";
@@ -83,11 +81,9 @@ export default function Login() {
             }
           }}
         />
-        <KeyboardAwareScrollView
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
-          enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          extraScrollHeight={-50}
         >
           <View style={[styles.content, { paddingBottom: insets.bottom }]}>
             <View style={styles.topContent}>
@@ -155,7 +151,7 @@ export default function Login() {
               />
             </View>
           </View>
-        </KeyboardAwareScrollView>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );

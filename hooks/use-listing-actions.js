@@ -1,57 +1,49 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Share } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
 import { showAuthGate } from '@/lib/authGate';
+import { subscribeSavedListingIds, toggleSavedListing } from '@/lib/db/savedListings';
 
-const SAVED_LISTINGS_KEY = 'savedListings';
-
-// Shared save/share/report behavior for listing detail screens (home, saved, my listings).
+// Shared save/share/report behavior for listing screens (feed, reels, details).
+// Saves live in users/{uid}/savedListings — the subscription applies local writes
+// instantly, so the heart needs no optimistic state of its own.
 export function useListingActions(item, { reportBackTo } = {}) {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, uid } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
 
-  const loadSavedState = useCallback(async () => {
-    if (!item?.id) return;
-    try {
-      const stored = await AsyncStorage.getItem(SAVED_LISTINGS_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setIsSaved(parsed.some((saved) => saved.id === item.id));
-    } catch {
-      setIsSaved(false);
+  // Latest item in a ref so callbacks keep a stable identity across refetches.
+  const itemRef = useRef(item);
+  itemRef.current = item;
+
+  const itemId = item?.id;
+  useEffect(() => {
+    if (!uid || !itemId) {
+      setIsSaved(false); // logged out, or don't carry the previous item's state
+      return undefined;
     }
-  }, [item?.id]);
+    return subscribeSavedListingIds(uid, (ids) => setIsSaved(ids.includes(itemId)));
+  }, [uid, itemId]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadSavedState();
-    }, [loadSavedState])
-  );
-
+  // Resolves to whether the listing is saved AFTER the toggle (undefined when gated
+  // or when there is nothing to toggle).
   const onToggleSave = useCallback(async () => {
     if (!isLoggedIn) {
       showAuthGate({
         title: 'Save it for later',
         message: 'Sign Up or Log In to keep track of places you like.',
       });
-      return;
+      return undefined;
     }
+    const id = itemRef.current?.id;
+    if (!uid || !id) return undefined;
     try {
-      const stored = await AsyncStorage.getItem(SAVED_LISTINGS_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      const exists = parsed.some((saved) => saved.id === item.id);
-      const next = exists
-        ? parsed.filter((saved) => saved.id !== item.id)
-        : [item, ...parsed];
-
-      await AsyncStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(next));
-      setIsSaved(!exists);
+      return await toggleSavedListing(uid, id);
     } catch {
-      // noop
+      return undefined;
     }
-  }, [item, isLoggedIn]);
+  }, [isLoggedIn, uid]);
 
   const onShare = useCallback(async () => {
     try {
@@ -75,7 +67,7 @@ export function useListingActions(item, { reportBackTo } = {}) {
     }
     router.push({
       pathname: '/(tabs)/account/contactUs',
-      params: { backTo: reportBackTo },
+      params: { backTo: reportBackTo, listingId: itemRef.current?.id },
     });
   }, [isLoggedIn, reportBackTo]);
 

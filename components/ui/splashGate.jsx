@@ -4,8 +4,9 @@ import { Animated, StyleSheet, View } from "react-native";
 import AppSplash from "@/components/ui/appSplash";
 import { useAuth } from "@/context/AuthContext";
 
-// Keep the splash up long enough to read, even on a warm start.
-const MIN_VISIBLE_MS = 1200;
+// Just long enough to avoid a flash on warm starts — every ms here blocks input on
+// EVERY launch, so the brand moment must stay cheap.
+const MIN_VISIBLE_MS = 400;
 const FADE_OUT_MS = 300;
 
 // Overlays the app with the brand splash until auth has resolved (and the

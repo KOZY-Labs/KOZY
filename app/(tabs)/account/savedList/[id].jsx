@@ -1,153 +1,43 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Share, Pressable, ActivityIndicator, Text } from 'react-native';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
 
-import AppIconButton from '@/components/ui/appIconButton';
+import ListingReelScreen from '@/components/ui/listingReelScreen';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
-import { useListing } from '@/hooks/use-listings';
+import { useListingActions } from '@/hooks/use-listing-actions';
 
-const { height } = Dimensions.get('window');
-const SAVED_LISTINGS_KEY = 'savedListings';
-
+// Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 export default function SavedList() {
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
-  const { data: item, loading } = useListing(listingId);
-
-  // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
   return (
-    <View style={styles.container}>
-      {/* 🔝 Top Bar */}
-      <View style={[styles.topBar, { top: insets.top + 12 }]}>
-        <AppIconButton
-          icon={<Feather name="arrow-left" size={32} />}
-          type="ghost"
-          size="lg"
-          onPress={() => router.back()}
-        />
-      </View>
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color="#fff" />
-        </View>
-      ) : !item ? (
-        <View style={styles.center}>
-          <Text style={{ color: '#fff' }}>Listing not found</Text>
-        </View>
-      ) : (
-        <Reel item={item} insets={insets} />
-      )}
-    </View>
+    <ListingReelScreen
+      listingId={listingId}
+      renderOverlay={(item, insets) => <SavedReelOverlay item={item} insets={insets} />}
+    />
   );
 }
 
-function Reel({ item, insets }) {
-  const [isSaved, setIsSaved] = useState(false);
-
-  const loadSavedState = useCallback(async () => {
-    try {
-      const stored = await AsyncStorage.getItem(SAVED_LISTINGS_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setIsSaved(parsed.some((saved) => saved.id === item.id));
-    } catch {
-      setIsSaved(false);
-    }
-  }, [item.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadSavedState();
-    }, [loadSavedState])
-  );
-
-  const handleToggleSave = useCallback(async () => {
-    try {
-      const stored = await AsyncStorage.getItem(SAVED_LISTINGS_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      const exists = parsed.some((saved) => saved.id === item.id);
-      const next = exists
-        ? parsed.filter((saved) => saved.id !== item.id)
-        : [item, ...parsed];
-
-      await AsyncStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(next));
-      setIsSaved(!exists);
-      router.back();
-    } catch {
-      // noop
-    }
-  }, [item]);
-
-  const onShare = async () => {
-    try {
-      await Share.share({
-        message: 'Check this out! 👀',
-        url: 'https://example.com',
-        title: 'Share link',
-      });
-    } catch (error) {
-      console.error('Share error:', error);
-    }
-  };
-
-  const player = useVideoPlayer(item.videoUrl ?? null, (p) => {
-    if (!p) return;
-    p.loop = true;
-    p.muted = true;
+function SavedReelOverlay({ item, insets }) {
+  const { isSaved, onToggleSave, onShare } = useListingActions(item, {
+    reportBackTo: '/(tabs)/account/savedList',
   });
 
-  useEffect(() => {
-    player?.play();
-  }, [player]);
-
-  const toggleMute = () => {
-    if (player) player.muted = !player.muted;
-  };
+  // Unsaving from the saved-list reel returns to the list (the reel no longer belongs there).
+  const handleToggleSave = useCallback(async () => {
+    const nowSaved = await onToggleSave();
+    if (nowSaved === false) router.back();
+  }, [onToggleSave]);
 
   return (
-    <Pressable style={styles.reel} onPress={toggleMute}>
-      <VideoView
-        player={player}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        pointerEvents="none"
-      />
-      <ListingReelOverlay
-        item={item}
-        bottom={insets.bottom + 20}
-        isSaved={isSaved}
-        onToggleSave={handleToggleSave}
-        onShare={onShare}
-        onPressDetail={() => router.push(`/(tabs)/account/savedList/detail/${item.id}`)}
-        showRepeatAction
-      />
-    </Pressable>
+    <ListingReelOverlay
+      item={item}
+      bottom={insets.bottom + 20}
+      isSaved={isSaved}
+      onToggleSave={handleToggleSave}
+      onShare={onShare}
+      onPressDetail={() => router.push(`/(tabs)/account/savedList/detail/${item.id}`)}
+      showRepeatAction
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  reel: {
-    height,
-    width: '100%',
-    backgroundColor: 'black',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBar: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 10,
-  },
-});

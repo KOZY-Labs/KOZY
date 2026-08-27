@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 4,
     backgroundColor: colors.base.gray800Alpha,
-    boarderwidth: 1,
+    borderWidth: 1,
     borderColor: colors.base.gray800Alpha,
   },
   pressed: {

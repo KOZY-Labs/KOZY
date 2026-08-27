@@ -1,13 +1,18 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-elements';
+
+// IG/TikTok-style legibility: one full-width black gradient over the bottom of the
+// video (not per-element boxes), plus subtle text shadows. Tiny generated PNG asset —
+// no gradient library needed.
+const BOTTOM_GRADIENT = require('../../assets/images/reel-bottom-gradient.png');
 
 import AppButton from '@/components/ui/appButton';
 import AppIconButton from '@/components/ui/appIconButton';
 import AppText from '@/components/ui/appText';
 import { showConfirmModal } from '@/components/ui/confirmModalHost';
 
-const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
+import { avatarSource } from '@/lib/avatar';
 
 export default function ListingReelOverlay({
   item,
@@ -29,12 +34,18 @@ export default function ListingReelOverlay({
       title: 'More options',
       primaryText: 'Report Listing',
       secondaryText: 'Cancel',
-      onPrimary: () => onPressReport?.(),
+      onPrimary: () => onPressReport?.(item),
     });
   };
 
   return (
     <>
+    <Image
+      source={BOTTOM_GRADIENT}
+      style={styles.bottomGradient}
+      resizeMode="stretch"
+      pointerEvents="none"
+    />
     {hasRightActions ? (
         <View style={[styles.rightActions, { bottom, transformOrigin: "top right" }, { transform: isPreview ? [{ scale: 0.9 }] : [{ scale: 1 }] }]}>
           {onToggleSave ? (
@@ -71,16 +82,16 @@ export default function ListingReelOverlay({
         >
           <View style={styles.bottomRoomInfo}>
             <Avatar
-              source={item?.owner?.avatar?.[0] ? { uri: item.owner.avatar[0] } : AVATAR_PLACEHOLDER}
+              source={avatarSource(item?.owner?.avatar)}
               size={44}
               rounded
               containerStyle={styles.avatar}
             />
             <View style={styles.bottomInfo}>
-              <AppText variant="body-sm-strong" numberOfLines={1}>
+              <AppText variant="body-sm-strong" numberOfLines={1} style={styles.textShadow}>
                 {item?.title}
               </AppText>
-              <AppText variant="body-sm">
+              <AppText variant="body-sm" style={styles.textShadow}>
                 ${item?.price} / month
               </AppText>
             </View>
@@ -88,7 +99,7 @@ export default function ListingReelOverlay({
               <AppButton text="Detail" size="sm" type="primary" onPress={onPressDetail} />
             </View>
           </View>
-          <AppText variant="body-sm-strong" numberOfLines={2}>
+          <AppText variant="body-sm-strong" numberOfLines={2} style={styles.textShadow}>
             #{item?.city} #{item?.province}
           </AppText>
         </Pressable>
@@ -98,6 +109,14 @@ export default function ListingReelOverlay({
 }
 
 const styles = StyleSheet.create({
+  bottomGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '45%',
+    width: '100%',
+  },
   rightActions: {
     position: 'absolute',
     right: 20,
@@ -107,6 +126,11 @@ const styles = StyleSheet.create({
   bottomLeft: {
     position: 'absolute',
     left: 20,
+  },
+  textShadow: {
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   bottomRoomInfo: {
     width: '100%',

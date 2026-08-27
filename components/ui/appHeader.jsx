@@ -1,5 +1,7 @@
 import { View, Pressable, StyleSheet } from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+
+import AppText from "@/components/ui/appText";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 

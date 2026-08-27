@@ -1,39 +1,59 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View, FlatList } from 'react-native';
+import { router } from 'expo-router';
+import { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import EmptyListingsState from '@/components/ui/emptyListingsState';
 import ResultVideoCard from '@/components/ui/resultVideoCard';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
+import { subscribeSavedListingIds, unsaveListing } from '@/lib/db/savedListings';
+import { getListing } from '@/lib/db/listings';
+import { useAuth } from '@/context/AuthContext';
 
-const SAVED_LISTINGS_KEY = 'savedListings';
 
 export default function SavedList() {
   const insets = useSafeAreaInsets();
+  const { uid } = useAuth();
+  const [savedIds, setSavedIds] = useState(null); // null until the subscription delivers
   const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const loadSavedListings = useCallback(async () => {
-    try {
-      const stored = await AsyncStorage.getItem(SAVED_LISTINGS_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setListings(parsed);
-    } catch (_error) {
-      setListings([]);
-    }
-  }, []);
+  // Saved ids live in users/{uid}/savedListings — saves/unsaves anywhere reflect here.
+  useEffect(() => {
+    if (!uid) return undefined;
+    return subscribeSavedListingIds(uid, setSavedIds);
+  }, [uid]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadSavedListings();
-    }, [loadSavedListings])
-  );
+  // Resolve ids to live listing docs. The listings state doubles as the cache: items we
+  // already hold are reused, so an unsave just filters locally with zero reads.
+  useEffect(() => {
+    if (savedIds == null) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const next = await Promise.all(
+          savedIds.map(
+            (id) =>
+              listings.find((l) => l.id === id) ?? getListing(id).catch(() => null)
+          )
+        );
+        // Drop listings that were deleted since being saved.
+        if (!cancelled) setListings(next.filter(Boolean));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // `listings` is the cache being written, not a trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedIds]);
 
   const toggleEdit = () => {
     setIsEditMode((prev) => !prev);
@@ -46,17 +66,22 @@ export default function SavedList() {
       primaryText: 'Delete',
       secondaryText: 'Cancel',
       onPrimary: async () => {
-        const nextListings = listings.filter((item) => item.id !== listing.id);
-
         try {
-          await AsyncStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(nextListings));
-          setListings(nextListings);
+          await unsaveListing(uid, listing.id);
         } catch (_error) {
           showAlertModal({ title: 'Delete Failed', message: 'Unable to delete saved listing. Please try again.' });
         }
       },
     });
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator color="#fff" />
+      </View>
+    );
+  }
 
   if (!listings || listings.length === 0) {
     return (
@@ -96,50 +121,53 @@ export default function SavedList() {
           />
         )}
       </View>
-      <ScrollView
+      {/* Windowed: each card mounts an autoplaying video player — never all at once. */}
+      <FlatList
+        data={listings}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: Math.max(insets.bottom, 16) + 84 },
         ]}
         showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.grid}>
-          {listings.map((item) => {
-            return (
-              <ResultVideoCard
-                key={item.id}
-                item={item}
-                onPress={() => {
-                  if (isEditMode) {
-                    return;
-                  }
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={3}
+        removeClippedSubviews
+        renderItem={({ item }) => (
+          <ResultVideoCard
+            item={item}
+            onPress={() => {
+              if (isEditMode) {
+                return;
+              }
 
-                  router.push(`account/savedList/${item.id}`);
-                }}
-                accessibilityLabel={
-                  isEditMode ? `Saved listing ${item.title}` : `Open saved listing ${item.title}`
-                }
-                accessory={
-                  isEditMode ? (
-                    <Pressable
-                      onPress={() => handleRequestDelete(item)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Delete saved listing ${item.title}`}
-                      hitSlop={8}
-                      style={({ pressed }) => [
-                        styles.trashButton,
-                        pressed && styles.trashButtonPressed,
-                      ]}
-                    >
-                      <Feather name="trash" size={20} color={colors.base.bodyInverted} />
-                    </Pressable>
-                  ) : null
-                }
-              />
-            );
-          })}
-        </View>
-      </ScrollView>
+              router.push(`account/savedList/${item.id}`);
+            }}
+            accessibilityLabel={
+              isEditMode ? `Saved listing ${item.title}` : `Open saved listing ${item.title}`
+            }
+            accessory={
+              isEditMode ? (
+                <Pressable
+                  onPress={() => handleRequestDelete(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete saved listing ${item.title}`}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.trashButton,
+                    pressed && styles.trashButtonPressed,
+                  ]}
+                >
+                  <Feather name="trash" size={20} color={colors.base.bodyInverted} />
+                </Pressable>
+              ) : null
+            }
+          />
+        )}
+      />
     </View>
   );
 }
@@ -167,9 +195,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 4,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  gridRow: {
     gap: 12,
   },
   trashButton: {

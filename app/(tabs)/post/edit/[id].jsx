@@ -23,10 +23,13 @@ export default function EditListing() {
     handled.current = true;
 
     if (!listing) {
+      // Navigate FIRST, then alert: the modal host is global, so the message survives
+      // navigation — while relying on the alert's button would strand the user on this
+      // headerless spinner if they dismissed via the backdrop instead.
+      router.back();
       showAlertModal({
         title: 'Listing unavailable',
         message: 'We could not load this listing. Please try again.',
-        onPress: () => router.back(),
       });
       return;
     }

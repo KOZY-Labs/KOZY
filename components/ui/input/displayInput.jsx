@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Keyboard, Pressable, View } from 'react-native';
 import AppText from '@/components/ui/appText';
 import { colors } from '@/constants/colors';
 
@@ -16,7 +16,12 @@ export default function DisplayInput({
   const multiValues = Array.isArray(value) ? value.filter(Boolean) : [];
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        // Tapping a display input means leaving text entry — drop the keyboard first
+        // so the drawer it opens isn't half-hidden behind it.
+        Keyboard.dismiss();
+        onPress?.();
+      }}
       style={style}
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={accessibilityLabel || label}

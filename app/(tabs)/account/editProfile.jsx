@@ -18,10 +18,11 @@ import Dropdown from '@/components/ui/input/dropdown';
 import TextField from '@/components/ui/input/textField';
 import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
-import ConfirmModal from '@/components/ui/confirmModal';
-import { showAlertModal } from '@/components/ui/confirmModalHost';
+import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import ErrorMessage from '@/components/ui/form/errorMessage';
 import validateImage from '@/utils/mediaValidation';
+import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from '@/lib/dob.mjs';
+import { GENDER_OPTIONS, PERSONALITY_OPTIONS, SEARCH_LIFESTYLE_OPTIONS } from '@/constants/data';
 import { useAuth } from '@/context/AuthContext';
 import { updateUserDoc } from '@/lib/db/users';
 import { syncProfileCaches } from '@/lib/db/profileSync';
@@ -41,12 +42,37 @@ const MAX_PHOTOS = 3;
 // loading would start from blanks and a Save could wipe the user's real data.
 // AuthContext retries a missing profile on its own; we just wait for it here.
 export default function EditProfile() {
-  const { profile, initializing } = useAuth();
+  const { profile, initializing, refreshProfile } = useAuth();
+  // The live users-doc subscription normally delivers the profile within moments. If it
+  // hasn't after 8s, show a persistent hint + Retry ALONGSIDE the spinner — one-shot
+  // state, never reset, so there is no re-arm machinery to get wrong. The moment the
+  // profile arrives (subscription or Retry), the form renders and this is moot.
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (profile) return undefined;
+    const timer = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(timer);
+  }, [profile]);
 
   if (!profile) {
     return (
       <View style={styles.loadingContainer}>
-        {initializing || <ActivityIndicator color="#fff" />}
+        {initializing || <ActivityIndicator color={colors.base.white} />}
+        {timedOut ? (
+          <>
+            <AppText variant="body-md" color="primary" style={{ textAlign: 'center', marginVertical: 16 }}>
+              We couldn’t load your profile.{'\n'}Check your connection and try again.
+            </AppText>
+            <View style={{ width: 160 }}>
+              <AppButton
+                text="Retry"
+                type="secondary"
+                onPress={() => refreshProfile().catch(() => {})}
+              />
+            </View>
+          </>
+        ) : null}
       </View>
     );
   }
@@ -55,9 +81,8 @@ export default function EditProfile() {
 }
 
 function EditProfileForm() {
-    const { profile, uid, refreshProfile } = useAuth();
+    const { profile, uid } = useAuth();
     const existingAvatar = useMemo(() => profile?.avatar ?? [], [profile?.avatar]);
-    const nicknameDrawerRef = useRef(null);
     const genderDrawerRef = useRef(null);
     const personalityDrawerRef = useRef(null);
     const jobDrawerRef = useRef(null);
@@ -67,7 +92,9 @@ function EditProfileForm() {
     const verificationConfirmDrawerRef = useRef(null);
     const emailEditDrawerRef = useRef(null);
     const emailCheckDrawerRef = useRef(null);
-    const [nickname, setNickname] = useState(profile?.nickname ?? profile?.firstName ?? '');
+    const [firstName, setFirstName] = useState(profile?.firstName ?? '');
+    const [lastName, setLastName] = useState(profile?.lastName ?? '');
+    const [dob, setDob] = useState(profile?.dob ?? '');
     const [personality, setPersonality] = useState(profile?.personality ?? []);
     const [lifestylePreferences, setLifestylePreferences] = useState(profile?.lifestyle ?? []);
     const [gender, setGender] = useState(profile?.gender ?? null);
@@ -75,7 +102,18 @@ function EditProfileForm() {
     const [aboutMe, setAboutMe] = useState(profile?.aboutMe ?? '');
     // One message per field so each FormField explains its own problem.
     const [errors, setErrors] = useState({});
-    const [verified, setVerified] = useState(profile?.verified ?? false);
+    // Derived, not copied: the live users-doc subscription keeps profile current, so a
+    // second state would only invite the two drifting apart (e.g. an admin flip or a
+    // Persona webhook landing mid-session).
+    const verified = !!profile?.verified;
+    // Locked per field, not per account: a verified user whose stored field is still
+    // blank (legacy signup data) must be able to fill it in, or the profile gate
+    // would send them here forever with nothing editable.
+    const identityLocked = {
+      firstName: verified && !!profile?.firstName?.trim(),
+      lastName: verified && !!profile?.lastName?.trim(),
+      dob: verified && !!profile?.dob?.trim?.(),
+    };
     const [verifying, setVerifying] = useState(false);
     const [newEmail, setNewEmail] = useState('');
     const [emailPassword, setEmailPassword] = useState('');
@@ -92,7 +130,6 @@ function EditProfileForm() {
 
     // ----- Unsaved-changes guard -----
     const navigation = useNavigation();
-    const [discardVisible, setDiscardVisible] = useState(false);
     const pendingNavRef = useRef(null); // navigation action blocked by the guard
     const allowLeaveRef = useRef(false); // set after save/discard so leaving isn't re-blocked
 
@@ -101,7 +138,9 @@ function EditProfileForm() {
         photos.length !== existingAvatar.length ||
         photos.some((p, i) => p.remoteUrl !== existingAvatar[i]);
       return (
-        nickname !== (profile?.nickname ?? profile?.firstName ?? '') ||
+        firstName !== (profile?.firstName ?? '') ||
+        lastName !== (profile?.lastName ?? '') ||
+        dob !== (profile?.dob ?? '') ||
         (gender || null) !== (profile?.gender || null) ||
         (job || null) !== (profile?.occupation || null) ||
         JSON.stringify(personality) !== JSON.stringify(profile?.personality ?? []) ||
@@ -109,7 +148,7 @@ function EditProfileForm() {
         aboutMe !== (profile?.aboutMe ?? '') ||
         photosChanged
       );
-    }, [nickname, gender, job, personality, lifestylePreferences, aboutMe, photos, profile, existingAvatar]);
+    }, [firstName, lastName, dob, gender, job, personality, lifestylePreferences, aboutMe, photos, profile, existingAvatar]);
 
     const isDirtyRef = useRef(false);
     isDirtyRef.current = isDirty;
@@ -117,35 +156,52 @@ function EditProfileForm() {
     // Intercept every way of leaving (header back, swipe gesture, hardware back)
     // and show the discard modal while there are unsaved changes.
     useEffect(() => {
+      const discardChanges = () => {
+        allowLeaveRef.current = true;
+        const action = pendingNavRef.current;
+        pendingNavRef.current = null;
+        if (action) navigation.dispatch(action);
+      };
       const unsubscribe = navigation.addListener('beforeRemove', (e) => {
         if (allowLeaveRef.current || !isDirtyRef.current) return;
         e.preventDefault();
         pendingNavRef.current = e.data.action;
-        setDiscardVisible(true);
+        showConfirmModal({
+          title: 'Discard changes?',
+          message: 'You have unsaved changes. If you leave now, your edits will be lost.',
+          primaryText: 'Keep Editing',
+          secondaryText: 'Discard',
+          onSecondary: discardChanges,
+        });
       });
       return unsubscribe;
     }, [navigation]);
-
-    const discardChanges = () => {
-      setDiscardVisible(false);
-      allowLeaveRef.current = true;
-      const action = pendingNavRef.current;
-      pendingNavRef.current = null;
-      if (action) navigation.dispatch(action);
-    };
 
   const clearFieldError = (field) => {
     setErrors((current) => (current[field] ? { ...current, [field]: null } : current));
   };
 
-  // The nickname is the public display name shown on listings and chats, so it can't be blank.
+  // First name is the public display name shown on listings and chats, so it can't be blank.
+  // Each identity field is validated while it is still editable (not yet locked).
   const validate = () => {
     const nextErrors = {};
 
-    if (!nickname.trim()) {
-      nextErrors.nickname = 'Enter a nickname — this is the name other users see.';
-    } else if (nickname.trim().length < 2) {
-      nextErrors.nickname = 'Nickname must be at least 2 characters.';
+    if (!identityLocked.firstName && !firstName.trim()) {
+      nextErrors.firstName = 'Enter your first name — this is the name other users see.';
+    } else if (!identityLocked.firstName && firstName.trim().length < 2) {
+      nextErrors.firstName = 'First name must be at least 2 characters.';
+    }
+    if (!identityLocked.lastName && !lastName.trim()) {
+      nextErrors.lastName = 'Enter your last name.';
+    }
+    if (!identityLocked.dob) {
+      if (!dob) {
+        nextErrors.dob = 'Enter your date of birth.';
+      } else if (!isValidDob(dob)) {
+        nextErrors.dob = 'Enter a valid date as MM/DD/YYYY.';
+      } else if (!meetsMinimumAge(dob)) {
+        nextErrors.dob = `You must be at least ${MIN_AGE} years old to use KOZY.`;
+      }
     }
 
     setErrors(nextErrors);
@@ -165,18 +221,36 @@ function EditProfileForm() {
         photos.map((p) => (p.remoteUrl ? p.remoteUrl : uploadUserAvatar(uid, p)))
       );
 
-      await updateUserDoc(uid, {
-        nickname: nickname.trim() || (profile?.firstName ?? ''),
+      // Locked identity fields are never rewritten; unlocked ones save normally.
+      // Locked fields keep their state equal to the stored value, so `name` below
+      // is correct whichever combination is still editable.
+      const identity = {};
+      if (!identityLocked.firstName) identity.firstName = firstName.trim();
+      if (!identityLocked.lastName) identity.lastName = lastName.trim();
+      if (!identityLocked.dob) identity.dob = dob;
+      if (!identityLocked.firstName || !identityLocked.lastName) {
+        identity.name = `${firstName.trim()} ${lastName.trim()}`.trim();
+      }
+
+      const updates = {
+        ...identity,
         gender: gender ?? '',
         occupation: job ?? '',
         personality,
         lifestyle: lifestylePreferences,
         aboutMe,
         avatar,
-      });
-      // Push the fresh profile into denormalized copies (listings.owner, chats.participantsInfo).
-      await syncProfileCaches(uid);
-      await refreshProfile();
+      };
+      await updateUserDoc(uid, updates);
+      // Push into denormalized copies (listings.owner, chats.participantsInfo) using the
+      // values we just wrote — no re-read. The context profile updates via its own
+      // users-doc subscription, so no manual refresh either.
+      await syncProfileCaches(uid, { ...profile, ...updates });
+      // Sync local state to what was persisted, so the unsaved-changes guard doesn't
+      // fire for whitespace-only differences or freshly-uploaded photos.
+      if (identity.firstName != null) setFirstName(identity.firstName);
+      if (identity.lastName != null) setLastName(identity.lastName);
+      setPhotos(avatar.map((url) => ({ uri: url, remoteUrl: url })));
       showAlertModal({
         title: 'Profile updated',
         message: 'Your changes have been saved.',
@@ -196,14 +270,32 @@ function EditProfileForm() {
   // must not depend on the user also pressing Save Changes.
   const handleStartVerification = async () => {
     myVerificationDrawerRef.current?.close();
+    // Verification locks the identity fields, so what gets locked must be valid and
+    // persisted — otherwise unsaved edits would display as "verified" while Firestore
+    // keeps the old values, with no way to ever reconcile them.
+    if (!validate()) {
+      showAlertModal({
+        title: 'Check your details',
+        message: 'Fix the highlighted name and date of birth fields before verifying your identity.',
+      });
+      return;
+    }
     setVerifying(true);
     try {
       const result = await startPersonaVerification(uid);
       if (result.type === 'completed') {
-        await updateUserDoc(uid, { verified: true, personaInquiryId: result.inquiryId ?? '' });
-        await syncProfileCaches(uid);
-        await refreshProfile();
-        setVerified(true);
+        const updates = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          dob,
+          verified: true,
+          personaInquiryId: result.inquiryId ?? '',
+        };
+        await updateUserDoc(uid, updates);
+        // Denormalized copies get the just-written values; the context profile (and the
+        // derived `verified`) updates via the users-doc subscription.
+        await syncProfileCaches(uid, { ...profile, ...updates });
         verificationConfirmDrawerRef.current?.snapToIndex(0);
       } else if (result.type === 'pending') {
         if (result.inquiryId) {
@@ -359,14 +451,48 @@ function EditProfileForm() {
               Keeping your ID, photo, and profile details up to date helps us build trust in the KOZY community.
             </DisplayField>
 
-            {/* Inputs */}
-            <FormField label="Nickname" error={errors.nickname}>
-              <DisplayInput
-                value={nickname}
-                placeholder="Enter your nickname"
-                onPress={() => nicknameDrawerRef.current?.snapToIndex(0)}
-              />
-            </FormField>
+            {/* Identity — each field is editable until Persona verification locks it.
+                Fields still blank at verification time stay editable (legacy data). */}
+            {[
+              { key: 'firstName', label: 'First Name', value: firstName, set: setFirstName, placeholder: 'First Name' },
+              { key: 'lastName', label: 'Last Name', value: lastName, set: setLastName, placeholder: 'Last Name' },
+              {
+                key: 'dob',
+                label: 'Date of Birth',
+                value: dob,
+                set: (text) => setDob(formatDob(text)),
+                placeholder: 'MM/DD/YYYY',
+                keyboardType: 'number-pad',
+                maxLength: 10,
+              },
+            ].map(({ key, label, value, set, ...inputProps }) =>
+              identityLocked[key] ? (
+                <FormField key={key} label={label}>
+                  <DisplayInput
+                    value={value}
+                    rightIcon={<Feather name="lock" size={16} color={colors.semantic.text.disabled} />}
+                    accessibilityLabel={`${label} (locked after verification)`}
+                  />
+                </FormField>
+              ) : (
+                <FormField key={key} label={label} error={errors[key]}>
+                  <TextField
+                    value={value}
+                    error={!!errors[key]}
+                    onChangeText={(text) => {
+                      set(text);
+                      clearFieldError(key);
+                    }}
+                    {...inputProps}
+                  />
+                </FormField>
+              )
+            )}
+            {verified ? (
+              <AppText variant="body-xsm" style={styles.lockedCaption}>
+                Verified via Persona — your legal name and date of birth can no longer be edited.
+              </AppText>
+            ) : null}
             <FormField label="Gender">
               <DisplayInput
                 value={gender}
@@ -414,8 +540,8 @@ function EditProfileForm() {
               </AppText>
               {verified ? (
                 <View style={styles.verifiedBadge}>
-                  <Feather name="check-circle" size={16} color="#4ADE80" />
-                  <AppText variant="body-sm-strong" style={{ color: '#4ADE80' }}>
+                  <Feather name="check-circle" size={16} color={colors.base.success} />
+                  <AppText variant="body-sm-strong" style={{ color: colors.base.success }}>
                     Verified
                   </AppText>
                 </View>
@@ -461,28 +587,6 @@ function EditProfileForm() {
       />
       {/* Drawers */}
       <AppDrawer
-            ref={nicknameDrawerRef}
-            title="What should we call you?"
-            description="Your nickname is shown to other users instead of your full name."
-            primaryAction={() => nicknameDrawerRef.current?.close()}
-            snapPoints={['100%']}
-            enableDynamicSizing={false}
-          >
-            <FormField label="" error={errors.nickname}>
-              <InputRow>
-                <TextField
-                  placeholder="Enter your nickname"
-                  value={nickname}
-                  error={!!errors.nickname}
-                  onChangeText={(text) => {
-                    setNickname(text);
-                    clearFieldError('nickname');
-                  }}
-                />
-              </InputRow>
-            </FormField>
-      </AppDrawer>
-      <AppDrawer
             ref={genderDrawerRef}
             title="What’s your gender?"
             primaryAction={() => {
@@ -491,11 +595,7 @@ function EditProfileForm() {
             <Dropdown
               value={gender}
               onChange={setGender}
-              options={[
-                { label: "Female", value: "Female" },
-                { label: "Male", value: "Male" },
-                { label: "Non-binary", value: "Non-binary" },
-              ]}
+              options={GENDER_OPTIONS}
             />
       </AppDrawer>
       <AppDrawer
@@ -522,14 +622,7 @@ function EditProfileForm() {
               personalityDrawerRef.current?.close();            }} 
           >
             <PillGroup
-              items={[
-                { label: 'Friendly', value: 'Friendly' },
-                { label: 'Independent', value: 'Independent' },
-                { label: 'Calm', value: 'Calm' },
-                { label: 'Respectful', value: 'Respectful' },
-                { label: 'Introverted', value: 'Introverted' },
-                { label: 'Extroverted', value: 'Extroverted' },
-              ]}
+              items={PERSONALITY_OPTIONS}
               value={personality}
               onChange={setPersonality}
             />
@@ -542,18 +635,7 @@ function EditProfileForm() {
               lifestyleDrawerRef.current?.close();             }}
           >
             <PillGroup
-              items={[
-                { label: 'Early Bird', value: 'Early Bird' },
-                { label: 'Night Owl', value: 'Night Owl' },
-                { label: 'Homebody', value: 'Homebody' },
-                { label: 'Out & About', value: 'Out & About' },
-                { label: 'Clean & Tidy', value: 'Clean & Tidy' },
-                { label: 'Easygoing', value: 'Easygoing' },
-                { label: 'Smoker', value: 'Smoker' },
-                { label: 'Non-Smoker', value: 'Non-Smoker' },
-                { label: 'Work from Home', value: 'Work from Home' },
-                { label: 'Go to Office', value: 'Go to Office' },
-              ]}
+              items={SEARCH_LIFESTYLE_OPTIONS}
               value={lifestylePreferences}
               onChange={setLifestylePreferences}
             />
@@ -585,6 +667,11 @@ function EditProfileForm() {
           >
             <AppText variant='body-xsm' style={{ marginBottom: 16, textAlign: 'center' }}>
               For security and trust, please verify your identity. This only takes a few minutes.
+            </AppText>
+            {/* Verification saves and permanently locks these values — show exactly
+                what will be locked so unsaved edits can't slip through unseen. */}
+            <AppText variant='body-sm-strong' style={{ marginBottom: 16, textAlign: 'center' }}>
+              This will be locked as:{'\n'}{firstName.trim()} {lastName.trim()}, born {dob}
             </AppText>
             <AppText variant='body-xsm' style={{ textAlign: 'center' }}>
             *We use Persona to securely verify your ID.
@@ -664,17 +751,6 @@ function EditProfileForm() {
             }}
           >
       </AppDrawer>
-      {/* Unsaved-changes confirmation (shown when leaving with edits pending) */}
-      <ConfirmModal
-        visible={discardVisible}
-        title="Discard changes?"
-        message="You have unsaved changes. If you leave now, your edits will be lost."
-        primaryText="Keep Editing"
-        secondaryText="Discard"
-        onPrimary={() => setDiscardVisible(false)}
-        onSecondary={discardChanges}
-        onRequestClose={() => setDiscardVisible(false)}
-      />
     </View>
   );
 }
@@ -687,9 +763,13 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: 'black',
+    backgroundColor: colors.base.black,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  lockedCaption: {
+    color: colors.semantic.text.disabled,
+    marginBottom: 20,
   },
   mapContainer: {
     marginBottom: 24,

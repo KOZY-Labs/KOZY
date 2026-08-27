@@ -1,97 +1,28 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Share, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Dimensions, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import AppIconButton from '@/components/ui/appIconButton';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 import { useBrowseListings } from '@/hooks/use-listings';
-import { useAuth } from '@/context/AuthContext';
-import { showAuthGate } from '@/lib/authGate';
+import { useListingActions } from '@/hooks/use-listing-actions';
 
 const { height } = Dimensions.get('window');
-const SAVED_LISTINGS_KEY = 'savedListings';
 
 export default function HomeScreen() {
 
   const insets = useSafeAreaInsets();
-  const { isLoggedIn } = useAuth();
   const { data: listings, loading, error, reload } = useBrowseListings();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [, setSavedListings] = useState([]);
-  const [savedIds, setSavedIds] = useState(new Set());
-
-  const loadSavedListings = useCallback(async () => {
-    try {
-      const stored = await AsyncStorage.getItem(SAVED_LISTINGS_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setSavedListings(parsed);
-      setSavedIds(new Set(parsed.map((item) => item.id)));
-    } catch (_error) {
-      // noop
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadSavedListings();
-    }, [loadSavedListings])
-  );
-
-  const handleToggleSave = useCallback((item) => {
-    if (!isLoggedIn) {
-      showAuthGate({
-        title: 'Save it for later',
-        message: 'Sign Up or Log In to keep track of places you like.',
-      });
-      return;
-    }
-    setSavedListings((prev) => {
-      const exists = prev.some((saved) => saved.id === item.id);
-      const next = exists
-        ? prev.filter((saved) => saved.id !== item.id)
-        : [item, ...prev];
-
-      setSavedIds(new Set(next.map((saved) => saved.id)));
-      AsyncStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(next)).catch(() => {});
-      return next;
-    });
-  }, [isLoggedIn]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
       setActiveIndex(viewableItems[0].index);
     }
   }).current;
-
-  const onShare = async () => {
-    try {
-      await Share.share({
-        message: "Check this out! 👀",
-        url: "https://example.com", // iOS
-        title: "Share link",        // Android
-      });
-    } catch (error) {
-      console.error("Share error:", error);
-    }
-  };
-
-  const onReport = useCallback(() => {
-    if (!isLoggedIn) {
-      showAuthGate({
-        title: 'Report this listing',
-        message: 'Sign Up or Log In to report listings.',
-      });
-      return;
-    }
-    router.push({
-      pathname: '/(tabs)/account/contactUs',
-      params: { backTo: '/(tabs)/home' },
-    });
-  }, [isLoggedIn]);
 
   return (
     <View style={styles.container}>
@@ -132,10 +63,6 @@ export default function HomeScreen() {
               item={reel}
               isActive={index === activeIndex}
               insets={insets}
-              isSaved={savedIds.has(reel.id)}
-              onToggleSave={handleToggleSave}
-              onShare={onShare}
-              onReport={onReport}
             />
           )}
           pagingEnabled
@@ -151,8 +78,13 @@ export default function HomeScreen() {
   );
 }
 
-/* Reel Item*/
-function ReelItem({ item, isActive, insets, isSaved, onToggleSave, onShare, onReport }) {
+/* Reel Item — memoized so swipes only re-render the rows whose props changed.
+   Owns its listing actions via the shared hook (per-item saved state via the store
+   subscription), so the feed and the detail screens can never drift. */
+const ReelItem = React.memo(function ReelItem({ item, isActive, insets }) {
+  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, {
+    reportBackTo: '/(tabs)/home',
+  });
   const player = useVideoPlayer(item.videoUrl, (player) => {
     player.loop = true;
     player.muted = true;
@@ -195,7 +127,7 @@ function ReelItem({ item, isActive, insets, isSaved, onToggleSave, onShare, onRe
       />
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

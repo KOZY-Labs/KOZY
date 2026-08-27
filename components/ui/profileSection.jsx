@@ -1,9 +1,11 @@
 import { Image, StyleSheet, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import AppText from '@/components/ui/appText';
 import DisplayField from '@/components/ui/displayField';
-
-const AVATAR_PLACEHOLDER = require('@/assets/images/Avatar-placeholder.png');
+import { colors } from '@/constants/colors';
+import { avatarSource } from '@/lib/avatar';
+import { ageFromBirth } from '@/lib/dob.mjs';
 
 export default function ProfileSection({ listing }) {
   const owner = listing?.owner;
@@ -12,20 +14,31 @@ export default function ProfileSection({ listing }) {
     return null;
   }
 
-  // Prefer the exact age (from dob); older cached owners may only carry ageGroup.
-  const ageLabel = owner.age ?? owner.ageGroup;
+  // Computed at render from the cached birth year/month — never decays, never the raw
+  // dob (listings are publicly readable). Old cache shapes are healed by the migration
+  // script, not here.
+  const age = ageFromBirth(owner.birthYear, owner.birthMonth);
+  const verified = !!owner.verified;
 
   return (
     <View style={styles.profileSection}>
       <Image
-        source={owner.avatar?.[0] ? { uri: owner.avatar[0] } : AVATAR_PLACEHOLDER}
+        source={avatarSource(owner.avatar)}
         style={styles.avatarImage}
         resizeMode="cover"
       />
-      <View style={styles.ownerName}>
+      <View style={styles.nameRow}>
         <AppText variant="headline-md">
-          {owner.name}{ageLabel ? `, ${ageLabel}` : ''}
+          {owner.name}{age != null ? `, ${age}` : ''}
         </AppText>
+        {verified ? (
+          <Feather
+            name="check-circle"
+            size={18}
+            color={colors.base.success}
+            accessibilityLabel="Verified user"
+          />
+        ) : null}
       </View>
 
       <DisplayField title="Profile" type="pill">
@@ -62,12 +75,11 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     marginHorizontal: 'auto',
   },
-  ownerName: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
+  nameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 8,
   },
   moveInText: {
     lineHeight: 14,

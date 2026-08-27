@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Platform, StyleSheet, View, KeyboardAvoidingView } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 import PillGroup from '@/components/ui/pill/pillGroup';
 import AppText from '@/components/ui/appText';
@@ -19,62 +18,35 @@ import DisplayInput from '@/components/ui/input/displayInput';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
 import { geocodeAddress } from '@/lib/geo/geocode';
+import {
+  ROOMTYPE_OPTIONS,
+  FURNISHEDTYPE_OPTIONS,
+  KEYDETAIL_OPTIONS,
+  LOOKINGFOR_OPTIONS,
+  LEASE_OPTIONS,
+  MONTH_OPTIONS,
+  DAY_OPTIONS,
+  YEAR_OPTIONS,
+  UTILITY_OPTIONS,
+  ROOM_TYPE_LABELS,
+  FURNISHED_LABELS,
+  KEYDETAIL_LABELS,
+  LOOKINGFOR_LABELS,
+} from '@/constants/data';
 
 const DEPOSIT_INCREMENT = 100;
 const DEPOSIT_TBD_VALUE = 'TBD';
 const TBD_DEPOSIT_OPTION = { label: DEPOSIT_TBD_VALUE, value: DEPOSIT_TBD_VALUE };
 
-{/* dropdown options */}
-const ROOMTYPE_OPTIONS = [
-    { label: 'Private Room', value: 'private' },
-    { label: 'Shared room', value: 'shared' },
-];
-
-const FURNISHEDTYPE_OPTIONS = [
-    { label: 'Furnished', value: 'furnished' },
-    { label: 'Unfurnished', value: 'unfurnished' },
-];
-
-const KEYDETAIL_OPTIONS = [
-    { label: 'Wi-Fi', value: 'wifi' },
-    { label: 'Laundry in building', value: 'laundry' },
-    { label: 'Kitchen access', value: 'kitchen-access' },
-    { label: 'Pet friendly', value: 'pet-friendly' },
-    { label: 'Parking', value: 'parking' },
-    { label: 'Shared Bathroom', value: 'shared-bathroom' },
-    { label: 'Gym', value: 'gym' },
-    { label: 'Swimming Pool', value: 'swimming-pool' },
-    { label: 'Sauna', value: 'sauna' },
-];
-
-const LOOKINGFOR_OPTIONS = [
-    { label: 'Man', value: 'man' },
-    { label: 'Woman', value: 'woman' },
-    { label: 'Non-binary', value: 'non-binary' },
-    { label: 'Open to any', value: 'open-to-any' },
-    { label: 'Clean', value: 'clean' },
-    { label: 'Responsible', value: 'responsible' },
-    { label: 'Pet-friendly', value: 'pet-friendly' },
-    { label: 'Quiet at night', value: 'quiet-at-night' },
-    { label: 'Early schedule', value: 'early-schedule' },
-    { label: 'Non-smoker', value: 'non-smoker' },
-];
-
 {/* utility functions */}
 const formatCurrency = (amount) => `$${Number(amount).toLocaleString()}`;
 
-const getRoomTypeLabel = (value) => (
-    ROOMTYPE_OPTIONS.find((item) => item.value === value)?.label ?? value
-);
-const getFurnishedTypeLabel = (value) => (
-    FURNISHEDTYPE_OPTIONS.find((item) => item.value === value)?.label ?? value
-);
-const getKeyDetailLabel = (value) => (
-    KEYDETAIL_OPTIONS.find((item) => item.value === value)?.label ?? value
-);
-const getLookingForLabel = (value) => (
-    LOOKINGFOR_OPTIONS.find((item) => item.value === value)?.label ?? value
-);
+// Value → stored label via the *_LABELS maps — the same contract lib/listingDraft.js
+// uses, so the two lookup mechanisms can't drift.
+const getRoomTypeLabel = (value) => ROOM_TYPE_LABELS[value] ?? value;
+const getFurnishedTypeLabel = (value) => FURNISHED_LABELS[value] ?? value;
+const getKeyDetailLabel = (value) => KEYDETAIL_LABELS[value] ?? value;
+const getLookingForLabel = (value) => LOOKINGFOR_LABELS[value] ?? value;
 
 const normalizeAddressPart = (value) => value?.trim?.() ?? '';
 
@@ -295,8 +267,12 @@ export default function StepOne() {
             nextErrors.minimumStay = 'Minimum stay must be at least 1 month.';
         }
 
-        if (!roomType || !furnishedType) {
+        if (!roomType && !furnishedType) {
+            nextErrors.aboutRoom = 'Select the room type and whether it’s furnished.';
+        } else if (!roomType) {
             nextErrors.aboutRoom = 'Select the room type.';
+        } else if (!furnishedType) {
+            nextErrors.aboutRoom = 'Select whether the room is furnished.';
         }
 
         setErrors(nextErrors);
@@ -357,15 +333,15 @@ export default function StepOne() {
 
   return (
     <View style={{ flex: 1, overflow: 'visible' }}>
-        <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-        <KeyboardAwareScrollView
+        {/* Plain ScrollView + native keyboard insets. The JS keyboard-aware library
+            kept programmatically scrolling this form to the top after bottom-sheet
+            interactions (its scroll-restore math goes stale); the native inset path
+            has no JS scroll calls at all, so nothing can yank the position. Android
+            is handled by the window's default adjustResize. */}
+        <ScrollView
             contentContainerStyle={{ flexGrow: 1 }}
-            enableOnAndroid
             keyboardShouldPersistTaps="handled"
-            extraScrollHeight={-50}
+            automaticallyAdjustKeyboardInsets
         >
                 <View style={styles.container}>
                     <View style={styles.titleContainer}>
@@ -504,10 +480,7 @@ export default function StepOne() {
                         </FormField>
                         <FormField label="Lease Type" error={errors.leaseType}>
                             <PillGroup
-                                items={[
-                                    { label: "Month-to-month", value: "month-to-month" },
-                                    { label: "Fixed-term", value: "fixed-term" },
-                                ]}
+                                items={LEASE_OPTIONS}
                                 value={leaseType}
                                 onChange={(value) => {
                                     setLeaseType(value);
@@ -609,10 +582,11 @@ export default function StepOne() {
                         </View>
                     </View>
                 </View>
-        </KeyboardAwareScrollView>
-        </KeyboardAvoidingView>
+        </ScrollView>
         <AppDrawer
             ref={availableMonthDrawerRef}
+            snapPoints={['48%']}
+            scrollable={false}
             primaryAction={() => availableMonthDrawerRef.current?.close()}
         >
             <View style={styles.dropdownRow}>
@@ -620,90 +594,39 @@ export default function StepOne() {
                     value={availableMonth}
                     onChange={setAvailableMonth}
                     style={styles.dropdownItem}
-                    options={[
-                        { label: "Jan", value: "Jan" },
-                        { label: "Feb", value: "Feb" },
-                        { label: "Mar", value: "Mar" },
-                        { label: "Apr", value: "Apr" },
-                        { label: "May", value: "May" },
-                        { label: "Jun", value: "Jun" },
-                        { label: "Jul", value: "Jul" },
-                        { label: "Aug", value: "Aug" },
-                        { label: "Sep", value: "Sep" },
-                        { label: "Oct", value: "Oct" },
-                        { label: "Nov", value: "Nov" },
-                        { label: "Dec", value: "Dec" },
-                    ]}
+                    options={MONTH_OPTIONS}
                 />
             </View>
         </AppDrawer>
         <AppDrawer
             ref={availableDayDrawerRef}
+            snapPoints={['48%']}
+            scrollable={false}
             primaryAction={() => availableDayDrawerRef.current?.close()}
         >
             <Dropdown
                 value={availableDay}
                 onChange={setAvailableDay}
                 style={styles.dropdownItem}
-                options={[
-                    { label: "1", value: "1" },
-                    { label: "2", value: "2" },
-                    { label: "3", value: "3" },
-                    { label: "4", value: "4" },
-                    { label: "5", value: "5" },
-                    { label: "6", value: "6" },
-                    { label: "7", value: "7" },
-                    { label: "8", value: "8" },
-                    { label: "9", value: "9" },
-                    { label: "10", value: "10" },
-                    { label: "11", value: "11" },
-                    { label: "12", value: "12" },
-                    { label: "13", value: "13" },
-                    { label: "14", value: "14" },
-                    { label: "15", value: "15" },
-                    { label: "16", value: "16" },
-                    { label: "17", value: "17" },
-                    { label: "18", value: "18" },
-                    { label: "19", value: "19" },
-                    { label: "20", value: "20" },
-                    { label: "21", value: "21" },
-                    { label: "22", value: "22" },
-                    { label: "23", value: "23" },
-                    { label: "24", value: "24" },
-                    { label: "25", value: "25" },
-                    { label: "26", value: "26" },
-                    { label: "27", value: "27" },
-                    { label: "28", value: "28" },
-                    { label: "29", value: "29" },
-                    { label: "30", value: "30" },
-                    { label: "31", value: "31" },
-                ]}
+                options={DAY_OPTIONS}
             />
         </AppDrawer>
         <AppDrawer
             ref={availableYearDrawerRef}
+            snapPoints={['48%']}
+            scrollable={false}
             primaryAction={() => availableYearDrawerRef.current?.close()}
         >
             <Dropdown
                 value={availableYear}
                 onChange={setAvailableYear}
-                options={[
-                    { label: "2026", value: "2026" },
-                    { label: "2027", value: "2027" },
-                    { label: "2028", value: "2028" },
-                    { label: "2029", value: "2029" },
-                    { label: "2030", value: "2030" },
-                    { label: "2031", value: "2031" },
-                    { label: "2032", value: "2032" },
-                    { label: "2033", value: "2033" },
-                    { label: "2034", value: "2034" },
-                    { label: "2035", value: "2035" },
-                    { label: "2036", value: "2036" },
-                ]}
+                options={YEAR_OPTIONS}
             />
         </AppDrawer>
         <AppDrawer
             ref={depositDrawerRef}
+            snapPoints={['48%']}
+            scrollable={false}
             primaryAction={() => depositDrawerRef.current?.close()}
         >
             <Dropdown
@@ -714,15 +637,14 @@ export default function StepOne() {
         </AppDrawer>
         <AppDrawer
             ref={utilitiesDrawerRef}
+            snapPoints={['48%']}
+            scrollable={false}
             primaryAction={saveUtilities}
         >
             <Dropdown
                 value={draftIsUtilityIncluded}
                 onChange={setDraftIsUtilityIncluded}
-                options={[
-                    { label: "Included", value: true },
-                    { label: "Not Included", value: false },
-                ]}
+                options={UTILITY_OPTIONS}
             />
         </AppDrawer>
         <AppDrawer

@@ -1,0 +1,96 @@
+// Shared shell for single-listing reel routes (search reel, saved-list reel): data
+// fetch, loading/not-found states, back button, and the video player (loop, muted,
+// tap-to-unmute). The overlay actions differ per screen, so callers render them via
+// renderOverlay(item, insets).
+import { useEffect } from 'react';
+import { View, StyleSheet, Dimensions, Pressable, ActivityIndicator } from 'react-native';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+
+import AppIconButton from '@/components/ui/appIconButton';
+import AppText from '@/components/ui/appText';
+import { colors } from '@/constants/colors';
+import { useListing } from '@/hooks/use-listings';
+
+const { height } = Dimensions.get('window');
+
+export default function ListingReelScreen({ listingId, onBack, renderOverlay }) {
+  const insets = useSafeAreaInsets();
+  const { data: item, loading } = useListing(listingId);
+
+  return (
+    <View style={styles.container}>
+      <View style={[styles.topBar, { top: insets.top + 12 }]}>
+        <AppIconButton
+          icon={<Feather name="arrow-left" size={32} />}
+          type="ghost"
+          size="lg"
+          onPress={onBack ?? (() => router.back())}
+        />
+      </View>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.base.white} />
+        </View>
+      ) : !item ? (
+        <View style={styles.center}>
+          <AppText variant="body-md" color="primary">Listing not found</AppText>
+        </View>
+      ) : (
+        <Reel item={item} insets={insets} renderOverlay={renderOverlay} />
+      )}
+    </View>
+  );
+}
+
+function Reel({ item, insets, renderOverlay }) {
+  const player = useVideoPlayer(item.videoUrl ?? null, (p) => {
+    if (!p) return;
+    p.loop = true;
+    p.muted = true;
+  });
+
+  useEffect(() => {
+    player?.play();
+  }, [player]);
+
+  const toggleMute = () => {
+    if (player) player.muted = !player.muted;
+  };
+
+  return (
+    <Pressable style={styles.reel} onPress={toggleMute}>
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        pointerEvents="none"
+      />
+      {renderOverlay?.(item, insets)}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  reel: {
+    height,
+    width: '100%',
+    backgroundColor: 'black',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBar: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+  },
+});

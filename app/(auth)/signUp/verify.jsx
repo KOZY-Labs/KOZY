@@ -8,9 +8,9 @@ import {
   Platform,
   AppState,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import AppText from "@/components/ui/appText";
 import AppButton from "@/components/ui/appButton";
@@ -109,11 +109,9 @@ export default function Verify() {
         {/* Background shapes */}
         <LoginBackground />
         <AppHeader showBack />
-        <KeyboardAwareScrollView
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
-          enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          extraScrollHeight={-80}
         >
           <View style={[styles.content, { paddingBottom: insets.bottom }]}>
             <View style={styles.topContent}>
@@ -142,7 +140,7 @@ export default function Verify() {
               />
             </View>
           </View>
-        </KeyboardAwareScrollView>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );

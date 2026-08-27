@@ -39,24 +39,6 @@ export default function SearchStack() {
         }}
       />
       <Stack.Screen
-        name="searchResult"
-        options={{
-          title: 'Search Results',
-          headerShown: true,
-          headerBackVisible: false,
-          headerLeft: () => (
-            <Pressable
-              onPress={() => goBack('/home/search')}
-              accessibilityRole="button"
-              accessibilityLabel="Back to search"
-              hitSlop={10}
-            >
-              <Feather name="chevron-left" size={28} color="white" />
-            </Pressable>
-          ),
-        }}
-      />
-      <Stack.Screen
         name="map"
         options={{
           title: 'Map',

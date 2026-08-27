@@ -18,6 +18,7 @@ export const baseColors = {
   gray800Alpha: 'rgba(67, 69, 72, 0.5)',
   gray900: '#111111',
   warning: '#E43B3B',
+  success: '#4ADE80',
   white200Alpha: 'rgba(255, 255, 255, 0.2)',
   white300Alpha: 'rgba(255, 255, 255, 0.3)',
 };

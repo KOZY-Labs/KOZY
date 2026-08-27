@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { Platform, StyleSheet, View, KeyboardAvoidingView } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-
+import { useRef, useState } from 'react';
+import { Platform, StyleSheet, View, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import AppButton from '@/components/ui/appButton';
 import TextField from '@/components/ui/input/textField';
@@ -9,14 +8,29 @@ import FormField from '@/components/ui/form/formField';
 import TextArea from '@/components/ui/input/textArea';
 import DisplayField from '@/components/ui/displayField';
 import { showAlertModal } from '@/components/ui/confirmModalHost';
+import { useAuth } from '@/context/AuthContext';
+import { createReport } from '@/lib/db/reports';
+import { showAuthGate } from '@/lib/authGate';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ContactUs() {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+    // Report flow (listing detail → Report) passes `listingId` so the submission is tied
+    // to the listing, and `backTo` so submitting returns the user to where they came from.
+    const params = useLocalSearchParams();
+    const backTo = Array.isArray(params.backTo) ? params.backTo[0] : params.backTo;
+    const listingId = Array.isArray(params.listingId) ? params.listingId[0] : params.listingId;
+    const { user, uid, profile } = useAuth();
+    const isReport = !!listingId;
+
+    // Prefill from the profile once at mount — the live users-doc subscription keeps the
+    // profile warm well before the user can navigate this deep, so no effect machinery.
+    const [name, setName] = useState(profile?.name ?? '');
+    const [email, setEmail] = useState(user?.email || profile?.email || '');
     const [errors, setErrors] = useState({});
     const [body, setBody] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const submittedRef = useRef(false);
 
     const validateForm = () => {
         const nextErrors = {};
@@ -40,15 +54,57 @@ export default function ContactUs() {
         return Object.keys(nextErrors).length === 0;
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+        if (submittedRef.current) return; // one submission per visit — no duplicate reports
         if (!validateForm()) return;
-
-        showAlertModal({
-            title: 'Thank you for reaching out!',
-            message:
-                'We\'ll review your message and respond within 1–2 business days.\n\nStill need help? Email us at support@kozy.com',
-            buttonText: 'Close',
-        });
+        // firestore.rules requires reporterId == auth.uid; without a session the write
+        // would fail with a raw permission error. Use the shared gate (Sign Up / Log In
+        // with a redirect back here) — a dead-end alert would lose the typed message.
+        if (!uid) {
+            // Carry the report params through the login round-trip, or the submission
+            // would come back downgraded to a 'general' message with no target.
+            const query = [
+                listingId && `listingId=${encodeURIComponent(listingId)}`,
+                backTo && `backTo=${encodeURIComponent(backTo)}`,
+            ].filter(Boolean).join('&');
+            showAuthGate({
+                title: 'Sign in required',
+                message: 'Sign Up or Log In to send us a message.',
+                redirect: `/(tabs)/account/contactUs${query ? `?${query}` : ''}`,
+            });
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await createReport({
+                targetType: isReport ? 'listing' : 'general',
+                targetId: listingId ?? null,
+                reporterId: uid,
+                name: name.trim(),
+                email: email.trim(),
+                message: body.trim(),
+            });
+            // Navigate right away — the modal host is mounted at the root, so the
+            // confirmation survives navigation and a backdrop dismiss can't strand
+            // the user on a still-filled form. General contact instead clears the
+            // message, so re-sending requires typing a new one.
+            if (backTo) {
+                submittedRef.current = true;
+                router.replace(backTo);
+            } else {
+                setBody('');
+            }
+            showAlertModal({
+                title: 'Thank you for reaching out!',
+                message:
+                    'We\'ll review your message and respond within 1–2 business days.\n\nStill need help? Email us at info@getkozy.app',
+                buttonText: 'Close',
+            });
+        } catch (e) {
+            showAlertModal({ title: 'Message not sent', message: e?.message ?? 'Please try again.' });
+        } finally {
+            setSubmitting(false);
+        }
     };
 
   return (
@@ -57,14 +113,17 @@ export default function ContactUs() {
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-        <KeyboardAwareScrollView
+        <ScrollView
             contentContainerStyle={styles.container}
-            enableOnAndroid
             keyboardShouldPersistTaps="handled"
-            extraScrollHeight={-50}
         >
-        <DisplayField title="Have a question, feedback, or need support?" style={{ marginBottom: 16 }}>
-        We’re here to help. Reach out and we’ll get back to you as soon as possible.
+        <DisplayField
+            title={isReport ? 'Report this listing' : 'Have a question, feedback, or need support?'}
+            style={{ marginBottom: 16 }}
+        >
+        {isReport
+            ? 'Tell us what\'s wrong with this listing and we\'ll review it as soon as possible.'
+            : 'We\'re here to help. Reach out and we\'ll get back to you as soon as possible.'}
         </DisplayField>
         <View style={styles.formField}>
             <View style={{ paddingHorizontal:36 }}>
@@ -108,11 +167,12 @@ export default function ContactUs() {
                     text="Send Message"
                     size="lg"
                     type='primary'
+                    loading={submitting}
                     onPress={handleSubmit}
                 />
             </View>
         </View>
-        </KeyboardAwareScrollView>
+        </ScrollView>
         </KeyboardAvoidingView>
     </View>
   );

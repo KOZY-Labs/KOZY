@@ -7,7 +7,7 @@ import AppText from '@/components/ui/appText';
 import EmptyListingsState from '@/components/ui/emptyListingsState';
 import { useAuth } from '@/context/AuthContext';
 import { useListingDraft } from '@/context/ListingDraftContext';
-import { getMissingProfileFields, showProfileGate } from '@/lib/profileCompleteness';
+import { gateProfileComplete } from '@/lib/profileCompleteness';
 
 // Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 export default function PostScreen() {
@@ -36,11 +36,7 @@ export default function PostScreen() {
               return;
             }
             // Posting requires a complete profile (everything except About Me).
-            const missing = getMissingProfileFields(profile);
-            if (missing.length) {
-              showProfileGate({ missing, backTo: '/(tabs)/post' });
-              return;
-            }
+            if (!gateProfileComplete(profile, { backTo: '/(tabs)/post' })) return;
             router.push('/(tabs)/post/stepOne');
           }}
           imageSource = {require('@/assets/images/3d-house.png')}

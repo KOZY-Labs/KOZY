@@ -2,18 +2,21 @@
 // grouped cluster). Used by the search preview map and the full-screen map so a
 // marker tap previews the area's listings instead of navigating away.
 import { forwardRef, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from '@gorhom/bottom-sheet';
 
 import AppText from '@/components/ui/appText';
 import ResultVideoCard from '@/components/ui/resultVideoCard';
 import { colors } from '@/constants/colors';
 
 const ListingsAreaSheet = forwardRef(({ listings = [], onPressListing, onClose }, ref) => {
+  const insets = useSafeAreaInsets();
   const count = listings.length;
 
-  // Small groups don't need a tall sheet; larger ones can be expanded to near full height.
-  const snapPoints = useMemo(() => (count > 2 ? ['55%', '90%'] : ['45%']), [count]);
+  // Small groups don't need a tall sheet — but it must still clear the card's
+  // title/price text; larger ones can be expanded to near full height.
+  const snapPoints = useMemo(() => (count > 2 ? ['55%', '90%'] : ['52%']), [count]);
 
   return (
     <BottomSheet
@@ -33,26 +36,30 @@ const ListingsAreaSheet = forwardRef(({ listings = [], onPressListing, onClose }
         />
       )}
     >
-      {/* Only render (and mount video players) while the sheet actually has content. */}
+      {/* Windowed list: each card mounts an autoplaying video player, so a dense
+          cluster (30+ leaves) must only mount the cards actually near the viewport —
+          never the whole set at once. */}
       {count > 0 && (
-        <BottomSheetScrollView
-          contentContainerStyle={styles.content}
+        <BottomSheetFlatList
+          data={listings}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={styles.gridRow}
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 56 }]}
           showsVerticalScrollIndicator={false}
-        >
-          <AppText variant="body-md-strong" color="primary">
-            {count} {count === 1 ? 'listing' : 'listings'} in this area
-          </AppText>
-
-          <View style={styles.grid}>
-            {listings.map((item) => (
-              <ResultVideoCard
-                key={item.id}
-                item={item}
-                onPress={() => onPressListing?.(item)}
-              />
-            ))}
-          </View>
-        </BottomSheetScrollView>
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={3}
+          removeClippedSubviews
+          ListHeaderComponent={
+            <AppText variant="body-md-strong" color="primary">
+              {count} {count === 1 ? 'listing' : 'listings'} in this area
+            </AppText>
+          }
+          renderItem={({ item }) => (
+            <ResultVideoCard item={item} onPress={() => onPressListing?.(item)} />
+          )}
+        />
       )}
     </BottomSheet>
   );
@@ -77,9 +84,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 16,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  gridRow: {
     gap: 12,
   },
 });
