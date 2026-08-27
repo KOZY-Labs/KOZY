@@ -72,11 +72,14 @@ service cloud.firestore {
       }
     }
 
-    // reports — signed-in users can file; only admins can read/triage.
+    // reports — signed-in users can file and read their own (the browse feed hides
+    // listings the viewer reported); only admins can triage.
     match /reports/{reportId} {
       allow create: if isSignedIn()
         && request.resource.data.reporterId == request.auth.uid;
-      allow read, update, delete: if isAdmin();
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.reporterId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
   }
 }

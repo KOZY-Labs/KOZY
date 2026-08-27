@@ -1,6 +1,7 @@
 // Data hooks for listings — centralize fetch + loading/empty/error so screens stay clean.
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { listListings, getListing, subscribeMyListings } from '@/lib/db/listings';
+import { subscribeReportedListingIds } from '@/lib/db/reports';
 import { useChats } from '@/hooks/use-chats';
 import { useAuth } from '@/context/AuthContext';
 
@@ -29,17 +30,30 @@ export function useListings(options) {
 }
 
 // Browse-facing listings (home feed, search, maps): published listings minus the
-// viewer's own and minus ones they already have a chat/request with (those come back
-// if the chat is deleted). Logged-out viewers see everything.
+// viewer's own, minus ones they already have a chat/request with (those come back
+// if the chat is deleted), and minus ones they reported. Logged-out viewers see
+// everything.
 export function useBrowseListings(options) {
   const { uid } = useAuth();
   const base = useListings(options);
   const { data: chats } = useChats(uid);
+  const [reportedIds, setReportedIds] = useState([]);
+
+  useEffect(() => {
+    if (!uid) {
+      setReportedIds([]);
+      return undefined;
+    }
+    return subscribeReportedListingIds(uid, setReportedIds);
+  }, [uid]);
 
   const data = useMemo(() => {
     const chattedListingIds = new Set(chats.map((c) => c.listingId));
-    return base.data.filter((l) => l.ownerId !== uid && !chattedListingIds.has(l.id));
-  }, [base.data, chats, uid]);
+    const reported = new Set(reportedIds);
+    return base.data.filter(
+      (l) => l.ownerId !== uid && !chattedListingIds.has(l.id) && !reported.has(l.id)
+    );
+  }, [base.data, chats, uid, reportedIds]);
 
   return { ...base, data };
 }
