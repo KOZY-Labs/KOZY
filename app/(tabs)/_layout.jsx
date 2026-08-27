@@ -103,8 +103,10 @@ export default function TabLayout() {
         name="chat"
         listeners={{
           // Always land on the messages list, even if a thread was open in this tab.
+          // Already on the list → no-op (a replace would replay the slide animation).
           tabPress: (event) => {
             event.preventDefault();
+            if (pathname === '/chat') return;
             router.replace('/(tabs)/chat');
           },
         }}
@@ -118,6 +120,7 @@ export default function TabLayout() {
         listeners={{
           tabPress: (event) => {
             event.preventDefault();
+            if (pathname === '/post') return;
             router.replace('/(tabs)/post');
           },
         }}
@@ -131,8 +134,10 @@ export default function TabLayout() {
         listeners={{
           // Always land on My Page root — a stale sub-screen (e.g. Delete Account
           // after the account is gone) must not survive in this tab's stack.
+          // Already on the root → no-op (no replayed slide animation).
           tabPress: (event) => {
             event.preventDefault();
+            if (pathname === '/account') return;
             router.replace('/(tabs)/account');
           },
         }}

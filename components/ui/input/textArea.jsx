@@ -1,9 +1,10 @@
 // components/input/TextArea.jsx
 import React, { useState } from "react";
-import { TextInput, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { colors } from '@/constants/colors';
 import { typography } from '@/constants/typography';
 import AppText from "../appText";
+import AdaptiveTextInput from './adaptiveTextInput';
 
 export default function TextArea({
   value,
@@ -11,6 +12,7 @@ export default function TextArea({
   error,
   disabled,
   onChangeText,
+  maxLength,
   ...prop
 }) {
 
@@ -26,7 +28,7 @@ export default function TextArea({
 
   return (
     <View>
-      <TextInput
+      <AdaptiveTextInput
         value={value}
         editable={!disabled}
         placeholder={placeholder}
@@ -36,6 +38,7 @@ export default function TextArea({
         onChangeText={onChangeText}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
+        maxLength={maxLength}
         style={[
           styles.textarea,
           typography.body['body-xsm'],
@@ -46,9 +49,16 @@ export default function TextArea({
         ]}
         {...prop}
       />
-      <AppText variant="caption" color={value.length > 750 ? 'error' : 'secondary'} style={styles.counter}>
-        {value.length}/750
-      </AppText>
+      {/* Counter reflects the ACTUAL limit — only shown when one is set. */}
+      {maxLength != null && (
+        <AppText
+          variant="caption"
+          color={(value?.length ?? 0) >= maxLength ? 'error' : 'primary'}
+          style={styles.counter}
+        >
+          {value?.length ?? 0}/{maxLength}
+        </AppText>
+      )}
     </View>
   );
 }

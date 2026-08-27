@@ -152,6 +152,7 @@ export default function ContactUs() {
                 <FormField error={errors.body}>
                     <TextArea
                         value={body}
+                        maxLength={300}
                         placeholder="Tell us what you need help with."
                         error={!!errors.body}
                         onChangeText={(n) => {
@@ -180,7 +181,9 @@ export default function ContactUs() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    // flexGrow (not flex): a fixed-height scroll content can't scroll when the
+    // keyboard shrinks the viewport, which buried the CTA under the keyboard.
+    flexGrow: 1,
     flexDirection: 'column',
     gap: 50,
     backgroundColor: 'black',

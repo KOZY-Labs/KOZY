@@ -1,135 +1,202 @@
-import { router, usePathname, Stack } from "expo-router";
-import { Platform, StyleSheet, View} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScrollView } from "react-native-gesture-handler";
+import { router } from "expo-router";
+import { Platform, StyleSheet, View, ScrollView } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
 import { colors } from '@/constants/colors';
+import { useAuth } from '@/context/AuthContext';
+import { trustLevelFor } from '@/lib/trustLevel.mjs';
 
+const BACK_TO = '/(tabs)/account/trustLevelInfo';
 
+// This screen is only reachable logged-in (My Page menu), so the guide speaks to a
+// member — no guest copy. The level is derived live from the profile.
+const LEVELS = [
+  {
+    level: 1,
+    emoji: "🥉",
+    title: "Level 1 · Member",
+    summary: "You’ve signed up and verified your email.",
+    perks: ["Browse every listing", "Save places you like"],
+    nextTitle: "To reach Level 2:",
+    nextSteps: [
+      "Add your profile photo and basic info",
+      "Pick your personality and lifestyle",
+    ],
+    ctaText: "Complete your profile",
+  },
+  {
+    level: 2,
+    emoji: "🥈",
+    title: "Level 2 · Trusted",
+    summary:
+      "Your profile is complete — people can see who they’d be living with.",
+    perks: [
+      "Send and receive chat requests",
+      "Post and manage your listings",
+      "Better match visibility",
+    ],
+    nextTitle: "To reach Level 3:",
+    nextSteps: [
+      "Verify your identity with a government ID (takes a few minutes)",
+    ],
+    ctaText: "Verify your identity",
+    ctaFocus: "verify", // editProfile opens the Persona drawer on arrival
+  },
+  {
+    level: 3,
+    emoji: "",
+    title: "Level 3 · Verified🛡️",
+    summary: "Your identity is verified — the highest level of trust on KOZY.",
+    perks: [
+      "Verified badge on your profile and listings",
+      "Roommates can connect with full confidence",
+    ],
+    nextTitle: null,
+    nextSteps: [],
+    ctaText: null,
+  },
+];
 
 export default function TrustLevelInfo() {
-  const insets = useSafeAreaInsets();
-  const pathname = usePathname();
+  const { profile } = useAuth();
+  const myLevel = trustLevelFor(profile);
+
+  const goEditProfile = (focus) =>
+    router.push({
+      pathname: '/(tabs)/account/editProfile',
+      params: focus ? { backTo: BACK_TO, focus } : { backTo: BACK_TO },
+    });
 
   return (
-    <ScrollView 
-      ontentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-      style={[styles.container, { paddingTop: insets.top }]}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
     >
-        <View style={styles.content}>
-          <View>
-            <AppText variant="headline-md" color="primary">
-              Build Trust. Unlock More.
-            </AppText>
-            <AppText variant="body-sm" color="primary">
-              Your trust level helps others feel safe and confident when connecting with you. 
-              It reflects how complete and active your profile is. 
-              Higher trust brings more visibility and better matches.
-            </AppText>
-          </View>
-          <View style={{width: 300, height: 300, backgroundColor:'#f4f4f4'}}></View>
-          <View>
-            <AppText 
-              variant="headline-md" 
-              color="primary"
-              style={{ marginBottom: 30 }}
-            >
-                ✅ Trust Level Guide
-            </AppText>
-            <AppText 
-              variant="body-sm" 
-              color="primary" 
-              style={{ marginBottom: 16 }}
-            >
-                🔒 Level 1: Unverified
-            </AppText>
-            <AppText variant="body-sm" color="primary">
-                You haven&apos;t signed up yet, or haven’t completed your basic profile.
+      <View style={styles.intro}>
+        <AppText variant="headline-md" color="primary">
+          Build Trust. Unlock More.
+        </AppText>
+        <AppText variant="body-sm" color="primary" style={{ marginTop: 8 }}>
+          Your trust level shows others how safe it is to connect with you. Complete your
+          profile and verify your identity to move up.
+        </AppText>
+      </View>
+
+      {/* Level guide — the user's own level is highlighted and carries the next-step CTA */}
+      <AppText variant="headline-sm" color="primary">
+        Trust Level Guide
+      </AppText>
+      {LEVELS.map((item) => {
+        const isMine = item.level === myLevel;
+        return (
+          <View key={item.level} style={[styles.levelCard, isMine && styles.levelCardActive]}>
+            <View style={styles.levelHeader}>
+              <AppText variant="body-md-strong" color="primary">
+                 {item.title}
               </AppText>
-            <View style={{ paddingVertical: 16 }}>
-              <AppText variant="body-sm" color="primary">
-                  • You’re browsing as a guest
-              </AppText>
-              <AppText variant="body-sm" color="primary">
-                  • You can&apos;t contact others or upload listings
-              </AppText>  
-              <AppText variant="body-sm" color="primary">
-                  • Your activity is not visible to other users
-              </AppText>            
+              {isMine && (
+                <View style={styles.youBadge}>
+                  <AppText variant="button-xsm" color="primary">YOU</AppText>
+                </View>
+              )}
             </View>
-            <AppText variant="body-sm" color="primary">
-                To get started:
+            <AppText variant="body-sm" color="primary" style={{ marginTop: 6 }}>
+              {item.summary}
             </AppText>
-            <AppText variant="body-sm" color="primary">
-                ✅ Sign up
-            </AppText>
-            <AppText variant="body-sm" color="primary">
-                ✅ Verify your email and provide basic information
-            </AppText>
-          </View>
-          <View>
-            <AppText 
-              variant="body-sm" 
-              color="primary" 
-              style={{ marginBottom: 16 }}
-            >
-                🥈 Level 2: Verified
-            </AppText>
-            <AppText variant="body-sm" color="primary">
-                You’ve completed your profile and verified your identity. Other users can trust and connect with you.
-              </AppText>
-            <View style={{ paddingVertical: 16 }}>
-              <AppText variant="body-sm" color="primary">
-                  • Normal visibility in search results
-              </AppText>
-              <AppText variant="body-sm" color="primary">
-                  • Can send and receive chat requests
-              </AppText>  
-              <AppText variant="body-sm" color="primary">
-                  • Can upload and manage listings
-              </AppText>            
+            <View style={{ marginTop: 10, gap: 4 }}>
+              {item.perks.map((perk) => (
+                <AppText key={perk} variant="body-sm" color="primary">
+                  • {perk}
+                </AppText>
+              ))}
             </View>
-            <AppText variant="body-sm" color="primary">
-                How to stay verified:
-            </AppText>
-            <AppText variant="body-sm" color="primary">
-                👍 Keep your profile photo updated
-            </AppText>
-            <AppText variant="body-sm" color="primary">
-                👍 Make sure your lifestyle and preferences reflect your current situation
-            </AppText>
-            <AppText variant="body-sm" color="primary">
-               👍 Stay respectful in chats
-            </AppText>
+            {item.nextTitle && (
+              <View style={{ marginTop: 12 }}>
+                <AppText variant="body-sm-strong" color="primary">{item.nextTitle}</AppText>
+                <View style={{ marginTop: 4, gap: 4 }}>
+                  {item.nextSteps.map((step) => (
+                    <AppText key={step} variant="body-sm" color="primary">
+                      ✅ {step}
+                    </AppText>
+                  ))}
+                </View>
+              </View>
+            )}
+            {/* Next-step CTA lives on MY level's card only */}
+            {isMine && item.ctaText && (
+              <View style={styles.cardCta}>
+                <AppButton text={item.ctaText} type="primary" onPress={() => goEditProfile(item.ctaFocus)} />
+              </View>
+            )}
+            {isMine && !item.ctaText && (
+              <View style={styles.allSetRow}>
+                <Feather name="check-circle" size={18} color={colors.base.success} />
+                <AppText variant="body-sm-strong" style={{ color: colors.base.success }}>
+                  You’re all set
+                </AppText>
+              </View>
+            )}
           </View>
-          
-          <AppButton 
-            text='Return to My Page'
-            type='secondary'
-            onPress={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace('/(tabs)/account');
-            }}
-          />
-        </View>
+        );
+      })}
+
+      <AppButton
+        text="Return to My Page"
+        type="secondary"
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)/account');
+        }}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container :{
+  container: {
     backgroundColor: colors.base.background,
     flex: 1,
     paddingHorizontal: 16,
   },
   content: {
-    justifyContent: 'center',
+    gap: 20,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 24,
+  },
+  intro: {
+    marginTop: 8,
+  },
+  cardCta: {
+    marginTop: 16,
+  },
+  allSetRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 56,
-    flexDirection: 'column',
-    paddingBottom: Platform.OS === 'ios' ? 100 : 16,
+    gap: 6,
+    marginTop: 14,
+  },
+  levelCard: {
+    borderWidth: 1,
+    borderColor: colors.base.gray700,
+    borderRadius: 16,
+    padding: 16,
+  },
+  levelCardActive: {
+    borderColor: colors.base.accent,
+    backgroundColor: colors.base.gray800Alpha,
+  },
+  levelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  youBadge: {
+    backgroundColor: colors.base.accent,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
 });

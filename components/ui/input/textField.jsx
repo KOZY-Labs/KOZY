@@ -1,8 +1,9 @@
 // components/input/TextField.jsx
 import { useState } from "react";
-import { Text, TextInput, StyleSheet, View, Pressable } from "react-native";
+import { Text, StyleSheet, View, Pressable } from "react-native";
 import { colors } from '@/constants/colors';
 import { typography } from '@/constants/typography';
+import AdaptiveTextInput from './adaptiveTextInput';
 
 export default function TextField({
   value,
@@ -39,7 +40,7 @@ export default function TextField({
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
-      <TextInput
+      <AdaptiveTextInput
         {...props}
         secureTextEntry={props.secureTextEntry}
         value={value}

@@ -559,7 +559,7 @@ export default function StepOne() {
                             <TextArea
                                 value={description}
                                 placeholder="Anything else roommates should know — vibe, house rules, neighborhood…"
-                                maxLength={750}
+                                maxLength={300}
                                 onChangeText={setDescription}
                             />
                         </FormField>
@@ -585,7 +585,6 @@ export default function StepOne() {
         </ScrollView>
         <AppDrawer
             ref={availableMonthDrawerRef}
-            snapPoints={['48%']}
             scrollable={false}
             primaryAction={() => availableMonthDrawerRef.current?.close()}
         >
@@ -600,7 +599,6 @@ export default function StepOne() {
         </AppDrawer>
         <AppDrawer
             ref={availableDayDrawerRef}
-            snapPoints={['48%']}
             scrollable={false}
             primaryAction={() => availableDayDrawerRef.current?.close()}
         >
@@ -613,7 +611,6 @@ export default function StepOne() {
         </AppDrawer>
         <AppDrawer
             ref={availableYearDrawerRef}
-            snapPoints={['48%']}
             scrollable={false}
             primaryAction={() => availableYearDrawerRef.current?.close()}
         >
@@ -625,7 +622,6 @@ export default function StepOne() {
         </AppDrawer>
         <AppDrawer
             ref={depositDrawerRef}
-            snapPoints={['48%']}
             scrollable={false}
             primaryAction={() => depositDrawerRef.current?.close()}
         >
@@ -637,7 +633,6 @@ export default function StepOne() {
         </AppDrawer>
         <AppDrawer
             ref={utilitiesDrawerRef}
-            snapPoints={['48%']}
             scrollable={false}
             primaryAction={saveUtilities}
         >

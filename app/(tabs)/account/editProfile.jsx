@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { ActivityIndicator, Platform, StyleSheet, View, Dimensions, FlatList, Pressable } from 'react-native';
-import { router, useNavigation } from 'expo-router';
+import { router, useNavigation, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { startPersonaVerification } from '@/services/personaVerification';
@@ -26,6 +26,7 @@ import { GENDER_OPTIONS, PERSONALITY_OPTIONS, SEARCH_LIFESTYLE_OPTIONS } from '@
 import { useAuth } from '@/context/AuthContext';
 import { updateUserDoc } from '@/lib/db/users';
 import { syncProfileCaches } from '@/lib/db/profileSync';
+import { trustLevelFor } from '@/lib/trustLevel.mjs';
 import { uploadUserAvatar } from '@/lib/utils/uploadMedia';
 import { requestEmailChange } from '@/lib/auth';
 import { authErrorMessage } from '@/lib/auth/errors';
@@ -82,6 +83,7 @@ export default function EditProfile() {
 
 function EditProfileForm() {
     const { profile, uid } = useAuth();
+    const { focus } = useLocalSearchParams();
     const existingAvatar = useMemo(() => profile?.avatar ?? [], [profile?.avatar]);
     const genderDrawerRef = useRef(null);
     const personalityDrawerRef = useRef(null);
@@ -152,6 +154,17 @@ function EditProfileForm() {
 
     const isDirtyRef = useRef(false);
     isDirtyRef.current = isDirty;
+
+    // Deep-focus: arriving with ?focus=verify (Trust Level CTA) opens the Persona
+    // drawer directly. Small delay lets the bottom sheet finish mounting.
+    useEffect(() => {
+      const target = Array.isArray(focus) ? focus[0] : focus;
+      if (target !== 'verify' || profile?.verified) return undefined;
+      const timer = setTimeout(() => myVerificationDrawerRef.current?.snapToIndex(0), 400);
+      return () => clearTimeout(timer);
+      // Run once on mount for the arrival param.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Intercept every way of leaving (header back, swipe gesture, hardware back)
     // and show the discard modal while there are unsaved changes.
@@ -241,6 +254,8 @@ function EditProfileForm() {
         aboutMe,
         avatar,
       };
+      // Completing the profile is what advances Level 1 → 2.
+      updates.trustLevel = trustLevelFor({ ...profile, ...updates });
       await updateUserDoc(uid, updates);
       // Push into denormalized copies (listings.owner, chats.participantsInfo) using the
       // values we just wrote — no re-read. The context profile updates via its own
@@ -292,6 +307,7 @@ function EditProfileForm() {
           verified: true,
           personaInquiryId: result.inquiryId ?? '',
         };
+        updates.trustLevel = trustLevelFor({ ...profile, ...updates }); // verified → 3
         await updateUserDoc(uid, updates);
         // Denormalized copies get the just-written values; the context profile (and the
         // derived `verified`) updates via the users-doc subscription.
@@ -388,6 +404,9 @@ function EditProfileForm() {
         data={[{ key: 'content' }]}
         keyExtractor={(item) => item.key}
         keyboardShouldPersistTaps="always"
+        // Native keyboard insets: the focused field scrolls into view instead of
+        // being covered (same pattern as stepOne).
+        automaticallyAdjustKeyboardInsets
         renderItem={() => (
           <View style={styles.container}>
             <View style={styles.sliderContainer}>
@@ -602,8 +621,6 @@ function EditProfileForm() {
             ref={jobDrawerRef}
             title="What do you do for work?"
             description="Tell us what your profession is."
-            snapPoints={['100%']}
-            enableDynamicSizing={false}
             primaryAction={() => {
               jobDrawerRef.current?.close();             
             }}
@@ -644,15 +661,13 @@ function EditProfileForm() {
             ref={aboutMeDrawerRef}
             title="What your story?"
             description="Tell us what your short story."
-            snapPoints={['100%']}
-            enableDynamicSizing={false}
             primaryAction={() => {
               aboutMeDrawerRef.current?.close();            }}
           >
             <FormField label="">
                 <TextArea
                   placeholder="Tell us your story."
-                  maxLength={750}
+                  maxLength={300}
                   onChangeText={setAboutMe}
                   value={aboutMe}
                 />
@@ -693,11 +708,6 @@ function EditProfileForm() {
             description="Enter your new email and current password"
             primaryActionText={changingEmail ? 'Sending...' : 'Send Verification Link'}
             primaryAction={handleEmailChange}
-            snapPoints={['100%']}
-            enableDynamicSizing={false}
-            keyboardBehavior="interactive"
-            keyboardBlurBehavior="restore"
-            android_keyboardInputMode="adjustResize"
           >
             <View>
               <AppText variant='body-xsm'>

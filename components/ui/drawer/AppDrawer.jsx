@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { View, StyleSheet, Keyboard, Pressable } from 'react-native';
+import { View, StyleSheet, Keyboard, Pressable, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheet from '@gorhom/bottom-sheet';
 import AppText from '@/components/ui/appText';
@@ -22,13 +22,17 @@ const AppDrawer = forwardRef(
       primaryDisabled,
       secondaryDisabled,
       snapPoints,
-      keyboardBehavior,
-      keyboardBlurBehavior,
-      android_keyboardInputMode,
-      // OFF by default: @gorhom v5 defaults dynamic sizing ON, which re-measures and
-      // re-snaps the sheet whenever content re-renders (e.g. picking a dropdown value
-      // yanks it to the top) and sizes it to content with the bottom row clipped.
-      enableDynamicSizing = false,
+      // Keyboard handling ON by default: every drawer with a text input lifts above
+      // the keyboard (inputs render via AdaptiveTextInput → BottomSheetTextInput, which
+      // is what makes these behaviors fire). Callers can still override.
+      keyboardBehavior = 'interactive',
+      keyboardBlurBehavior = 'restore',
+      android_keyboardInputMode = 'adjustResize',
+      // Default: size the sheet to its content (no wasted space under short drawers),
+      // capped at 90% of the screen with internal scrolling beyond that. Passing
+      // explicit snapPoints opts a drawer OUT of dynamic sizing (fixed height wins) —
+      // mixing the two is what previously caused clipped/mispositioned sheets.
+      enableDynamicSizing,
       // false for wheel-picker drawers: the sheet content must NOT scroll, or dragging
       // the wheel scrolls the whole sheet along with it.
       scrollable = true,
@@ -36,6 +40,7 @@ const AppDrawer = forwardRef(
     ref
   ) => {
     const insets = useSafeAreaInsets();
+    const dynamicSizing = enableDynamicSizing ?? !snapPoints;
 
     const content = (
       <>
@@ -89,11 +94,9 @@ const AppDrawer = forwardRef(
       <BottomSheet
         ref={ref}
         index={-1}
-        // SINGLE snap point by default: with two snaps the sheet sizes its scroll
-        // content against the LARGEST one, so at the smaller snap the bottom slice
-        // (Save button) sits off-screen and can never be scrolled into view.
-        snapPoints={snapPoints ?? ['75%']}
-        enableDynamicSizing={enableDynamicSizing}
+        snapPoints={dynamicSizing ? undefined : snapPoints}
+        enableDynamicSizing={dynamicSizing}
+        maxDynamicContentSize={Dimensions.get('window').height * 0.9}
         keyboardBehavior={keyboardBehavior}
         keyboardBlurBehavior={keyboardBlurBehavior}
         android_keyboardInputMode={android_keyboardInputMode}
