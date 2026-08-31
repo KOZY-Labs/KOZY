@@ -1,0 +1,9 @@
+{
+  "buildCommand": "node build.js",
+  "outputDirectory": "public",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/account-deletion", "destination": "/user-data", "statusCode": 308 }
+  ]
+}

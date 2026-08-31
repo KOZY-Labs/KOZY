@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KOZY — See the room before you ever knock</title>
+  <meta name="description" content="KOZY is a video-first room and roommate search app. Watch full video walk-throughs, meet verified roommates, and chat when a place feels right. Launching soon in NYC.">
+  <meta property="og:title" content="KOZY — video-first room &amp; roommate search">
+  <meta property="og:description" content="Watch full video walk-throughs, meet verified roommates, chat when a place feels right. Launching soon in NYC.">
+  <meta property="og:image" content="https://getkozy.app/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://getkozy.app/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://getkozy.app/assets/og.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/assets/og-icon.png">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Open+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<header class="wrap">
+  <nav class="nav">
+    <a href="/" aria-label="KOZY home"><img class="logo" src="/assets/logo.png" alt="KOZY"></a>
+    <div class="navlinks">
+      <a href="/terms">Terms of Service</a>
+      <a href="/user-data">User Data Management</a>
+      <a href="/privacy">Privacy Policy</a>
+    </div>
+    <button class="burger" aria-label="Menu" aria-expanded="false"
+      onclick="var m=document.getElementById('mm');var o=m.classList.toggle('open');this.setAttribute('aria-expanded',o)">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+</header>
+<div class="mmenu" id="mm">
+  <a href="/terms">Terms of Service</a>
+  <a href="/user-data">User Data Management</a>
+  <a href="/privacy">Privacy Policy</a>
+</div>
+
+<main>
+  <section class="wrap hero">
+    <div class="heroGlow" aria-hidden="true"></div>
+    <div>
+      <div class="eyebrow">ROOM &amp; ROOMMATE SEARCH, VIDEO-FIRST</div>
+      <h1 class="display">See the room before you ever knock.</h1>
+      <p class="sub">KOZY swaps photo grids for full video walk-throughs. Swipe real rooms,
+        meet verified roommates, and chat only when a place actually feels right —
+        starting in New York City.</p>
+      <div class="ctaRow">
+        <!-- __APP_STORE_URL__ / __PLAY_STORE_URL__ are injected at build time from
+             Vercel env vars (see build.js); '#' fallback keeps the badge inert. -->
+        <a class="store" href="__APP_STORE_URL__" onclick="return this.getAttribute('href') !== '#'">
+          <span class="glyph">&#63743;</span>
+          <span><small>DOWNLOAD ON THE</small><b>App Store</b></span>
+        </a>
+        <a class="store" href="__PLAY_STORE_URL__" onclick="return this.getAttribute('href') !== '#'">
+          <span class="glyph">&#9654;</span>
+          <span><small>GET IT ON</small><b>Google Play</b></span>
+        </a>
+        <span class="soon">Coming soon</span>
+      </div>
+    </div>
+    <div class="phoneWrap">
+      <div class="phone" role="img" aria-label="KOZY app showing a video reel of a room listing">
+        <div class="video">
+          <video autoplay muted loop playsinline preload="metadata"
+                 poster="/assets/hero-poster.jpg" src="/assets/hero-reel.mp4"></video>
+        </div>
+        <div class="notch"></div>
+        <div class="reelUI" aria-hidden="true">
+          <span class="rSearch">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <div class="rActions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </div>
+          <div class="rBottom">
+            <div class="rInfo">
+              <span class="rAvatar">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>
+              </span>
+              <span class="rMeta">
+                <span class="rTitle">Sunny room in Astoria</span>
+                <span class="rPrice">$1,200 / month</span>
+              </span>
+              <span class="rDetail">Detail</span>
+            </div>
+            <div class="rTags">#Astoria&nbsp; #NY</div>
+            <div class="rBar"><i></i></div>
+            <div class="rTab">
+              <svg class="on" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10.2 12 3l9 7.2V21a1 1 0 0 1-1 1h-5.4v-6.6H9.4V22H4a1 1 0 0 1-1-1z"/></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 17 0z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><line x1="12" y1="8.5" x2="12" y2="15.5"/><line x1="8.5" y1="12" x2="15.5" y2="12"/></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <div class="bandHead">WHY KOZY</div>
+      <h2 class="bandTitle">Photos hide things. Video doesn't.</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="ic">&#9654;</div>
+          <h3>Video-first listings</h3>
+          <p>Every listing opens as a full walk-through reel — the light, the noise,
+             the actual size. No wide-angle tricks.</p>
+        </div>
+        <div class="card">
+          <div class="ic">&#10003;</div>
+          <h3>Verified people</h3>
+          <p>Three trust levels, up to government-ID verification, so you know
+             who you're really talking to.</p>
+        </div>
+        <div class="card">
+          <div class="ic">&#9737;</div>
+          <h3>Search on the map</h3>
+          <p>Browse by neighborhood with live price pills, filter by budget,
+             room type, and lifestyle match.</p>
+        </div>
+        <div class="card">
+          <div class="ic">&#9993;</div>
+          <h3>Chat when ready</h3>
+          <p>Send a chat request only when a place clicks. Owners accept before
+             a conversation ever starts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <div class="bandHead">HOW IT WORKS</div>
+      <h2 class="bandTitle">From first swipe to move-in.</h2>
+      <div class="steps">
+        <div class="step">
+          <h3>Watch</h3>
+          <p>Swipe through video reels of real rooms near you — every detail,
+             before you spend a subway ride.</p>
+        </div>
+        <div class="step">
+          <h3>Match</h3>
+          <p>Like a place, check the roommate's verified profile and lifestyle,
+             then send a chat request.</p>
+        </div>
+        <div class="step">
+          <h3>Move in</h3>
+          <p>Agree on the details in chat and take the room — no blind visits,
+             no surprises on day one.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="foot">
+    <img src="/assets/logo.png" alt="KOZY">
+    <div class="flinks">
+      <a href="/terms">Terms of Service</a>
+      <a href="/user-data">User Data Management</a>
+      <a href="/privacy">Privacy Policy</a>
+    </div>
+    <span>&copy; 2026 KOZY. All rights reserved.</span>
+  </div>
+</footer>
+
+<script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>
