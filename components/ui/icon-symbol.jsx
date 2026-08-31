@@ -10,6 +10,9 @@ import { OpaqueColorValue } from 'react-native';
  */
 const MAPPING = {
   'house.fill': 'home',
+  'bubble.left.fill': 'chat-bubble',
+  'plus.square': 'add-box',
+  'person.fill': 'person',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',

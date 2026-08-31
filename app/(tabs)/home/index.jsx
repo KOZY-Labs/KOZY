@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -7,14 +7,14 @@ import { Feather } from '@expo/vector-icons';
 
 import AppIconButton from '@/components/ui/appIconButton';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
+import VideoReelControls from '@/components/ui/videoReelControls';
 import { useBrowseListings } from '@/hooks/use-listings';
 import { useListingActions } from '@/hooks/use-listing-actions';
-
-const { height } = Dimensions.get('window');
 
 export default function HomeScreen() {
 
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const { data: listings, loading, error, reload } = useBrowseListings();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -63,6 +63,7 @@ export default function HomeScreen() {
               item={reel}
               isActive={index === activeIndex}
               insets={insets}
+              height={height}
             />
           )}
           pagingEnabled
@@ -81,10 +82,13 @@ export default function HomeScreen() {
 /* Reel Item — memoized so swipes only re-render the rows whose props changed.
    Owns its listing actions via the shared hook (per-item saved state via the store
    subscription), so the feed and the detail screens can never drift. */
-const ReelItem = React.memo(function ReelItem({ item, isActive, insets }) {
+const ReelItem = React.memo(function ReelItem({ item, isActive, insets, height }) {
   const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, {
     reportBackTo: '/(tabs)/home',
   });
+  // Icon shows only for a USER-initiated pause — auto-pause of off-screen reels
+  // while swiping must not flash a play icon.
+  const [paused, setPaused] = useState(false);
   const player = useVideoPlayer(item.videoUrl, (player) => {
     player.loop = true;
     player.muted = true;
@@ -94,22 +98,30 @@ const ReelItem = React.memo(function ReelItem({ item, isActive, insets }) {
   useEffect(() => {
     if (isActive) {
       player.play();
+      setPaused(false);
     } else {
       player.pause();
     }
   }, [isActive, player]);
 
-  const toggleMute = () => {
-    player.muted = !player.muted;
+  const togglePlay = () => {
+    if (player.playing) {
+      player.pause();
+      setPaused(true);
+    } else {
+      player.play();
+      setPaused(false);
+    }
   };
 
   return (
-    <Pressable style={styles.reel} onPress={toggleMute}>
+    <Pressable style={[styles.reel, { height }]} onPress={togglePlay}>
       {/* 🎥 Video */}
       <VideoView
         player={player}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
+        nativeControls={false}
         pointerEvents="none"
       />
 
@@ -125,6 +137,13 @@ const ReelItem = React.memo(function ReelItem({ item, isActive, insets }) {
         showShareAction
         showSaveAction
       />
+
+      {/* Progress bar sits just above the floating tab bar (bottom: insets+10, h 56) */}
+      <VideoReelControls
+        player={player}
+        paused={paused}
+        bottomOffset={insets.bottom + 10 + 56 + 8}
+      />
     </Pressable>
   );
 });
@@ -135,7 +154,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
   reel: {
-    height,
     width: '100%',
     backgroundColor: 'black',
   },

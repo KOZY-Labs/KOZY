@@ -51,6 +51,7 @@ export default function ListingReelOverlay({
           {onToggleSave ? (
             <AppIconButton
               icon={<MaterialIcons name={isSaved ? 'favorite' : 'favorite-border'} />}
+              shadow
               type="bare"
               onPress={() => onToggleSave?.(item)}
             />
@@ -58,6 +59,7 @@ export default function ListingReelOverlay({
           {onShare ? (
             <AppIconButton
               icon={<Feather name="share-2" />}
+              shadow
               type="bare"
               onPress={() => onShare?.(item)}
             />
@@ -65,6 +67,7 @@ export default function ListingReelOverlay({
           {showMoreAction ? (
             <AppIconButton
               icon={<Feather name="more-horizontal" />}
+              shadow
               type="bare"
               onPress={handleMorePress}
             />

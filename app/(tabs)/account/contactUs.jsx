@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Platform, StyleSheet, View, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import AppButton from '@/components/ui/appButton';
@@ -15,6 +16,7 @@ import { showAuthGate } from '@/lib/authGate';
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ContactUs() {
+    const insets = useSafeAreaInsets();
     // Report flow (listing detail → Report) passes `listingId` so the submission is tied
     // to the listing, and `backTo` so submitting returns the user to where they came from.
     const params = useLocalSearchParams();
@@ -114,7 +116,8 @@ export default function ContactUs() {
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
         <ScrollView
-            contentContainerStyle={styles.container}
+            // Bottom clearance from insets — the floating tab bar overlays this screen.
+            contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 92 }]}
             keyboardShouldPersistTaps="handled"
         >
         <DisplayField
@@ -189,7 +192,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     paddingHorizontal: 16,
     paddingTop: 20,
-    paddingBottom: Platform.OS === 'ios' ? 100 : 16,
   },
   buttonContainer: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,7 +13,8 @@ export default function Notification() {
     const insets = useSafeAreaInsets();
   
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    // Bottom clearance from insets — the floating tab bar overlays this screen.
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 92 }]}>
         <View>
             <DisplayField title="Chat Notifications" style={{ marginBottom: 16 }}>
                 Receive notifications for all chat messages and chat requests.
@@ -60,7 +61,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: 'black',
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 120 : 16,
   },
   buttonContainer: {
     flexDirection: 'row',

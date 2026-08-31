@@ -1,9 +1,9 @@
 // Shared shell for single-listing reel routes (search reel, saved-list reel): data
-// fetch, loading/not-found states, back button, and the video player (loop, muted,
-// tap-to-unmute). The overlay actions differ per screen, so callers render them via
-// renderOverlay(item, insets).
-import { useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Pressable, ActivityIndicator } from 'react-native';
+// fetch, loading/not-found states, back button, and the video player (loop, always
+// muted, tap-to-play/pause + custom progress bar). The overlay actions differ per
+// screen, so callers render them via renderOverlay(item, insets).
+import { useEffect, useState } from 'react';
+import { View, StyleSheet, useWindowDimensions, Pressable, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -11,10 +11,9 @@ import { Feather } from '@expo/vector-icons';
 
 import AppIconButton from '@/components/ui/appIconButton';
 import AppText from '@/components/ui/appText';
+import VideoReelControls from '@/components/ui/videoReelControls';
 import { colors } from '@/constants/colors';
 import { useListing } from '@/hooks/use-listings';
-
-const { height } = Dimensions.get('window');
 
 export default function ListingReelScreen({ listingId, onBack, renderOverlay }) {
   const insets = useSafeAreaInsets();
@@ -27,6 +26,7 @@ export default function ListingReelScreen({ listingId, onBack, renderOverlay }) 
           icon={<Feather name="arrow-left" size={32} />}
           type="ghost"
           size="lg"
+          shadow
           onPress={onBack ?? (() => router.back())}
         />
       </View>
@@ -46,6 +46,8 @@ export default function ListingReelScreen({ listingId, onBack, renderOverlay }) 
 }
 
 function Reel({ item, insets, renderOverlay }) {
+  const { height } = useWindowDimensions();
+  const [paused, setPaused] = useState(false);
   const player = useVideoPlayer(item.videoUrl ?? null, (p) => {
     if (!p) return;
     p.loop = true;
@@ -56,19 +58,32 @@ function Reel({ item, insets, renderOverlay }) {
     player?.play();
   }, [player]);
 
-  const toggleMute = () => {
-    if (player) player.muted = !player.muted;
+  const togglePlay = () => {
+    if (!player) return;
+    if (player.playing) {
+      player.pause();
+      setPaused(true);
+    } else {
+      player.play();
+      setPaused(false);
+    }
   };
 
   return (
-    <Pressable style={styles.reel} onPress={toggleMute}>
+    <Pressable style={[styles.reel, { height }]} onPress={togglePlay}>
       <VideoView
         player={player}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
+        nativeControls={false}
         pointerEvents="none"
       />
       {renderOverlay?.(item, insets)}
+      <VideoReelControls
+        player={player}
+        paused={paused}
+        bottomOffset={insets.bottom + 12}
+      />
     </Pressable>
   );
 }
@@ -79,7 +94,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
   reel: {
-    height,
     width: '100%',
     backgroundColor: 'black',
   },

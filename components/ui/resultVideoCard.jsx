@@ -35,6 +35,7 @@ export default function ResultVideoCard({
           player={player}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          nativeControls={false}
           pointerEvents="none"
         />
         {accessory ? <View style={styles.accessory}>{accessory}</View> : null}

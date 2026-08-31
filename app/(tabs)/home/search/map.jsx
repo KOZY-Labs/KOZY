@@ -63,9 +63,11 @@ export default function SearchMapScreen() {
 
   const handleOpenListing = (listing) => {
     areaSheetRef.current?.close();
+    // Land on the video reel first (same as the inline search map) — the reel's
+    // Detail button takes it from there. Back pops the stack, returning here.
     router.push({
-      pathname: '/home/[id]',
-      params: { id: listing.id, backTo: '/home/search/map' },
+      pathname: '/home/search/[id]',
+      params: { id: listing.id },
     });
   };
 

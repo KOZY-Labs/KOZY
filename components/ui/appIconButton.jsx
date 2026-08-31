@@ -7,6 +7,9 @@ export default function AppIconButton({
   size = 'lg',
   type = 'primary',   // primary | secondary | ghost | bare
   state = 'normal',   // normal | disabled | pressed
+  // Drop shadow behind the glyph (same treatment as the reel overlay text) so
+  // icons floating over video/photos stay visible on bright frames.
+  shadow = false,
   onPress,
   accessibilityLabel,
   ...props
@@ -51,7 +54,7 @@ export default function AppIconButton({
           ? React.cloneElement(icon, {
               color: iconColor,
               stroke: iconColor,
-              style: [{ color: iconColor }, icon.props.style],
+              style: [{ color: iconColor }, shadow && styles.glyphShadow, icon.props.style],
               size: size === 'lg' ? 25 : 16,
             })
           : icon}
@@ -90,6 +93,12 @@ const styles = StyleSheet.create({
   iconWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Vector icons render as text glyphs, so text shadow works on them.
+  glyphShadow: {
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 });
 

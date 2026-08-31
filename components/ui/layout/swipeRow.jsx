@@ -28,6 +28,7 @@ function VideoItem({ videoUrl }) {
       player={player}
       style={styles.thumbnail}
       contentFit="cover"
+      nativeControls={false}
       pointerEvents="none"
     />
   );
@@ -64,7 +65,7 @@ export default function SwipeToDeleteRow({ item, onDelete }) {
     <View style={styles.container}>
       {/* Delete background */}
       <View style={styles.deleteBackground}>
-        <Text style={styles.deleteText}>Delete</Text>
+        <Text allowFontScaling={false} style={styles.deleteText}>Delete</Text>
       </View>
 
       {/* Swipeable content */}

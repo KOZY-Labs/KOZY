@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Text, StyleSheet, View, Pressable } from "react-native";
 import { colors } from '@/constants/colors';
-import { typography } from '@/constants/typography';
+import { getTypeStyle } from '@/constants/typographyStyles';
 import AdaptiveTextInput from './adaptiveTextInput';
 
 export default function TextField({
@@ -59,7 +59,7 @@ export default function TextField({
         style={[
           styles.input,
           type === 'auth' && styles.authInput,
-          typography.body['body-xsm'],
+          getTypeStyle('body-xsm'),
           {
             borderColor: border.color,
             borderWidth: border.width,
@@ -72,9 +72,10 @@ export default function TextField({
       />
       {suffixText ? (
         <Text
+          allowFontScaling={false}
           style={[
             styles.suffix,
-            typography.body['body-xsm'],
+            getTypeStyle('body-xsm'),
             rightIcon && styles.suffixWithIcon,
           ]}
           pointerEvents="none"

@@ -15,7 +15,7 @@ const goBack = () => {
 
 export default function ChatStack() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false }}>
       <Stack.Screen name="index" options={{ title: 'Messages' }} />
       <Stack.Screen
         name="[chatId]"

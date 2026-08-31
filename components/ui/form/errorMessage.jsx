@@ -5,7 +5,7 @@ import { colors } from "@/constants/colors";
 export default function ErrorMessage({ message }) {
   if (!message) return null;
 
-  return <Text style={styles.error}>⚠️ {message}</Text>;
+  return <Text allowFontScaling={false} style={styles.error}>⚠️ {message}</Text>;
 }
 
 const styles = StyleSheet.create({

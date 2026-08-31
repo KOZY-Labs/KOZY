@@ -1,17 +1,17 @@
 // components/pill/Pill.jsx
-import { Pressable, Text, StyleSheet } from "react-native";
-import { typography } from '@/constants/typography';
+import { Pressable, StyleSheet } from "react-native";
+import AppText from '@/components/ui/appText';
 import { colors } from '@/constants/colors';
 
 export default function Pill({ label, selected, onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.pill, typography.body['body-xsm'], selected && styles.selected]}
+      style={[styles.pill, selected && styles.selected]}
     >
-      <Text style={[styles.text, typography.body['body-xsm'], selected && styles.textSelected]}>
+      <AppText variant="body-xsm" textColor={selected ? '#000' : '#fff'}>
         {label}
-      </Text>
+      </AppText>
     </Pressable>
   );
 }
@@ -27,11 +27,5 @@ const styles = StyleSheet.create({
   },
   selected: {
     backgroundColor: "#fff",
-  },
-  text: {
-    color: "#fff",
-  },
-  textSelected: {
-    color: "#000",
   },
 });

@@ -89,13 +89,11 @@ PODS:
   - ExpoWebBrowser (15.0.9):
     - ExpoModulesCore
   - FBLazyVector (0.81.5)
-  - Google-Maps-iOS-Utils (5.0.0):
-    - GoogleMaps (~> 8.0)
-  - GoogleMaps (8.4.0):
-    - GoogleMaps/Maps (= 8.4.0)
-  - GoogleMaps/Base (8.4.0)
-  - GoogleMaps/Maps (8.4.0):
-    - GoogleMaps/Base
+  - Google-Maps-iOS-Utils (6.1.0):
+    - GoogleMaps (~> 9.0)
+  - GoogleMaps (9.4.0):
+    - GoogleMaps/Maps (= 9.4.0)
+  - GoogleMaps/Maps (9.4.0)
   - hermes-engine (0.81.5):
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
@@ -1395,12 +1393,77 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-google-maps (1.20.1):
-    - Google-Maps-iOS-Utils (= 5.0.0)
-    - GoogleMaps (= 8.4.0)
+  - react-native-maps/Generated (1.29.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
     - React-Core
-  - react-native-maps (1.20.1):
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-maps/Google (1.29.0):
+    - Google-Maps-iOS-Utils (= 6.1.0)
+    - GoogleMaps (= 9.4.0)
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
     - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - react-native-maps/Generated
+    - react-native-maps/Maps
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-maps/Maps (1.29.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - react-native-maps/Generated
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - react-native-safe-area-context (5.6.2):
     - hermes-engine
     - RCTRequired
@@ -2169,8 +2232,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
-  - react-native-google-maps (from `/Users/jlee/Workspace/KOZY/node_modules/react-native-maps`)
-  - react-native-maps (from `../node_modules/react-native-maps`)
+  - react-native-maps/Google (from `/Users/jlee/Workspace/KOZY/node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-oscompat (from `../node_modules/react-native/ReactCommon/oscompat`)
@@ -2334,10 +2396,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
-  react-native-google-maps:
-    :path: "/Users/jlee/Workspace/KOZY/node_modules/react-native-maps"
   react-native-maps:
-    :path: "../node_modules/react-native-maps"
+    :path: "/Users/jlee/Workspace/KOZY/node_modules/react-native-maps"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   React-NativeModulesApple:
@@ -2440,8 +2500,8 @@ SPEC CHECKSUMS:
   ExpoVideo: e28c2c362c591adb82c344690d64b770d29909b3
   ExpoWebBrowser: 35223474c19e261c0661ecc7caa513d054244ab5
   FBLazyVector: e95a291ad2dadb88e42b06e0c5fb8262de53ec12
-  Google-Maps-iOS-Utils: 66d6de12be1ce6d3742a54661e7a79cb317a9321
-  GoogleMaps: 8939898920281c649150e0af74aa291c60f2e77d
+  Google-Maps-iOS-Utils: 0a484b05ed21d88c9f9ebbacb007956edd508a96
+  GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
@@ -2479,8 +2539,7 @@ SPEC CHECKSUMS:
   React-logger: c3e2f8a2e284341205f61eef3d4677ab5a309dfd
   React-Mapbuffer: 603c18db65844bb81dbe62fee8fcc976eaeb7108
   React-microtasksnativemodule: d77e0c426fce34c23227394c96ca1033b30c813c
-  react-native-google-maps: 7cc1184afe41fbd15a3dffd53c924819f6587b69
-  react-native-maps: ee1e65647460c3d41e778071be5eda10e3da6225
+  react-native-maps: 6b4875a40994581685bfc07c98f52cf24fd7a118
   react-native-safe-area-context: 53f796cb6c814661bbe99fbdfd0585d07b996cdd
   React-NativeModulesApple: 1664340b8750d64e0ef3907c5e53d9481f74bcbd
   React-oscompat: ce47230ed20185e91de62d8c6d139ae61763d09c
@@ -2526,6 +2585,6 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: 3fd22c2cae22d7a2b0f0b538f55f7c2a17dc94d5
 
-PODFILE CHECKSUM: 107da2fbf71ec6eaa2bbd3ca0c25771c1b6f875a
+PODFILE CHECKSUM: 69437947d713d417e0c78ba47af8e6ca13ac5d54
 
 COCOAPODS: 1.16.2

@@ -268,6 +268,8 @@ export default function SearchScreen() {
           ref={genderDrawerRef}
           primaryAction={() => genderDrawerRef.current?.close()}
           primaryActionText="Save"
+          // Wheel drawer: the sheet must not scroll or it steals the wheel's drag.
+          scrollable={false}
         >
           <Dropdown
             value={gender}

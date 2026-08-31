@@ -2,7 +2,7 @@
 // Used by the search screen's inline preview and the full-screen map route.
 // Zoomed out → count badges; zoom in → Airbnb-style price pills.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Supercluster from 'supercluster';
 import { Feather } from '@expo/vector-icons';
@@ -13,6 +13,25 @@ import { boundingRegion, regionToZoom, regionToBBox } from '@/lib/geo/mapRegion'
 
 const MAX_ZOOM = 18;
 const formatPrice = (price) => `$${Number(price ?? 0).toLocaleString()}`;
+
+// Android: keep tracksViewChanges on briefly so the settled layout gets
+// re-captured (the bitmap is grabbed before children finish layout), then turn
+// it off — leaving it on forever re-renders every marker per frame.
+// iOS: leave the default (always tracking) — freezing it there captures the
+// marker before its content paints and the pill disappears entirely.
+function SettledMarker({ children, ...props }) {
+  const [track, setTrack] = useState(true);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const timer = setTimeout(() => setTrack(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <Marker {...props} tracksViewChanges={Platform.OS === 'android' ? track : undefined}>
+      {children}
+    </Marker>
+  );
+}
 
 export default function ListingsClusterMap({
   listings, // pre-filtered listings that all have coordinates
@@ -156,7 +175,7 @@ export default function ListingsClusterMap({
 
           if (feature.properties.cluster) {
             return (
-              <Marker
+              <SettledMarker
                 key={`cluster-${feature.properties.cluster_id}`}
                 coordinate={{ latitude, longitude }}
                 anchor={{ x: 0.5, y: 0.5 }}
@@ -172,14 +191,15 @@ export default function ListingsClusterMap({
                     {feature.properties.point_count}
                   </AppText>
                 </View>
-              </Marker>
+              </SettledMarker>
             );
           }
 
           const listing = feature.properties.listing;
           const isSelected = selectedId != null && selectedId === listing.id;
+          const priceLabel = formatPrice(listing.price);
           return (
-            <Marker
+            <SettledMarker
               key={`listing-${listing.id}`}
               coordinate={{ latitude, longitude }}
               anchor={{ x: 0.5, y: 0.5 }}
@@ -190,15 +210,18 @@ export default function ListingsClusterMap({
                 onPressListing?.(listing);
               }}
             >
-              <View style={[styles.pricePill, isSelected && styles.pricePillSelected]}>
+              <View
+                collapsable={false}
+                style={[styles.pricePill, isSelected && styles.pricePillSelected]}
+              >
                 <AppText
                   variant="body-sm-strong"
                   style={isSelected ? styles.pricePillTextSelected : styles.pricePillText}
                 >
-                  {formatPrice(listing.price)}
+                  {priceLabel}
                 </AppText>
               </View>
-            </Marker>
+            </SettledMarker>
           );
         })}
       </MapView>
@@ -251,6 +274,7 @@ const styles = StyleSheet.create({
   pricePill: {
     paddingHorizontal: 10,
     paddingVertical: 6,
+    alignItems: 'center',
     borderRadius: 16,
     backgroundColor: colors.base.white,
     shadowColor: '#000',

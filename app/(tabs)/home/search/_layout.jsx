@@ -14,7 +14,7 @@ const goBack = (fallback) => {
 
 export default function SearchStack() {
   return (
-    <Stack screenOptions={{ headerShown: true }}>
+    <Stack screenOptions={{ headerShown: true, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false }}>
       <Stack.Screen
         name="index"
         options={{

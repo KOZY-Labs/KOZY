@@ -15,6 +15,7 @@ export default function ChatInput({ onSend, disabled = false, placeholder }) {
   return (
     <View style={styles.container}>
       <TextInput
+        allowFontScaling={false}
         value={text}
         onChangeText={setText}
         editable={!disabled}

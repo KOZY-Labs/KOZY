@@ -12,6 +12,7 @@ export default function MyPostDetail() {
     <ListingDetailScreen
       listingId={listingId}
       reportBackTo="/(tabs)/account/myListings"
+      backFallback="/(tabs)/account/myListings"
       // Pick up edits made in the post flow when coming back from /post/edit/[id].
       reloadOnFocus
       footer={(item) => (

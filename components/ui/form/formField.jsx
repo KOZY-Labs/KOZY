@@ -2,7 +2,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import ErrorMessage from "./errorMessage";
 import { colors } from "@/constants/colors";
-import { typography } from '@/constants/typography';
+import { getTypeStyle } from '@/constants/typographyStyles';
 
 export default function FormField({
   label,
@@ -13,7 +13,7 @@ export default function FormField({
 }) {
   return (
     <View style={[styles.container, lastField && { marginBottom: 0 }, style]}>
-      {label && <Text style={[styles.label, typography.bodyStrong['body-md-strong']]}>{label}</Text>}
+      {label && <Text allowFontScaling={false} style={[styles.label, getTypeStyle('body-md-strong')]}>{label}</Text>}
 
       {children}
 

@@ -4,7 +4,7 @@ import { ListingDraftProvider } from '@/context/ListingDraftContext';
 export default function PostStack() {
   return (
     <ListingDraftProvider>
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false }}>
       <Stack.Screen name="index" options={{ title: 'Post'}} />
       <Stack.Screen name="stepOne" 
         options={{

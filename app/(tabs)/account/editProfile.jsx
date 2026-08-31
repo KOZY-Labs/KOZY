@@ -610,6 +610,8 @@ function EditProfileForm() {
             title="What’s your gender?"
             primaryAction={() => {
               genderDrawerRef.current?.close();            }}
+            // Wheel drawer: the sheet must not scroll or it steals the wheel's drag.
+            scrollable={false}
           >
             <Dropdown
               value={gender}

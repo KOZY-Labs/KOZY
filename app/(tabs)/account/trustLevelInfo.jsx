@@ -1,5 +1,6 @@
 import { router } from "expo-router";
-import { Platform, StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import AppText from '@/components/ui/appText';
@@ -60,6 +61,7 @@ const LEVELS = [
 ];
 
 export default function TrustLevelInfo() {
+  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const myLevel = trustLevelFor(profile);
 
@@ -72,7 +74,8 @@ export default function TrustLevelInfo() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      // Bottom clearance from insets — the floating tab bar overlays this screen.
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.intro}>
@@ -164,7 +167,6 @@ const styles = StyleSheet.create({
   content: {
     gap: 20,
     paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 100 : 24,
   },
   intro: {
     marginTop: 8,

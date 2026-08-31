@@ -32,7 +32,7 @@ function SavedReelOverlay({ item, insets }) {
   return (
     <ListingReelOverlay
       item={item}
-      bottom={insets.bottom + 20}
+      bottom={insets.bottom + 44}
       isSaved={isSaved}
       onToggleSave={handleToggleSave}
       onShare={onShare}

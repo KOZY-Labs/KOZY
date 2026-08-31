@@ -1,7 +1,11 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 import { getTypeStyle } from '@/constants/typographyStyles';
 import { colors } from '@/constants/colors';
+
+// Android adds extra font padding above/below the line box, which clips text inside
+// fixed-height containers (pills, DisplayInput rows) that were sized to iOS metrics.
+const androidTextFix = Platform.OS === 'android' ? { includeFontPadding: false } : null;
 
 
 export default function AppText({
@@ -20,10 +24,14 @@ export default function AppText({
   return (
     <Text
       {...props}
+      // Fixed-size design: the OS font-size setting must not inflate app text
+      // (a 2x device font scale broke buttons, pills, and map markers).
+      allowFontScaling={false}
       style={[
         {
           color: resolvedColor,
         },
+        androidTextFix,
         getTypeStyle(variant),
         style,
       ]}

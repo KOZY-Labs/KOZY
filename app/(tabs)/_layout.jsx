@@ -1,6 +1,6 @@
 import { router, Tabs, usePathname, useSegments } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -48,23 +48,20 @@ export default function TabLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarButton: HapticTab,
-        tabBarContainerStyle: {
-          alignItems: 'center',
-        },
         tabBarStyle: shouldHideTabBar
           ? HIDDEN_TAB_BAR_STYLE
           : {
               position: 'absolute',
-              alignSelf: 'center',
+              // Explicit insets — alignSelf/width%/maxWidth left the bar
+              // left-anchored and narrow on Android.
+              left: 16,
+              right: 16,
               bottom: insets.bottom + 10,
               overflow: 'hidden',
               borderRadius: 16,
               borderTopWidth: 0,
               height: 56,
-              maxWidth: 400,
-              width: '100%',
               paddingTop: 7,
-              marginHorizontal: 16,
               shadowColor: '#000',
               shadowOpacity: 0.2,
               shadowRadius: 10,
@@ -73,25 +70,37 @@ export default function TabLayout() {
             },
         tabBarBackground: shouldHideTabBar
           ? () => null
-          : () => (
-              <BlurView
-                intensity={60}
-                tint="dark"
-                style={{
-                  flex: 1,
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                }}
-              >
-                {/* 👇 This gives the dark glass look */}
+          : Platform.OS === 'ios'
+            ? () => (
+                <BlurView
+                  intensity={60}
+                  tint="dark"
+                  style={{
+                    flex: 1,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* 👇 This gives the dark glass look */}
+                  <View
+                    style={{
+                      ...StyleSheet.absoluteFillObject,
+                      backgroundColor: 'rgba(0,0,0,0.4)', // tweak 0.3–0.5
+                    }}
+                  />
+                </BlurView>
+              )
+            : // Android: expo-blur is unreliable there and can leave the bar fully
+              // transparent — use a solid near-black background instead.
+              () => (
                 <View
                   style={{
                     ...StyleSheet.absoluteFillObject,
-                    backgroundColor: 'rgba(0,0,0,0.4)', // tweak 0.3–0.5
+                    borderRadius: 16,
+                    backgroundColor: 'rgba(20,20,20,0.92)',
                   }}
                 />
-              </BlurView>
-            ),
+              ),
       }}>
       <Tabs.Screen
         name="home"

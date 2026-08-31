@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { colors } from '@/constants/colors';
-import { typography } from '@/constants/typography';
+import { getTypeStyle } from '@/constants/typographyStyles';
 import AppText from "../appText";
 import AdaptiveTextInput from './adaptiveTextInput';
 
@@ -41,7 +41,7 @@ export default function TextArea({
         maxLength={maxLength}
         style={[
           styles.textarea,
-          typography.body['body-xsm'],
+          getTypeStyle('body-xsm'),
           {
             borderColor: border.color,
             borderWidth: border.width,

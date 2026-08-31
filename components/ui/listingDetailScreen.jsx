@@ -3,7 +3,7 @@
 // scroll body, and the chat-request CTA. Routes supply only what genuinely differs —
 // navigation targets and success feedback — so the CTA/state logic exists once.
 import React, { useCallback, useRef } from 'react';
-import { View, StyleSheet, Platform, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -23,6 +23,7 @@ export default function ListingDetailScreen({
   listingId,
   reportBackTo,
   onBack, // defaults to popping the stack
+  backFallback = '/(tabs)/home', // where back lands when there is no history to pop
   showChatCta = false,
   chatBackTo, // where the auth/profile gates return the user
   onChatSuccess, // (chatId) => void
@@ -72,7 +73,9 @@ export default function ListingDetailScreen({
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <Pressable
-          onPress={onBack ?? (() => router.back())}
+          // The profile/report gates return here via replace(), which can leave this
+          // screen as the stack root — an unguarded back() would throw GO_BACK unhandled.
+          onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace(backFallback)))}
           accessibilityRole="button"
           accessibilityLabel="Go back"
           hitSlop={10}
@@ -87,7 +90,10 @@ export default function ListingDetailScreen({
         />
       </View>
       <ScrollView
-        contentContainerStyle={styles.container}
+        // The floating tab bar (bottom: insets.bottom+10, height 56) overlays the
+        // screen, so the scroll content needs clearance computed from the insets —
+        // a platform-hardcoded value left Android's tail hidden behind the bar.
+        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 92 }]}
         keyboardShouldPersistTaps="handled"
       >
         <ListingDetailBody listing={item} />
@@ -116,7 +122,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'black',
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 120 : 16,
     overflow: 'hidden'
   },
   topBar: {

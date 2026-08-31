@@ -37,7 +37,7 @@ function SearchReelOverlay({ item, insets }) {
   return (
     <ListingReelOverlay
       item={item}
-      bottom={insets.bottom + 12}
+      bottom={insets.bottom + 44}
       isSaved={isSaved}
       onToggleSave={onToggleSave}
       onShare={onShare}

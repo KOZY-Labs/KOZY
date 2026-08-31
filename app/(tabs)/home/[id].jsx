@@ -22,7 +22,9 @@ export default function DetailScreen() {
       return;
     }
 
-    router.back();
+    // No history and no backTo (e.g. the profile-gate round trip replaced this
+    // screen in as the stack root) — going "back" would be an unhandled GO_BACK.
+    router.replace('/(tabs)/home');
   }, [backTo]);
 
   return (

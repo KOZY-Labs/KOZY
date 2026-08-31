@@ -93,7 +93,6 @@ export default function DisplayInput({
         <View
           style={{
             width: '100%',
-            paddingVertical: 8,
             paddingHorizontal: 16,
             borderWidth: 1,
             borderColor: colors.semantic.input.border.normal.color,

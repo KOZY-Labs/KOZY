@@ -57,6 +57,7 @@ export default function AppButton({
             />
           )}
           <Text
+            allowFontScaling={false}
             style={[
               getTypeStyle(buttonTextVariantMap[size] ?? 'button-lg'),
               { color: colorSet.text },
