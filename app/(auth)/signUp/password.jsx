@@ -14,6 +14,7 @@ import { LoginBackground } from "@/components/ui/loginBackground";
 import AppHeader from "@/components/ui/appHeader"; 
 import AppLogo from "@/components/ui/appMainLogo";
 import AuthCard from "@/components/ui/authInputCard";
+import { openPrivacyPolicy, openTerms } from "@/lib/links";
 
 export default function Password() {
   const insets = useSafeAreaInsets();
@@ -130,11 +131,11 @@ export default function Password() {
               />
               <Text style={styles.caption}>
                 By continuing you agree to our{" "}
-                <Text style={styles.link} onPress={() => {}}>
+                <Text style={styles.link} onPress={openTerms}>
                   Terms of Services
                 </Text>{" "}
                 and {" "}
-                <Text style={styles.link} onPress={() => {}}>
+                <Text style={styles.link} onPress={openPrivacyPolicy}>
                   Privacy Policy.
                 </Text>{" "}
               </Text>

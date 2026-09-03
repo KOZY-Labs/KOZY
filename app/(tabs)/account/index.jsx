@@ -8,6 +8,7 @@ import EmptyListingsState from "@/components/ui/emptyListingsState";
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/lib/auth";
+import { openPrivacyPolicy } from "@/lib/links";
 
 import { avatarSource } from '@/lib/avatar';
 
@@ -124,7 +125,7 @@ export default function AccountScreen() {
               </AppText>
             </View>
           </Pressable>
-          <Pressable onPress={() => router.push('/(tabs)/account/privacyPolicy')}>
+          <Pressable onPress={openPrivacyPolicy}>
             <View style={styles.manuButton}>
               <Feather name="lock" size={20} color='#fff' />
               <AppText variant="body-md" color="primary">

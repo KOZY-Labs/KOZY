@@ -64,13 +64,6 @@ export default function AccountStack() {
           headerBackVisible: true,
           headerBackTitleVisible: false
       }} />
-      <Stack.Screen name="privacyPolicy" 
-        options={{ 
-          title: 'Privacy Policy',
-          headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
-      }} />
       <Stack.Screen name="contactUs" 
         options={({ route }) => ({ 
           title: 'Contact Us',

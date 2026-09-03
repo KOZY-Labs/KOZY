@@ -4,6 +4,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    { "source": "/account-deletion", "destination": "/user-data", "statusCode": 308 }
+    { "source": "/account-deletion", "destination": "/user-data", "statusCode": 308 },
+    { "source": "/privacy", "destination": "/privacy-policy", "statusCode": 308 }
   ]
 }
