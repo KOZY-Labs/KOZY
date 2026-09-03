@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,6 +12,7 @@ import { LoginBackground } from "@/components/ui/loginBackground";
 import AuthCard from "@/components/ui/authInputCard";
 import AppLogo from "@/components/ui/appMainLogo";
 import AppHeader from "@/components/ui/appHeader";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { loginWithEmail } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
 
@@ -20,6 +21,7 @@ export default function Login() {
   const { redirect } = useLocalSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState(null);
 
@@ -27,6 +29,13 @@ export default function Login() {
     email: null,
     password: null,
   });
+
+  // A stale auth error shouldn't follow the user back to this screen.
+  useFocusEffect(
+    useCallback(() => {
+      return () => setAuthError(null);
+    }, [])
+  );
 
   const validate = () => {
     const nextErrors = {
@@ -49,9 +58,10 @@ export default function Login() {
   };
 
   const handleLogin = async () => {
+    // Clear before validating so field errors and the auth pill never show together.
+    setAuthError(null);
     if (!validate()) return;
     setSubmitting(true);
-    setAuthError(null);
     try {
       await loginWithEmail(email.trim(), password);
       router.replace(redirect ?? "/(tabs)/home");
@@ -101,6 +111,7 @@ export default function Login() {
                       onChangeText={(text) => {
                         setEmail(text);
                         setErrors((e) => ({ ...e, email: null }));
+                        setAuthError(null);
                       }}
                       placeholder="Email"
                       type="auth"
@@ -116,14 +127,33 @@ export default function Login() {
                       onChangeText={(text) => {
                         setPassword(text);
                         setErrors((e) => ({ ...e, password: null }));
+                        setAuthError(null);
                       }}
                       placeholder="Password"
                       type="auth"
-                      secureTextEntry
+                      secureTextEntry={!showPassword}
                       autoCapitalize="none"
+                      rightIcon={
+                        <MaterialIcons
+                          name={showPassword ? "visibility-off" : "visibility"}
+                          size={20}
+                          color={colors.semantic.text.secondary}
+                        />
+                      }
+                      onRightIconPress={() => setShowPassword((value) => !value)}
+                      rightIconAccessibilityLabel={showPassword ? "Hide password" : "Show password"}
                       error={!!errors.password}
                     />
                   </FormField>
+                  <View style={styles.forgotRow}>
+                    <Text
+                      style={styles.forgotLink}
+                      onPress={() => router.push("/(auth)/forgot-password")}
+                      accessibilityRole="button"
+                    >
+                      Forgot password?
+                    </Text>
+                  </View>
                 </View>
               </AuthCard>
             </View>
@@ -203,6 +233,16 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     width: '100%',
+  },
+  forgotRow: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginTop: 6,
+  },
+  forgotLink: {
+    fontSize: 12,
+    color: colors.base.gray800,
+    textDecorationLine: 'underline',
   },
   errorPill: {
     backgroundColor: colors.base.white,

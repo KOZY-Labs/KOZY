@@ -40,13 +40,7 @@ export default function StepFour() {
                         </View>
                         <Pressable 
                             style={styles.replaceButton} 
-                            onPress={() => {router.push({
-                                pathname: '/(tabs)/account/editProfile',
-                                params: {
-                                    ownerId: item.owner.id,
-                                    backTo: '/(tabs)/post/stepFour',
-                                }
-                            })}}
+                            onPress={() => router.push('/(tabs)/post/editProfile')}
                         >
                             <AppText variant='button-sm'>Edit Profile</AppText>
                         </Pressable>

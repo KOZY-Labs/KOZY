@@ -1,6 +1,6 @@
 import { useSignup } from "@/context/SignupContext";
-import { useState } from "react";
-import { router } from "expo-router";
+import { useCallback, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
 import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -27,6 +27,13 @@ export default function Profile() {
     lastName: null,
     dob: null,
   });
+
+  // A stale auth error shouldn't follow the user back to this screen.
+  useFocusEffect(
+    useCallback(() => {
+      return () => setAuthError(null);
+    }, [])
+  );
 
   const validate = () => {
     const nextErrors = {
@@ -59,9 +66,10 @@ export default function Profile() {
 
   // Account is created here (end of the flow), which also sends the email verification link.
   const handleSubmit = async () => {
+    // Clear before validating so field errors and the auth pill never show together.
+    setAuthError(null);
     if (!validate()) return;
     setSubmitting(true);
-    setAuthError(null);
     try {
       await signUpWithEmail({
         email: signup.email.trim(),
@@ -105,6 +113,7 @@ export default function Profile() {
                       onChangeText={(text) => {
                         setProfile({ firstName: text });
                         setErrors((e) => ({ ...e, firstName: null }));
+                        setAuthError(null);
                       }}
                       placeholder="First Name"
                       type="auth"
@@ -118,6 +127,7 @@ export default function Profile() {
                       onChangeText={(text) => {
                         setProfile({ lastName: text });
                         setErrors((e) => ({ ...e, lastName: null }));
+                        setAuthError(null);
                       }}
                       placeholder="Last Name"
                       type="auth"
@@ -131,6 +141,7 @@ export default function Profile() {
                       onChangeText={(text) => {
                         setProfile({ dob: formatDob(text) });
                         setErrors((e) => ({ ...e, dob: null }));
+                        setAuthError(null);
                       }}
                       keyboardType="number-pad"
                       maxLength={10}

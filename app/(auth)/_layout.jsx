@@ -8,6 +8,10 @@ export default function SignupLayout() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="forgot-password"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="signUp/email"
         options={{
           headerShown: false,

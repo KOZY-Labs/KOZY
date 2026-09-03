@@ -61,7 +61,7 @@ function SampleVideo({ source, isActive, isScreenFocused, width }) {
 export default function StepThree() {
     const isScreenFocused = useIsFocused();
     const { draft, setVideo } = useListingDraft();
-    const { exit } = usePostFlowExit();
+    const { confirmExit } = usePostFlowExit();
     const { profile } = useAuth();
     const [selectedVideo, setSelectedVideo] = useState(draft.video ?? null);
     const [videoError, setVideoError] = useState(null);
@@ -213,7 +213,7 @@ export default function StepThree() {
                         <View style={{ marginTop: 20 }}>
                             <FormField label="" error={videoError} lastField>
                                 <AppButton
-                                    text={selectedVideo ? 'Replace File' : 'Upload File'}
+                                    text="Upload Video"
                                     onPress={openAlbum}
                                 />
                             </FormField>
@@ -265,11 +265,7 @@ export default function StepThree() {
                         <AppButton
                             text="Cancel"
                             type='secondary'
-                            onPress={() => {
-                                setSelectedVideo(null)
-                                drawerRef.current?.close();
-                                exit();
-                            }}
+                            onPress={confirmExit}
                         />
                     </View>
                     <View style={{ flex: 1 }}>

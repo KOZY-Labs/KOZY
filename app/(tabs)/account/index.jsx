@@ -116,6 +116,14 @@ export default function AccountScreen() {
               </AppText>
             </View>
           </Pressable>
+          <Pressable onPress={() => router.push('/(tabs)/account/changePassword')}>
+            <View style={styles.manuButton}>
+              <Feather name="key" size={20} color='#fff' />
+              <AppText variant="body-md" color="primary">
+                Change Password
+              </AppText>
+            </View>
+          </Pressable>
           <Pressable onPress={() => router.push('/(tabs)/account/privacyPolicy')}>
             <View style={styles.manuButton}>
               <Feather name="lock" size={20} color='#fff' />

@@ -101,6 +101,10 @@ export default function ContactUs() {
                 message:
                     'We\'ll review your message and respond within 1–2 business days.\n\nStill need help? Email us at info@getkozy.app',
                 buttonText: 'Close',
+                // General contact: Close lands on My Page (the report flow already
+                // navigated to backTo above). Hardware-back dismiss stays here, which
+                // is why the form is cleared before the modal, not after.
+                onPress: backTo ? undefined : () => router.dismissTo('/(tabs)/account'),
             });
         } catch (e) {
             showAlertModal({ title: 'Message not sent', message: e?.message ?? 'Please try again.' });

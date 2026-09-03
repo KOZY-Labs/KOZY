@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { ActivityIndicator, Platform, StyleSheet, View, Dimensions, FlatList, Pressable } from 'react-native';
 import { router, useNavigation, useLocalSearchParams } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { startPersonaVerification } from '@/services/personaVerification';
 
@@ -119,6 +119,7 @@ function EditProfileForm() {
     const [verifying, setVerifying] = useState(false);
     const [newEmail, setNewEmail] = useState('');
     const [emailPassword, setEmailPassword] = useState('');
+    const [showEmailPassword, setShowEmailPassword] = useState(false);
     const [emailError, setEmailError] = useState(null);
     const [changingEmail, setChangingEmail] = useState(false);
     // Unified photo list: existing avatar URLs carry `remoteUrl`; new picks are local assets.
@@ -739,8 +740,17 @@ function EditProfileForm() {
                 <InputRow>
                   <TextField
                     placeholder="Current password"
-                    secureTextEntry
+                    secureTextEntry={!showEmailPassword}
                     autoCapitalize="none"
+                    rightIcon={
+                      <MaterialIcons
+                        name={showEmailPassword ? 'visibility-off' : 'visibility'}
+                        size={20}
+                        color={colors.semantic.input.textDisabled}
+                      />
+                    }
+                    onRightIconPress={() => setShowEmailPassword((value) => !value)}
+                    rightIconAccessibilityLabel={showEmailPassword ? 'Hide password' : 'Show password'}
                     error={!!emailError}
                     value={emailPassword}
                     onChangeText={(text) => {

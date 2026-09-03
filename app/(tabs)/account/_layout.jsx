@@ -50,9 +50,16 @@ export default function AccountStack() {
             </Pressable>
           ),
       })} />
-      <Stack.Screen name="notification" 
-        options={{ 
+      <Stack.Screen name="notification"
+        options={{
           title: 'Notifications',
+          headerShown: true,
+          headerBackVisible: true,
+          headerBackTitleVisible: false
+      }} />
+      <Stack.Screen name="changePassword"
+        options={{
+          title: 'Change Password',
           headerShown: true,
           headerBackVisible: true,
           headerBackTitleVisible: false

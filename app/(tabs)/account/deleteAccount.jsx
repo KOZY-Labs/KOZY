@@ -8,11 +8,14 @@ import TextField from '@/components/ui/input/textField';
 import FormField from '@/components/ui/form/formField';
 import DisplayField from '@/components/ui/displayField';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { colors } from '@/constants/colors';
 import { deleteAccount } from '@/lib/auth';
 import { authErrorMessage } from '@/lib/auth/errors';
 
 export default function DeleteAccount() {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,8 +67,17 @@ export default function DeleteAccount() {
               <TextField
                 value={password}
                 placeholder="Password"
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 autoCapitalize="none"
+                rightIcon={
+                  <MaterialIcons
+                    name={showPassword ? 'visibility-off' : 'visibility'}
+                    size={20}
+                    color={colors.semantic.input.textDisabled}
+                  />
+                }
+                onRightIconPress={() => setShowPassword((value) => !value)}
+                rightIconAccessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 error={!!error}
                 onChangeText={(text) => {
                   setPassword(text);

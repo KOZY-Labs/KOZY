@@ -30,7 +30,13 @@ export default function PostStack() {
         headerShown: true,
         headerBackVisible: true,    
       }} />
-      <Stack.Screen name="previewListing" 
+      <Stack.Screen name="editProfile"
+        options={{
+        title: 'Edit Profile',
+        headerShown: true,
+        headerBackVisible: true,
+      }} />
+      <Stack.Screen name="previewListing"
         options={{
         title:'',
         headerShown: true,

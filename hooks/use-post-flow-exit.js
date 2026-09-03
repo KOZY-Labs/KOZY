@@ -1,8 +1,9 @@
 // Shared "Cancel" behavior for the post steps (stepOne..Four).
-// Creating a new listing: pop back to the post tab root, leaving the draft in place so
-// re-entering the flow keeps the values (existing behavior).
-// Editing an existing listing: clear the loaded copy — otherwise the next new post would
-// still carry `editingId` and overwrite the edited listing — and return where we came from.
+// Exiting is a deliberate "start over" (confirmed via the exit modal), so the draft is
+// cleared in every case — re-entering the flow starts blank. Going BACK through steps
+// (header back) is not an exit and keeps the draft as-is.
+// Editing an existing listing additionally must drop `editingId` — otherwise the next
+// new post would overwrite the edited listing — and returns where we came from.
 import { useCallback } from 'react';
 import { router } from 'expo-router';
 
@@ -13,8 +14,8 @@ export function usePostFlowExit() {
   const { editingId, returnTo, resetDraft } = useListingDraft();
 
   const exit = useCallback(() => {
+    resetDraft();
     if (editingId) {
-      resetDraft();
       router.replace(returnTo ?? '/(tabs)/account/myListings');
       return;
     }
