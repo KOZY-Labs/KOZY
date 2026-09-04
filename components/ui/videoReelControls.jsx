@@ -26,7 +26,6 @@ export default function VideoReelControls({ player, paused, bottomOffset }) {
   const scrubRef = useRef(null);
   const durationRef = useRef(0);
   const trackWidthRef = useRef(0);
-  const lastTimeRef = useRef(0); // last position reported by timeUpdate, in seconds
   const exactDurationRef = useRef(false); // true once a real (non-estimated) duration arrived
 
   useEffect(() => {
@@ -60,7 +59,6 @@ export default function VideoReelControls({ player, paused, bottomOffset }) {
           setDuration(est);
         }
       }
-      lastTimeRef.current = currentTime;
       if (scrubRef.current == null && durationRef.current > 0) {
         setProgress(Math.min(1, Math.max(0, currentTime / durationRef.current)));
       }
@@ -82,11 +80,11 @@ export default function VideoReelControls({ player, paused, bottomOffset }) {
   const commitScrub = () => {
     const ratio = scrubRef.current;
     if (ratio != null && durationRef.current > 0 && player) {
-      // seekBy (native: currentPosition + delta) instead of assigning currentTime —
-      // the currentTime setter proved unreliable on Android (lands at 0).
-      const target = ratio * durationRef.current;
-      player.seekBy(target - lastTimeRef.current);
-      lastTimeRef.current = target;
+      // Absolute seek via the currentTime setter — verified to work on Android
+      // (native seekTo) and iOS. Note: files WITHOUT a seek index (fragmented
+      // MP4, e.g. some older uploads) are unseekable on Android and land at 0 —
+      // that's a property of the file, fixed by the upload transcode (TODO).
+      player.currentTime = ratio * durationRef.current;
       setProgress(ratio);
     }
     scrubRef.current = null;

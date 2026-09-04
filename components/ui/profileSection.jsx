@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   avatarImage: {
-    width: '50%',
+    width: '25%',
     height: undefined,
     aspectRatio: 1,
     borderRadius: 9999,

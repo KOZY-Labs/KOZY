@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image } from 'expo-image';
-import { ActivityIndicator, Platform, StyleSheet, View, Dimensions, FlatList, Pressable } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View, FlatList } from 'react-native';
 import { router, useNavigation, useLocalSearchParams } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +19,7 @@ import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import ErrorMessage from '@/components/ui/form/errorMessage';
+import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
 import validateImage from '@/utils/mediaValidation';
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from '@/lib/dob.mjs';
 import { GENDER_OPTIONS, PERSONALITY_OPTIONS, SEARCH_LIFESTYLE_OPTIONS } from '@/constants/data';
@@ -32,9 +32,6 @@ import { requestEmailChange } from '@/lib/auth';
 import { authErrorMessage } from '@/lib/auth/errors';
 
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ITEM_WIDTH = SCREEN_WIDTH * 0.8;
-const ITEM_SPACING = 12;
 const MAX_PHOTOS = 3;
 
 
@@ -398,6 +395,10 @@ function EditProfileForm() {
     setPhotoError(null);
   };
 
+  // Photo drag-to-reorder shares AddedPhotoGrid (react-native-draggable-grid,
+  // the setup proven in JOOPI). The outer list must stop scrolling during a drag.
+  const [photoScrollEnabled, setPhotoScrollEnabled] = useState(true);
+
 
   return (
     <View style={{ flex: 1, overflow: 'visible' }}>
@@ -405,64 +406,24 @@ function EditProfileForm() {
         data={[{ key: 'content' }]}
         keyExtractor={(item) => item.key}
         keyboardShouldPersistTaps="always"
+        scrollEnabled={photoScrollEnabled}
         // Native keyboard insets: the focused field scrolls into view instead of
         // being covered (same pattern as stepOne).
         automaticallyAdjustKeyboardInsets
         renderItem={() => (
           <View style={styles.container}>
-            <View style={styles.sliderContainer}>
-              {/* Image carousel — scroll to the end and tap + to add (max 3 photos) */}
-              <FlatList
-                data={[
-                  ...photos.map((p, index) => ({ key: `${p.uri}-${index}`, type: 'photo', uri: p.uri, index })),
-                  ...(photos.length < MAX_PHOTOS ? [{ key: 'add', type: 'add' }] : []),
-                ]}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                snapToInterval={ITEM_WIDTH + ITEM_SPACING}
-                decelerationRate="fast"
-                keyExtractor={(entry) => entry.key}
-                contentContainerStyle={{
-                  paddingVertical: 20,
-                }}
-                renderItem={({ item: entry }) => {
-                  if (entry.type === 'add') {
-                    return (
-                      <Pressable
-                        style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}
-                        onPress={addPhoto}
-                        accessibilityRole="button"
-                        accessibilityLabel="Add a profile photo"
-                      >
-                        <View style={[styles.image, styles.addTile]}>
-                          <Feather name="plus" size={40} color={colors.semantic.text.primary} />
-                          <AppText variant="body-xsm" style={{ color: colors.base.gray600 }}>
-                            {photos.length + 1}/{MAX_PHOTOS} photos
-                          </AppText>
-                        </View>
-                      </Pressable>
-                    );
-                  }
-
-                  return (
-                    <View style={{ width: ITEM_WIDTH, marginRight: ITEM_SPACING }}>
-                      <Image
-                        source={{ uri: entry.uri }}
-                        style={styles.image}
-                        contentFit="cover"
-                      />
-                      <Pressable
-                        style={styles.removePhotoButton}
-                        onPress={() => removePhoto(entry.index)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Remove this photo"
-                        hitSlop={8}
-                      >
-                        <Feather name="x" size={16} color={colors.base.white} />
-                      </Pressable>
-                    </View>
-                  );
-                }}
+            <View style={[styles.sliderContainer, { paddingVertical: 20 }]}>
+              {/* Photo grid — long-press a photo and drag to reorder; the first
+                  photo is the main avatar. Tap + to add (max 3). */}
+              <AddedPhotoGrid
+                photos={photos.map((p, i) => ({ ...p, id: p.uri ?? `photo-${i}` }))}
+                maxPhotos={MAX_PHOTOS}
+                onAdd={addPhoto}
+                onDelete={(photo) =>
+                  removePhoto(photos.findIndex((p) => p.uri === photo.uri))
+                }
+                onReorder={setPhotos}
+                onDragStateChange={(dragging) => setPhotoScrollEnabled(!dragging)}
               />
               {photoError ? <ErrorMessage message={photoError} /> : null}
             </View>
@@ -844,6 +805,10 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     borderRadius: 4,
+  },
+  photoDragging: {
+    opacity: 0.75,
+    transform: [{ scale: 1.03 }],
   },
   sliderContainer: {
     position: 'relative',

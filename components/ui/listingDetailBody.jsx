@@ -91,7 +91,14 @@ export default memo(function ListingDetailBody({ listing }) {
           <ProfileSection listing={listing} />
 
           <DisplayField title="About Room & House" type="pill">
-            {[`${listing.bedrooms} Bed`, `${listing.bathrooms} Bath`, `${listing.roomType}`, `${listing.sizeSqft} sqft`, listing.furnished ? 'Furnished' : 'Unfurnished', ...(listing.roomDetail ?? [])]}
+            {[
+              listing.bedrooms > 0 ? `${listing.bedrooms} Bed` : null,
+              listing.bathrooms > 0 ? `${listing.bathrooms} Bath` : null,
+              listing.roomType,
+              listing.sizeSqft > 0 ? `${listing.sizeSqft} sqft` : null,
+              listing.furnished ? 'Furnished' : 'Unfurnished',
+              ...(listing.roomDetail ?? []),
+            ]}
           </DisplayField>
 
           <DisplayField title="Looking For" type="pill">
@@ -104,10 +111,16 @@ export default memo(function ListingDetailBody({ listing }) {
             </DisplayField>
           ) : null}
           <AppText variant="body-sm-strong">Move-in Details</AppText>
-          <AppText variant='body-sm' style={{lineHeight: 14}}>• {listing.availableFrom}</AppText>
-          <AppText variant='body-sm' style={{lineHeight: 14}}>• Rent: ${listing.price} / {listing.leaseType === "Month-to-Month" ? "Month" : "Fixed Term"}</AppText>
+          {listing.availableFrom ? (
+            <AppText variant='body-sm' style={{lineHeight: 14}}>• {listing.availableFrom}</AppText>
+          ) : null}
+          {listing.price > 0 ? (
+            <AppText variant='body-sm' style={{lineHeight: 14}}>• Rent: ${listing.price} / {listing.leaseType === "Month-to-Month" ? "Month" : "Fixed Term"}</AppText>
+          ) : null}
           <AppText variant='body-sm' style={{lineHeight: 14}}>• Utility: {listing.utilityIncluded ? 'Included' : 'Not Included'}</AppText>
-          <AppText variant='body-sm' style={{lineHeight: 14}}>• Deposit: ${listing.deposit}</AppText>
+          {listing.deposit != null && listing.deposit !== '' && listing.deposit !== 0 ? (
+            <AppText variant='body-sm' style={{lineHeight: 14}}>• Deposit: ${listing.deposit}</AppText>
+          ) : null}
         </View>
       </View>
     </>
@@ -121,8 +134,10 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   fullImage: {
+    // Listing photos are captured square in the post flow — mirror that here.
     width: '100%',
-    height: 260,
+    height: undefined,
+    aspectRatio: 1,
     borderRadius: 0,
   },
   pagination: {

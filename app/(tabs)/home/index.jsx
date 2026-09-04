@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -93,16 +94,36 @@ const ReelItem = React.memo(function ReelItem({ item, isActive, insets, height }
     player.loop = true;
     player.muted = true;
   });
+  // The tab navigator keeps this feed mounted while other screens are pushed on
+  // top, so each row's paused player would keep its video decoder alive. With
+  // windowSize={3} that's up to 3 idle decoders under every pushed screen — add
+  // the pushed screen's own players and the process runs out of memory (seen as
+  // a MediaCodec OOM crash). Unload sources while unfocused, reload on return.
+  const isFocused = useIsFocused();
+  const unloadedRef = useRef(false);
 
   // 🔑 THIS is what actually starts video playback
   useEffect(() => {
-    if (isActive) {
-      player.play();
-      setPaused(false);
-    } else {
-      player.pause();
+    if (!isFocused) {
+      unloadedRef.current = true;
+      player.replaceAsync(null).catch(() => {});
+      return;
     }
-  }, [isActive, player]);
+    const resume = () => {
+      if (isActive) {
+        player.play();
+        setPaused(false);
+      } else {
+        player.pause();
+      }
+    };
+    if (unloadedRef.current) {
+      unloadedRef.current = false;
+      player.replaceAsync(item.videoUrl).then(resume).catch(() => {});
+    } else {
+      resume();
+    }
+  }, [isActive, isFocused, player, item.videoUrl]);
 
   const togglePlay = () => {
     if (player.playing) {

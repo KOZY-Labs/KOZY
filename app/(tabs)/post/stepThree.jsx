@@ -37,14 +37,31 @@ function SampleVideo({ source, isActive, isScreenFocused, width }) {
         videoPlayer.loop = true;
         videoPlayer.muted = true;
     });
+    // This step stays mounted under step 4 / preview, so a merely-paused player
+    // keeps its video decoder alive for the rest of the flow. Unload while the
+    // screen is off-focus to free the codec (see the home feed for the same fix).
+    const unloadedRef = useRef(false);
 
     useEffect(() => {
-        if (isActive && isScreenFocused) {
-            player.play();
-        } else {
-            player.pause();
+        if (!isScreenFocused) {
+            unloadedRef.current = true;
+            player.replaceAsync(null).catch(() => {});
+            return;
         }
-    }, [isActive, isScreenFocused, player]);
+        const resume = () => {
+            if (isActive) {
+                player.play();
+            } else {
+                player.pause();
+            }
+        };
+        if (unloadedRef.current) {
+            unloadedRef.current = false;
+            player.replaceAsync(source).then(resume).catch(() => {});
+        } else {
+            resume();
+        }
+    }, [isActive, isScreenFocused, player, source]);
 
     return (
         <View style={[styles.sampleVideoFrame, { width }]}>
@@ -129,160 +146,175 @@ export default function StepThree() {
 
     // Returning to this step (e.g. Back from step 4) with a previously chosen video:
     // reopen the preview so the selection is visible again instead of looking lost.
+    // On blur, unload the preview's source — this screen stays mounted under the
+    // rest of the flow and a paused player would hold its video decoder open.
     // (Tab bar visibility for post sub-screens is handled in (tabs)/_layout.jsx.)
     useFocusEffect(
         useCallback(() => {
-            if (!selectedVideo) return undefined;
+            if (!selectedVideo?.uri) return undefined;
             const t = setTimeout(() => {
                 drawerRef.current?.snapToIndex(1);
-                selectedVideoPlayer?.play();
+                selectedVideoPlayer
+                    ?.replaceAsync(selectedVideo.uri)
+                    .then(() => selectedVideoPlayer?.play())
+                    .catch(() => {});
             }, 0);
-            return () => clearTimeout(t);
+            return () => {
+                clearTimeout(t);
+                selectedVideoPlayer?.replaceAsync(null).catch(() => {});
+            };
         }, [selectedVideo, selectedVideoPlayer])
     );
 
 
   return (
-    <View style={{ flex: 1, overflow: 'visible' }}>
-        <FlatList 
-            data={[{ key: 'content' }]}
-            keyExtractor={(item) => item.key}
-            keyboardShouldPersistTaps="always"
-            renderItem={() => (
-                <View style={[styles.container, { paddingTop: insets.top }]}>
-                    <View style={{ paddingHorizontal: 24, gap: 40 }}>
-                        <View style={styles.titleContainer}>
-                            <AppText variant='headline-md' color='primary'>Step 3</AppText>
-                            <AppText variant='body-md' color='primary' style={{ textAlign: 'center' }}>Show your space in motion. One smooth, vertical video that shows the full space.</AppText>
-                        </View>
-                        <InfoList
-                            listStyle={{color: colors.semantic.text.tertiary}}
-                            titleStyle={{color: colors.semantic.text.tertiary}}
-                            title="💡 Video Requirements"
-                            items={[
-                                'Shoot in portrait mode (vertical)',
-                                'Walk steadily through the space (like a live tour)',
-                                'Include bedroom, bathroom, kitchen, common areas',
-                                'Keep it under 1 minute',
-                            ]}
-                        />
-                        <View>
-                            <AppText variant='body-sm-strong' color='primary' style={{ marginBottom: 16, color: colors.semantic.text.tertiary }}>
-                            💿 Sample Tour Videos
-                            </AppText>
-                            <View style={styles.carousel}>
-                                <FlatList
-                                    data={SAMPLE_VIDEOS}
-                                    horizontal
-                                    pagingEnabled
-                                    bounces={false}
-                                    showsHorizontalScrollIndicator={false}
-                                    keyExtractor={(sample) => sample.id}
-                                    style={{ width: sampleVideoWidth }}
-                                    onMomentumScrollEnd={(event) => {
-                                        const nextIndex = Math.round(
-                                            event.nativeEvent.contentOffset.x / sampleVideoWidth
-                                        );
-                                        setActiveSampleIndex(nextIndex);
-                                    }}
-                                    renderItem={({ item: sample, index }) => (
-                                        <SampleVideo
-                                            source={sample.source}
-                                            isActive={index === activeSampleIndex}
-                                            isScreenFocused={isScreenFocused}
-                                            width={sampleVideoWidth}
-                                        />
-                                    )}
-                                />
-                                <View
-                                    style={styles.pagination}
-                                    accessibilityLabel={`Sample video ${activeSampleIndex + 1} of ${SAMPLE_VIDEOS.length}`}
-                                >
-                                    {SAMPLE_VIDEOS.map((sample, index) => (
-                                        <View
-                                            key={sample.id}
-                                            style={[
-                                                styles.paginationDot,
-                                                index === activeSampleIndex && styles.paginationDotActive,
-                                            ]}
-                                        />
-                                    ))}
-                                </View>
-                            </View>
-                        </View>
-                        <View style={{ marginTop: 20 }}>
-                            <FormField label="" error={videoError} lastField>
-                                <AppButton
-                                    text="Upload Video"
-                                    onPress={openAlbum}
-                                />
-                            </FormField>
-                        </View>
-                    </View>
-                </View>
-            )}
-        />   
-
-            
-        <AppDrawer 
-            ref={drawerRef}
-            snapPoints={['50%','100%']}
-            title='Preview Tour Video'
-        >
-            <View style={styles.sheetContent}>
-                {selectedVideo && (
-                <View style={styles.previewWrapper}>
-                    <VideoView
-                        player={selectedVideoPlayer}
-                        style={styles.previewVideo}
-                        contentFit="cover"
-                        nativeControls={false}
-                    />
-                    {/* Overlay is display-only in the preview — block all touches. */}
-                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                        <ListingReelOverlay
-                            item={item}
-                            bottom={20}
-                            showMoreAction
-                            showSaveAction
-                            showShareAction
-                        />
-                    </View>
-                </View>
-                )}
-                <Pressable 
-                    style={styles.replaceButton} 
-                    onPress={() => {
-                                drawerRef.current?.close();
-                                openAlbum();
-                                }}
+    <View style={{ flex: 1, overflow: "visible" }}>
+      <FlatList
+        data={[{ key: "content" }]}
+        keyExtractor={(item) => item.key}
+        keyboardShouldPersistTaps="always"
+        renderItem={() => (
+          <View style={[styles.container, { paddingTop: insets.top }]}>
+            <View style={{ paddingHorizontal: 24, gap: 40 }}>
+              <View style={styles.titleContainer}>
+                <AppText variant="headline-md" color="primary">
+                  Step 3
+                </AppText>
+                <AppText
+                  variant="body-md"
+                  color="primary"
+                  style={{ textAlign: "center" }}
                 >
-                    <AppText variant='button-sm'>Replace Video</AppText>
-                </Pressable>
-
-                <View style={styles.sheetButtons}>
-                    <View style={{ flex: 1 }}>
-                        <AppButton
-                            text="Cancel"
-                            type='secondary'
-                            onPress={confirmExit}
-                        />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <AppButton
-                            text="Continue"
-                            state={selectedVideo ? 'normal' : 'disabled'}
-                            onPress={() => {
-                                if (!selectedVideo) return;
-                                setVideo(selectedVideo);
-                                drawerRef.current?.close();
-                                router.push('post/stepFour');
-                            }}
-                        />
-                    </View>
+                  Show your space in motion. One smooth, vertical video that
+                  shows the full space.
+                </AppText>
+              </View>
+                <FormField label="" error={videoError} lastField>
+                  <AppButton text="Upload Video" onPress={openAlbum} />
+                </FormField>
+              <InfoList
+                listStyle={{ color: colors.semantic.text.tertiary }}
+                titleStyle={{ color: colors.semantic.text.tertiary }}
+                title="💡 Video Requirements"
+                items={[
+                  "Shoot in portrait mode (vertical)",
+                  "Walk steadily through the space (like a live tour)",
+                  "Include bedroom, bathroom, kitchen, common areas",
+                  "Keep it under 1 minute",
+                ]}
+              />
+              <View>
+                <AppText
+                  variant="body-sm-strong"
+                  color="primary"
+                  style={{
+                    marginBottom: 16,
+                    color: colors.semantic.text.tertiary,
+                  }}
+                >
+                  💿 Sample Tour Videos
+                </AppText>
+                <View style={styles.carousel}>
+                  <FlatList
+                    data={SAMPLE_VIDEOS}
+                    horizontal
+                    pagingEnabled
+                    bounces={false}
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(sample) => sample.id}
+                    style={{ width: sampleVideoWidth }}
+                    onMomentumScrollEnd={(event) => {
+                      const nextIndex = Math.round(
+                        event.nativeEvent.contentOffset.x / sampleVideoWidth,
+                      );
+                      setActiveSampleIndex(nextIndex);
+                    }}
+                    renderItem={({ item: sample, index }) => (
+                      <SampleVideo
+                        source={sample.source}
+                        isActive={index === activeSampleIndex}
+                        isScreenFocused={isScreenFocused}
+                        width={sampleVideoWidth}
+                      />
+                    )}
+                  />
+                  <View
+                    style={styles.pagination}
+                    accessibilityLabel={`Sample video ${activeSampleIndex + 1} of ${SAMPLE_VIDEOS.length}`}
+                  >
+                    {SAMPLE_VIDEOS.map((sample, index) => (
+                      <View
+                        key={sample.id}
+                        style={[
+                          styles.paginationDot,
+                          index === activeSampleIndex &&
+                            styles.paginationDotActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
                 </View>
+              </View>
             </View>
-        </AppDrawer>
+          </View>
+        )}
+      />
+
+      <AppDrawer
+        ref={drawerRef}
+        snapPoints={["50%", "100%"]}
+        title="Preview Tour Video"
+      >
+        <View style={styles.sheetContent}>
+          {selectedVideo && (
+            <View style={styles.previewWrapper}>
+              <VideoView
+                player={selectedVideoPlayer}
+                style={styles.previewVideo}
+                contentFit="cover"
+                nativeControls={false}
+              />
+              {/* Overlay is display-only in the preview — block all touches. */}
+              <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <ListingReelOverlay
+                  item={item}
+                  bottom={20}
+                  showMoreAction
+                  showSaveAction
+                  showShareAction
+                />
+              </View>
+            </View>
+          )}
+          <Pressable
+            style={styles.replaceButton}
+            onPress={() => {
+              drawerRef.current?.close();
+              openAlbum();
+            }}
+          >
+            <AppText variant="button-sm">Replace Video</AppText>
+          </Pressable>
+
+          <View style={styles.sheetButtons}>
+            <View style={{ flex: 1 }}>
+              <AppButton text="Cancel" type="secondary" onPress={confirmExit} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppButton
+                text="Continue"
+                state={selectedVideo ? "normal" : "disabled"}
+                onPress={() => {
+                  if (!selectedVideo) return;
+                  setVideo(selectedVideo);
+                  drawerRef.current?.close();
+                  router.push("post/stepFour");
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </AppDrawer>
     </View>
   );
 }

@@ -61,8 +61,7 @@ export default function PostStack() {
         name="uploadedPost/detail/[id]"
         options={{
           title: '',
-          headerShown: true,
-          headerBackVisible: true,
+          headerShown: false,
         }}
       />
     </Stack>

@@ -40,6 +40,9 @@ export default function StepTwo() {
     const { confirmExit } = usePostFlowExit();
     const [error, setError] = useState(null);
     const [photos, setPhotos] = useState(draft.photos ?? []);
+    // Reorder drags and the ScrollView fight over the gesture — freeze scrolling
+    // while a tile is being dragged (same pattern as JOOPI's EditProfileScreen).
+    const [scrollEnabled, setScrollEnabled] = useState(true);
 
     const insets = useSafeAreaInsets();
 
@@ -120,10 +123,11 @@ export default function StepTwo() {
 
 
   return (
-    <ScrollView 
+    <ScrollView
         contentContainerStyle={[styles.container, { paddingTop: insets.top }]}
         keyboardShouldPersistTaps="handled"
-    >   
+        scrollEnabled={scrollEnabled}
+    >
         <View style={{ paddingHorizontal: 24, gap: 40 }}>
             <View style={styles.titleContainer}>
                 <AppText variant='headline-md' color='primary'>Step 2</AppText>
@@ -150,6 +154,8 @@ export default function StepTwo() {
                         maxPhotos={MAX_PHOTOS}
                         onAdd={openGallery}
                         onDelete={confirmDeletePhoto}
+                        onReorder={setPhotos}
+                        onDragStateChange={(dragging) => setScrollEnabled(!dragging)}
                     />
                 )}
                 {!!error && (

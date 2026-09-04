@@ -2,6 +2,13 @@ import { View, StyleSheet } from 'react-native';
 import AppText from './appText';
 import Pill from './pill/displayPill';
 
+// A value is displayable when it's a non-empty string (or number). Template
+// literals can smuggle in 'undefined'/'null' — treat those as empty too.
+function hasValue(v) {
+  if (v == null) return false;
+  const s = String(v).trim();
+  return s !== '' && s !== 'undefined' && s !== 'null';
+}
 
 export default function DisplayField({
   title,
@@ -9,7 +16,10 @@ export default function DisplayField({
   type = 'text', // 'text' or 'pill'
   ...props
 }) {
-  const values = Array.isArray(children) ? children : [children];
+  const values = (Array.isArray(children) ? children : [children]).filter(hasValue);
+
+  // Nothing to show — hide the whole field, title included.
+  if (values.length === 0) return null;
 
   return (
     <View {...props}>

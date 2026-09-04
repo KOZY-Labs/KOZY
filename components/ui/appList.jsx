@@ -30,7 +30,7 @@ export default function InfoList({ title, items, listStyle, titleStyle }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 16,
+    marginVertical: 10,
   },
   title: {
     marginBottom: 12,
