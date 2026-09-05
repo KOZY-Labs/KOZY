@@ -17,7 +17,16 @@ import { useListing } from '@/hooks/use-listings';
 
 export default function ListingReelScreen({ listingId, onBack, renderOverlay }) {
   const insets = useSafeAreaInsets();
-  const { data: item, loading } = useListing(listingId);
+  const { data: item, loading, reload } = useListing(listingId);
+
+  // While the upload-time transcode runs (videoStatus 'processing', usually well
+  // under 2 minutes) poll the doc so the reel starts on its own when it's done.
+  const processing = item?.videoStatus === 'processing';
+  useEffect(() => {
+    if (!processing) return undefined;
+    const timer = setInterval(reload, 5000);
+    return () => clearInterval(timer);
+  }, [processing, reload]);
 
   return (
     <View style={styles.container}>
@@ -37,6 +46,16 @@ export default function ListingReelScreen({ listingId, onBack, renderOverlay }) 
       ) : !item ? (
         <View style={styles.center}>
           <AppText variant="body-md" color="primary">Listing not found</AppText>
+        </View>
+      ) : processing ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.base.white} size="large" />
+          <AppText variant="body-md" color="primary" style={{ marginTop: 16 }}>
+            Optimizing video…
+          </AppText>
+          <AppText variant="body-xsm" style={{ color: colors.semantic.text.tertiary, marginTop: 4 }}>
+            This usually takes under a minute.
+          </AppText>
         </View>
       ) : (
         <Reel item={item} insets={insets} renderOverlay={renderOverlay} />

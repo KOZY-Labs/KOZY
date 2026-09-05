@@ -133,6 +133,9 @@ export default function PreviewListing() {
         owner: ownerFromProfile(profile),
         images,
         videoUrl,
+        // A freshly-uploaded video goes through the transcode function; reused
+        // media (remoteUrl) has already been normalized.
+        ...(draft.video && !draft.video.remoteUrl ? { videoStatus: 'processing' } : {}),
       });
       showUpdatedAlert();
     } catch (e) {
@@ -169,7 +172,16 @@ export default function PreviewListing() {
       // 2) upload media to listings/{id}/...
       const [images, videoUrl] = await uploadMedia(createdId);
       // 3) attach media + publish
-      await updateListing(createdId, { images, videoUrl, status: 'published', publishedDate: new Date().toISOString() });
+      await updateListing(createdId, {
+        images,
+        videoUrl,
+        // The transcode function flips this to 'ready' when the normalized MP4
+        // replaces the upload (uploadedPost shows a spinner until then, and the
+        // feed hides the listing).
+        videoStatus: 'processing',
+        status: 'published',
+        publishedDate: new Date().toISOString(),
+      });
       setPublishedId(createdId);
       showPublishedAlert(createdId);
     } catch (e) {

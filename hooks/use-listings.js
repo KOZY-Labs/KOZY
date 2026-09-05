@@ -14,7 +14,13 @@ export function useListings(options) {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const data = await listListings(options ?? {});
-      setState({ data, loading: false, error: null });
+      // Hide listings whose video is still being normalized by the transcode
+      // function (missing field = legacy doc = ready).
+      setState({
+        data: data.filter((l) => l.videoStatus !== 'processing'),
+        loading: false,
+        error: null,
+      });
     } catch (error) {
       setState({ data: [], loading: false, error });
     }

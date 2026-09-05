@@ -26,11 +26,12 @@ service firebase.storage {
       allow delete: if isSignedIn();
     }
 
-    // Listing video — videos may exceed the image limit; allow up to 50MB.
+    // Listing video — videos may exceed the image limit; allow up to 100MB
+    // (matches utils/mediaValidation.js; the transcode function shrinks it after).
     match /listings/{listingId}/video/{file} {
       allow read: if true;
       allow create, update: if isSignedIn()
-        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.size < 100 * 1024 * 1024
         && isVideo();
       allow delete: if isSignedIn();
     }

@@ -12,7 +12,12 @@
       <data android:scheme="https"/>
     </intent>
   </queries>
-  <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
+  <!-- largeHeap: video-first feed — multiple decoders + decoded image carousels
+       exhaust the default 192MB Java heap in long sessions (seen as MediaCodec
+       OOM crashes). Standard for media-heavy apps. NOTE: expo prebuild will drop
+       this attribute — re-add it (or move to expo-build-properties) if the
+       android/ folder is ever regenerated. -->
+  <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:largeHeap="true" android:theme="@style/AppTheme" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
     <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyDqQQqCbUIZf_pasR4jVXEV8zxLKWunX2U"/>
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
