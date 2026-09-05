@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KOZY — See this room in the app</title>
+  <meta name="description" content="A room shared from KOZY, the video-first room and roommate search app. Open it in the app to watch the full video walk-through.">
+  <meta property="og:title" content="A room on KOZY">
+  <meta property="og:description" content="Watch the full video walk-through in the KOZY app.">
+  <meta property="og:image" content="https://getkozy.app/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Open+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .listingCard{max-width:460px;margin:48px auto 80px;background:var(--surface);
+      border:1px solid var(--line);border-radius:20px;overflow:hidden}
+    .listingCard .ph{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#191A22}
+    .listingCard .body{padding:22px 24px 26px}
+    .listingCard h1{font-family:var(--display);font-weight:800;font-size:24px;margin-bottom:6px}
+    .listingCard .price{font-size:16px;font-weight:700;color:#7E96F5;margin-bottom:4px}
+    .listingCard .loc{font-size:13.5px;color:var(--muted);margin-bottom:20px}
+    .openBtn{display:block;text-align:center;background:#7E96F5;color:#0B0E17;font-weight:700;
+      font-size:15px;border-radius:12px;padding:14px;margin-bottom:14px}
+    .openBtn:hover{filter:brightness(1.08)}
+    .hint{font-size:12.5px;color:var(--muted);text-align:center;margin-bottom:18px}
+    .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+    .missing{max-width:460px;margin:80px auto;text-align:center;color:var(--muted)}
+    .missing h1{font-family:var(--display);font-weight:800;font-size:26px;color:var(--text);margin-bottom:10px}
+  </style>
+</head>
+<body>
+
+<header class="wrap">
+  <nav class="nav">
+    <a href="/" aria-label="KOZY home"><img class="logo" src="/assets/logo.png" alt="KOZY"></a>
+    <div class="navlinks">
+      <a href="/terms">Terms of Service</a>
+      <a href="/user-data">User Data Management</a>
+      <a href="/privacy-policy">Privacy Policy</a>
+    </div>
+    <button class="burger" aria-label="Menu" aria-expanded="false"
+      onclick="var m=document.getElementById('mm');var o=m.classList.toggle('open');this.setAttribute('aria-expanded',o)">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+</header>
+<div class="mmenu" id="mm">
+  <a href="/terms">Terms of Service</a>
+  <a href="/user-data">User Data Management</a>
+  <a href="/privacy-policy">Privacy Policy</a>
+</div>
+
+<main class="wrap">
+  <div id="card" class="listingCard" hidden>
+    <img id="photo" class="ph" alt="Listing photo">
+    <div class="body">
+      <h1 id="title">&nbsp;</h1>
+      <div id="price" class="price"></div>
+      <div id="loc" class="loc"></div>
+      <a id="openApp" class="openBtn" href="#">Open in the KOZY app</a>
+      <div class="hint">Watch the full video walk-through and chat with the roommate in the app.</div>
+      <div class="badges">
+        <!-- __APP_STORE_URL__ / __PLAY_STORE_URL__ injected at build time (see build.js) -->
+        <a class="store" href="__APP_STORE_URL__" onclick="return this.getAttribute('href') !== '#'">
+          <span class="glyph">&#63743;</span>
+          <span><small>DOWNLOAD ON THE</small><b>App Store</b></span>
+        </a>
+        <a class="store" href="__PLAY_STORE_URL__" onclick="return this.getAttribute('href') !== '#'">
+          <span class="glyph">&#9654;</span>
+          <span><small>GET IT ON</small><b>Google Play</b></span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div id="missing" class="missing" hidden>
+    <h1>This listing isn’t available</h1>
+    <p>It may have been removed by its owner. Browse more rooms in the KOZY app.</p>
+  </div>
+</main>
+
+<footer class="wrap">
+  <div class="foot">
+    <img src="/assets/logo.png" alt="KOZY">
+    <div class="flinks">
+      <a href="/terms">Terms of Service</a>
+      <a href="/user-data">User Data Management</a>
+      <a href="/privacy-policy">Privacy Policy</a>
+    </div>
+    <span>&copy; 2026 KOZY. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+  // /listing/{id} — listings are publicly readable, so render straight from the
+  // Firestore REST API. When the app is installed the OS opens it before this
+  // page ever shows (Universal/App Links); this is the no-app fallback.
+  (async function () {
+    var id = location.pathname.split('/').filter(Boolean)[1];
+    var card = document.getElementById('card');
+    var missing = document.getElementById('missing');
+    if (!id) { missing.hidden = false; return; }
+
+    document.getElementById('openApp').href = 'kozy://listing/' + encodeURIComponent(id);
+
+    try {
+      // __FIREBASE_PROJECT_ID__ injected at build time (Vercel env, see build.js).
+      var res = await fetch(
+        'https://firestore.googleapis.com/v1/projects/__FIREBASE_PROJECT_ID__/databases/(default)/documents/listings/' +
+        encodeURIComponent(id)
+      );
+      if (!res.ok) throw new Error(res.status);
+      var f = (await res.json()).fields || {};
+      var str = function (k) { return f[k] && f[k].stringValue; };
+      var num = function (k) { return f[k] && (f[k].integerValue || f[k].doubleValue); };
+      if ((str('status') || 'published') !== 'published') throw new Error('unpublished');
+
+      document.getElementById('title').textContent = str('title') || 'A room on KOZY';
+      var price = num('price');
+      document.getElementById('price').textContent = price ? '$' + price + ' / month' : '';
+      document.getElementById('loc').textContent =
+        [str('city'), str('province')].filter(Boolean).join(', ');
+      var images = f.images && f.images.arrayValue && f.images.arrayValue.values;
+      var photo = document.getElementById('photo');
+      if (images && images.length) photo.src = images[0].stringValue;
+      else photo.remove();
+      document.title = (str('title') || 'A room') + ' — KOZY';
+      card.hidden = false;
+    } catch (e) {
+      missing.hidden = false;
+    }
+  })();
+</script>
+</body>
+</html>

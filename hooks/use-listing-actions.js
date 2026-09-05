@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
 import { showAuthGate } from '@/lib/authGate';
+import { listingShareUrl } from '@/lib/links';
 import { subscribeSavedListingIds, toggleSavedListing } from '@/lib/db/savedListings';
 
 // Shared save/share/report behavior for listing screens (feed, reels, details).
@@ -46,11 +47,16 @@ export function useListingActions(item, { reportBackTo } = {}) {
   }, [isLoggedIn, uid]);
 
   const onShare = useCallback(async () => {
+    const current = itemRef.current;
+    if (!current?.id) return;
+    const url = listingShareUrl(current.id);
     try {
       await Share.share({
-        message: 'Check this out! 👀',
-        url: 'https://example.com',
-        title: 'Share link',
+        // Android's share sheet only forwards `message`, so the URL must live
+        // there; iOS additionally uses `url` for rich previews.
+        message: `${current.title ?? 'A room on KOZY'} — ${url}`,
+        url,
+        title: current.title ?? 'KOZY listing',
       });
     } catch (error) {
       console.error('Share error:', error);

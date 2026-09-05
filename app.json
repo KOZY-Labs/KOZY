@@ -10,11 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aroundent.kozy",
+      "bundleIdentifier": "app.getkozy.kozy",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "associatedDomains": [
+        "applinks:getkozy.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -25,8 +28,25 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.aroundent.kozy",
-      "versionCode": 1
+      "package": "app.getkozy.kozy",
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "getkozy.app",
+              "pathPrefix": "/listing"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "output": "static",

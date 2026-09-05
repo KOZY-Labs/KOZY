@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KOZY — Account action</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Open+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .authCard{max-width:420px;margin:64px auto 96px;background:var(--surface);
+      border:1px solid var(--line);border-radius:20px;padding:32px 28px}
+    .authCard h1{font-family:var(--display);font-weight:800;font-size:24px;margin-bottom:8px}
+    .authCard p{font-size:14px;line-height:1.6;color:var(--muted);margin-bottom:18px}
+    .authCard label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px}
+    .authCard input{width:100%;background:#12141C;border:1px solid var(--line);border-radius:10px;
+      color:var(--text);font-family:var(--body);font-size:15px;padding:12px 14px;margin-bottom:14px}
+    .authCard input:focus{outline:2px solid #7E96F5;outline-offset:1px}
+    .primaryBtn{display:block;width:100%;text-align:center;background:#7E96F5;color:#0B0E17;
+      font-weight:700;font-size:15px;border-radius:12px;padding:14px;margin-top:4px}
+    .primaryBtn:disabled{opacity:.5;cursor:default}
+    .err{color:#F58E8E;font-size:13px;margin-bottom:12px}
+    .ok{color:#8EF5B4;font-size:14px;line-height:1.6}
+    .spin{color:var(--muted);font-size:14px}
+  </style>
+</head>
+<body>
+
+<header class="wrap">
+  <nav class="nav">
+    <a href="/" aria-label="KOZY home"><img class="logo" src="/assets/logo.png" alt="KOZY"></a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="authCard" id="card">
+    <div class="spin" id="loading">Checking your link…</div>
+
+    <div id="reset" hidden>
+      <h1>Set a new password</h1>
+      <p>Choose a new password for <b id="resetEmail"></b>.</p>
+      <div class="err" id="resetErr" hidden></div>
+      <form id="resetForm">
+        <label for="pw1">New password</label>
+        <input id="pw1" type="password" minlength="8" required autocomplete="new-password">
+        <label for="pw2">Confirm new password</label>
+        <input id="pw2" type="password" minlength="8" required autocomplete="new-password">
+        <button class="primaryBtn" id="resetBtn" type="submit">Update password</button>
+      </form>
+    </div>
+
+    <div id="done" hidden>
+      <h1 id="doneTitle"></h1>
+      <p class="ok" id="doneMsg"></p>
+    </div>
+
+    <div id="failed" hidden>
+      <h1>This link isn’t valid</h1>
+      <p>It may have expired or already been used. Request a new one from the KOZY app and try again.</p>
+    </div>
+  </div>
+</main>
+
+<footer class="wrap">
+  <div class="foot">
+    <img src="/assets/logo.png" alt="KOZY">
+    <span>&copy; 2026 KOZY. All rights reserved.</span>
+  </div>
+</footer>
+
+<script type="module">
+  // Firebase email-action landing (custom action URL): password reset, email
+  // verification, and email-change recovery — all handled with oobCode via the
+  // web SDK. __FIREBASE_*__ tokens are injected at build time from Vercel env
+  // vars (see build.js) so staging/prod can point at different projects. The
+  // API key is the public client config — not a secret; security lives in the
+  // project's Auth + Firestore rules.
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
+  import {
+    getAuth, verifyPasswordResetCode, confirmPasswordReset, applyActionCode,
+  } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
+
+  const app = initializeApp({
+    apiKey: '__FIREBASE_API_KEY__',
+    authDomain: '__FIREBASE_AUTH_DOMAIN__',
+    projectId: '__FIREBASE_PROJECT_ID__',
+  });
+  const auth = getAuth(app);
+
+  const params = new URLSearchParams(location.search);
+  const mode = params.get('mode');
+  const oobCode = params.get('oobCode');
+
+  const show = (id) => {
+    document.getElementById('loading').hidden = true;
+    for (const s of ['reset', 'done', 'failed']) document.getElementById(s).hidden = s !== id;
+  };
+  const finish = (title, msg) => {
+    document.getElementById('doneTitle').textContent = title;
+    document.getElementById('doneMsg').textContent = msg;
+    show('done');
+  };
+
+  async function run() {
+    if (!oobCode) return show('failed');
+    try {
+      if (mode === 'resetPassword') {
+        const email = await verifyPasswordResetCode(auth, oobCode);
+        document.getElementById('resetEmail').textContent = email;
+        show('reset');
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const pw1 = document.getElementById('pw1').value;
+          const pw2 = document.getElementById('pw2').value;
+          const err = document.getElementById('resetErr');
+          err.hidden = true;
+          if (pw1 !== pw2) {
+            err.textContent = 'Passwords don’t match.';
+            err.hidden = false;
+            return;
+          }
+          const btn = document.getElementById('resetBtn');
+          btn.disabled = true;
+          try {
+            await confirmPasswordReset(auth, oobCode, pw1);
+            finish('Password updated ✅', 'You can now log in to the KOZY app with your new password.');
+          } catch (e2) {
+            btn.disabled = false;
+            err.textContent = e2?.code === 'auth/weak-password'
+              ? 'That password is too weak — use at least 8 characters.'
+              : 'Something went wrong. Request a new reset link and try again.';
+            err.hidden = false;
+          }
+        });
+      } else if (mode === 'verifyEmail') {
+        await applyActionCode(auth, oobCode);
+        finish('Email verified 🎉', 'You’re all set — return to the KOZY app to continue.');
+      } else if (mode === 'recoverEmail') {
+        await applyActionCode(auth, oobCode);
+        finish('Email restored', 'Your previous email address has been restored. We recommend changing your password in the app.');
+      } else {
+        show('failed');
+      }
+    } catch {
+      show('failed');
+    }
+  }
+  run();
+</script>
+</body>
+</html>

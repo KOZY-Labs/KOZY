@@ -6,5 +6,17 @@
   "redirects": [
     { "source": "/account-deletion", "destination": "/user-data", "statusCode": 308 },
     { "source": "/privacy", "destination": "/privacy-policy", "statusCode": 308 }
+  ],
+  "rewrites": [
+    { "source": "/listing/:id", "destination": "/listing" }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/(.*)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    }
   ]
 }

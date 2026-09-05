@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.aroundent.kozy'
+    namespace 'app.getkozy.kozy'
     defaultConfig {
-        applicationId 'com.aroundent.kozy'
+        applicationId 'app.getkozy.kozy'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
