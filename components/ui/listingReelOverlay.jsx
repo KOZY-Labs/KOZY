@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-elements';
+import { colors } from '@/constants/colors';
 
 // IG/TikTok-style legibility: one full-width black gradient over the bottom of the
 // video (not per-element boxes), plus subtle text shadows. Tiny generated PNG asset —
@@ -84,12 +85,21 @@ export default function ListingReelOverlay({
           accessibilityLabel="Open listing detail"
         >
           <View style={styles.bottomRoomInfo}>
-            <Avatar
-              source={avatarSource(item?.owner?.avatar)}
-              size={44}
-              rounded
-              containerStyle={styles.avatar}
-            />
+            <View>
+              <Avatar
+                source={avatarSource(item?.owner?.avatar)}
+                size={44}
+                rounded
+                containerStyle={styles.avatar}
+              />
+              {item?.owner?.verified ? (
+                // Same mark as ProfileSection's name-row badge (detail screen), docked
+                // on the avatar since the reel doesn't show the owner's name.
+                <View style={styles.verifiedBadge} accessibilityLabel="Verified user">
+                  <Feather name="check-circle" size={14} color={colors.base.success} />
+                </View>
+              ) : null}
+            </View>
             <View style={styles.bottomInfo}>
               <AppText variant="body-sm-strong" numberOfLines={1} style={styles.textShadow}>
                 {item?.title}
@@ -145,6 +155,14 @@ const styles = StyleSheet.create({
   },
   avatar: {
     backgroundColor: 'gray',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 9999,
+    padding: 2,
   },
   bottomInfo: {
     flex: 1,

@@ -3,7 +3,11 @@ import { ActivityIndicator, Platform, StyleSheet, View, FlatList } from 'react-n
 import { router, useNavigation, useLocalSearchParams } from 'expo-router';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { startPersonaVerification } from '@/services/personaVerification';
+import {
+  startPersonaVerification,
+  setAwaitingVerification,
+  consumeAwaitingVerification,
+} from '@/services/personaVerification';
 
 import PillGroup from '@/components/ui/pill/pillGroup';
 import AppText from '@/components/ui/appText';
@@ -33,6 +37,14 @@ import { authErrorMessage } from '@/lib/auth/errors';
 
 
 const MAX_PHOTOS = 3;
+
+// Verification-flow announcements fire right as the Persona auth-session browser is
+// closing. On iOS, presenting an RN Modal while that view controller is still
+// animating away leaves it invisible but touch-blocking — so hold every one of them
+// until the dismissal has finished.
+function announceVerification(options) {
+  setTimeout(() => showAlertModal(options), 700);
+}
 
 
 // Gate: the form seeds all of its state (including the photo list) from `profile`
@@ -88,7 +100,6 @@ function EditProfileForm() {
     const lifestyleDrawerRef = useRef(null);
     const aboutMeDrawerRef = useRef(null);
     const myVerificationDrawerRef = useRef(null);
-    const verificationConfirmDrawerRef = useRef(null);
     const emailEditDrawerRef = useRef(null);
     const emailCheckDrawerRef = useRef(null);
     const [firstName, setFirstName] = useState(profile?.firstName ?? '');
@@ -114,6 +125,23 @@ function EditProfileForm() {
       dob: verified && !!profile?.dob?.trim?.(),
     };
     const [verifying, setVerifying] = useState(false);
+    // When a Persona inquiry was just submitted (module-level flag — the deep-link
+    // return remounts this screen) and the webhook flips users.verified (via the
+    // users-doc subscription), announce it exactly once. Also fires on mount when
+    // the webhook won the race and verified is already true.
+    // `!verifying` gate: the webhook often flips `verified` while the Persona sheet
+    // is still on screen (its success page shows before the redirect). On iOS an RN
+    // Modal presented while ASWebAuthenticationSession's view controller is up fails
+    // silently but still blocks touches — so hold the announcement until the auth
+    // session has fully resolved, then the effect re-runs with verifying === false.
+    useEffect(() => {
+      if (verified && !verifying && consumeAwaitingVerification()) {
+        announceVerification({
+          title: 'Identity verified 🎉',
+          message: 'Your ID has been verified. Your profile now shows the verified badge.',
+        });
+      }
+    }, [verified, verifying]);
     const [newEmail, setNewEmail] = useState('');
     const [emailPassword, setEmailPassword] = useState('');
     const [showEmailPassword, setShowEmailPassword] = useState(false);
@@ -294,37 +322,50 @@ function EditProfileForm() {
       return;
     }
     setVerifying(true);
+    // Armed before the browser opens so the webhook can never beat it: however fast
+    // users.verified flips, the (possibly remounted) screen finds the flag set and
+    // opens the verified drawer. Cleared below on cancel/failure.
+    setAwaitingVerification(true);
     try {
       const result = await startPersonaVerification(uid);
-      if (result.type === 'completed') {
+      if (result.type === 'completed' || result.type === 'pending') {
+        // `verified` / `persona` / trustLevel 3 are server-only now: the
+        // Persona webhook (functions/src/personaWebhook.js) writes them via the Admin
+        // SDK once Persona confirms the inquiry, and Firestore rules reject these
+        // fields from clients. Persist the identity fields that verification locks so
+        // the locked values match what Persona saw; the verified badge appears on its
+        // own through the users-doc subscription when the webhook lands.
+        // No trustLevel here: the webhook may land before this write, and recomputing
+        // from the (still-unverified) local profile would clobber its trustLevel 3
+        // back down. The regular save flow recomputes it with the fresh profile.
         const updates = {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           dob,
-          verified: true,
-          personaInquiryId: result.inquiryId ?? '',
         };
-        updates.trustLevel = trustLevelFor({ ...profile, ...updates }); // verified → 3
         await updateUserDoc(uid, updates);
-        // Denormalized copies get the just-written values; the context profile (and the
-        // derived `verified`) updates via the users-doc subscription.
         await syncProfileCaches(uid, { ...profile, ...updates });
-        verificationConfirmDrawerRef.current?.snapToIndex(0);
-      } else if (result.type === 'pending') {
-        if (result.inquiryId) {
-          await updateUserDoc(uid, { personaInquiryId: result.inquiryId });
+        // completed: stay quiet — the webhook flips users.verified within seconds and
+        // the subscription effect above opens the verified drawer (the badge updates
+        // on its own either way). needs_review can take a while, so say so.
+        if (result.type === 'pending') {
+          announceVerification({
+            title: 'Verification submitted',
+            message: 'Your ID is being reviewed. Your profile will show as verified once it clears.',
+          });
         }
-        showAlertModal({
-          title: 'Verification submitted',
-          message: 'Your ID is being reviewed. Your profile will show as verified once it clears.',
-        });
-      } else if (result.type === 'failed') {
-        showAlertModal({ title: 'Verification failed', message: 'We could not verify your ID. Please try again.' });
+      } else {
+        // failed / cancel / error below: no verification is coming — disarm the modal.
+        setAwaitingVerification(false);
+        if (result.type === 'failed') {
+          announceVerification({ title: 'Verification failed', message: 'We could not verify your ID. Please try again.' });
+        }
+        // 'cancel' — user closed the browser; no message needed.
       }
-      // 'cancel' — user closed the browser; no message needed.
     } catch (e) {
-      showAlertModal({ title: 'Verification unavailable', message: e?.message ?? 'Please try again later.' });
+      setAwaitingVerification(false);
+      announceVerification({ title: 'Verification unavailable', message: e?.message ?? 'Please try again later.' });
     } finally {
       setVerifying(false);
     }
@@ -655,15 +696,6 @@ function EditProfileForm() {
             <AppText variant='body-xsm' style={{ textAlign: 'center' }}>
             *We use Persona to securely verify your ID.
             </AppText>
-      </AppDrawer>
-      <AppDrawer
-            ref={verificationConfirmDrawerRef}
-            title="Your Identity verified"
-            description="Your ID has been verified successfully."
-            align="center"
-            primaryActionText="Done"
-            primaryAction={() => verificationConfirmDrawerRef.current?.close()}
-          >
       </AppDrawer>
       <AppDrawer
             ref={emailEditDrawerRef}

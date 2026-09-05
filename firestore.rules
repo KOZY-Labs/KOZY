@@ -19,10 +19,32 @@ service cloud.firestore {
     }
 
     // users — public profile read; only the user (or admin) can write their doc.
+    // `verified` / `personaInquiryId` are server-only (Persona webhook via Admin SDK,
+    // which bypasses rules). trustLevel 3 is derived from `verified`, so clients may
+    // only write it once the server has already set verified.
     match /users/{uid} {
+      function noServerOnlyFields() {
+        // `persona` is the webhook's audit map; `personaInquiryId` is its legacy
+        // flat predecessor — keep both blocked so clients can't fabricate either.
+        return !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['verified', 'persona', 'personaInquiryId']);
+      }
+      function trustLevelAllowed() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['trustLevel'])
+          || request.resource.data.trustLevel in [1, 2]
+          || (request.resource.data.trustLevel == 3 && resource.data.verified == true);
+      }
+
       allow read: if true;
-      allow create: if isSelf(uid);
-      allow update, delete: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.get('verified', false) == false
+        && request.resource.data.get('trustLevel', 1) in [1, 2]
+        && !('persona' in request.resource.data)
+        && !('personaInquiryId' in request.resource.data);
+      allow update: if (isSelf(uid) || isAdmin())
+        && noServerOnlyFields()
+        && trustLevelAllowed();
+      allow delete: if isSelf(uid) || isAdmin();
 
       // savedListings is private to the user.
       match /savedListings/{listingId} {

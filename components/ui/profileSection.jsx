@@ -33,7 +33,7 @@ export default function ProfileSection({ listing }) {
         </AppText>
         {verified ? (
           <Feather
-            name="check-circle"
+            name="check-circle" 
             size={18}
             color={colors.base.success}
             accessibilityLabel="Verified user"

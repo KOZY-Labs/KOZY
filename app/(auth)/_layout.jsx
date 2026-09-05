@@ -11,8 +11,9 @@ export default function SignupLayout() {
         name="forgot-password"
         options={{ headerShown: false }}
       />
+      {/* signUp has its own _layout, so the child route here is the group itself. */}
       <Stack.Screen
-        name="signUp/email"
+        name="signUp"
         options={{
           headerShown: false,
           headerBackTitleVisible: true,
