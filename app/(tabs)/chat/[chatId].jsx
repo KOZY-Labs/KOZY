@@ -1,7 +1,7 @@
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Keyboard, ActivityIndicator, Image, Pressable } from "react-native";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import MessageBubble from "@/components/ui/chat/MessageBubble";
 import ChatInput from "@/components/ui/chat/ChatInput";
@@ -11,6 +11,7 @@ import { colors } from "@/constants/colors";
 import AppDrawer from "@/components/ui/drawer/AppDrawer";
 import ProfileSection from "@/components/ui/profileSection";
 import { showAlertModal, showConfirmModal } from "@/components/ui/confirmModalHost";
+import { setActiveChat } from "@/lib/notifications";
 import { useAuth } from "@/context/AuthContext";
 import { useChatThread } from "@/hooks/use-chats";
 import { chatViewModel, sendMessage, acceptChat } from "@/lib/db/chats";
@@ -29,6 +30,14 @@ const formatDayLabel = (date) => {
 
 export default function ChatScreen() {
     const { chatId } = useLocalSearchParams();
+    // Suppress push banners for the chat the user is currently reading (focus-based:
+    // a screen pushed on top of this one lifts the suppression too).
+    useFocusEffect(
+      useCallback(() => {
+        setActiveChat(chatId);
+        return () => setActiveChat(null);
+      }, [chatId])
+    );
     const threadId = Array.isArray(chatId) ? chatId[0] : chatId;
     const insets = useSafeAreaInsets();
     const { uid } = useAuth();

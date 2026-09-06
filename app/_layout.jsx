@@ -16,6 +16,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { appTheme } from '@/constants/index';
 import { AuthProvider } from '@/context/AuthContext';
 import ScreenTracker from '@/components/navigation/screenTracker';
+import NotificationsGate from '@/components/navigation/notificationsGate';
 import SplashGate from '@/components/ui/splashGate';
 import ConfirmModalHost from '@/components/ui/confirmModalHost';
 
@@ -57,6 +58,7 @@ export default function RootLayout() {
           <AuthProvider>
             <SplashGate>
               <ScreenTracker />
+              <NotificationsGate />
               <Slot />
               <ConfirmModalHost />
               <StatusBar style="auto" />

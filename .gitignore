@@ -33,6 +33,9 @@ yarn-error.*
 google-services.json
 GoogleService-Info.plist
 *serviceAccount*.json
+# 소문자 변형도 명시: macOS git은 대소문자 무시로 걸러주지만, EAS/Linux는 대소문자를
+# 구분하므로 위 패턴만으로는 admin 키가 빌드 tarball에 포함될 수 있음
+*serviceaccount*.json
 firebase-adminsdk*.json
 
 # local

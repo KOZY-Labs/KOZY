@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, View, Image, ScrollView } from 'react-native';
+import { Pressable, StyleSheet, Switch, View, Image, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from "@expo/vector-icons";
 
@@ -8,14 +8,16 @@ import EmptyListingsState from "@/components/ui/emptyListingsState";
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/lib/auth";
+import { updateUserDoc } from "@/lib/db/users";
 import { openPrivacyPolicy } from "@/lib/links";
 
 import { avatarSource } from '@/lib/avatar';
+import { colors } from '@/constants/colors';
 
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoggedIn, profile } = useAuth();
+  const { isLoggedIn, profile, uid } = useAuth();
   const currUser = profile;
 
   const handleLogout = () => {
@@ -51,115 +53,145 @@ export default function AccountScreen() {
   return (
     <ScrollView
       style={[styles.container, { paddingTop: insets.top }]}
-      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 84 }}
+      contentContainerStyle={{
+        paddingBottom: Math.max(insets.bottom, 16) + 84,
+      }}
       showsVerticalScrollIndicator={false}
     >
-        <AppText variant="headline-sm" color="primary">My Page</AppText>
-        <View style={styles.content}>
-          <View style={styles.userInfo}>
-            {/* Avatar/name opens Edit Profile; shows the public display name (first name). */}
-            <Pressable
-              style={styles.name}
-              accessibilityRole="button"
-              accessibilityLabel="Edit profile"
-              onPress={() => router.push('/(tabs)/account/editProfile')}
-            >
-              <Image
-                source={avatarSource(currUser?.avatar)}
-                style={{ width: 55, height: 55, borderRadius: 999 }}
-              />
-              <AppText variant="body-md" color="primary">
-                {currUser?.firstName || currUser?.name}
-              </AppText>
-            </Pressable>
+      <AppText variant="headline-sm" color="primary">
+        My Page
+      </AppText>
+      <View style={styles.content}>
+        <View style={styles.userInfo}>
+          {/* Avatar/name opens Edit Profile; shows the public display name (first name). */}
+          <Pressable
+            style={styles.name}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
+            onPress={() => router.push("/(tabs)/account/editProfile")}
+          >
+            <Image
+              source={avatarSource(currUser?.avatar)}
+              style={{ width: 55, height: 55, borderRadius: 999 }}
+            />
+            <AppText variant="body-md" color="primary">
+              {currUser?.firstName || currUser?.name}
+            </AppText>
+          </Pressable>
+        </View>
+      </View>
+      <View style={styles.manuContainer}>
+        <Pressable onPress={() => router.push("/(tabs)/account/editProfile")}>
+          <View style={styles.manuButton}>
+            <Feather name="edit" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Edit Profile
+            </AppText>
           </View>
+        </Pressable>
+        <Pressable onPress={() => router.push("/(tabs)/account/savedList")}>
+          <View style={styles.manuButton}>
+            <Feather name="bookmark" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Saved Listings
+            </AppText>
+          </View>
+        </Pressable>
+        <Pressable onPress={() => router.push("/(tabs)/account/myListings")}>
+          <View style={styles.manuButton}>
+            <Feather name="list" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              My Listings
+            </AppText>
+          </View>
+        </Pressable>
+      </View>
+      <View style={styles.manuContainer}>
+        {/* Direct toggle instead of the notification settings page (unwired for now —
+              kept for a future granular-preferences revamp). Missing pref = on; the
+              push triggers only skip when notifPrefs.push is explicitly false. */}
+        <View style={[styles.manuButton, styles.toggleRow]}>
+          <View style={styles.toggleLabel}>
+            <Feather name="bell" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Push Notifications
+            </AppText>
+          </View>
+          <Switch
+            trackColor={{
+              false: colors.base.gray800,
+              true: colors.base.gray400,
+            }}
+            thumbColor="#FFFFFF"
+            value={currUser?.notifPrefs?.push !== false}
+            onValueChange={async (next) => {
+              try {
+                await updateUserDoc(uid, { notifPrefs: { push: next } });
+              } catch (e) {
+                showAlertModal({
+                  title: "Update failed",
+                  message: e?.message ?? "Please try again.",
+                });
+              }
+            }}
+            accessibilityLabel="Push notifications"
+          />
         </View>
-        <View style={styles.manuContainer}>
-          <Pressable onPress={() => router.push('/(tabs)/account/editProfile')}>
-            <View style={styles.manuButton}>
-              <Feather name="edit" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Edit Profile
-              </AppText>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => router.push('/(tabs)/account/savedList')}>
-            <View style={styles.manuButton}>
-              <Feather name="bookmark" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Saved Listings
-              </AppText>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => router.push('/(tabs)/account/myListings')}>
-            <View style={styles.manuButton}>
-              <Feather name="list" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                My Listings
-              </AppText>
-            </View>
-          </Pressable>
-        </View>
-        <View style={styles.manuContainer}>
-          <Pressable onPress={() => router.push('/(tabs)/account/trustLevelInfo')}>
-            <View style={styles.manuButton}>
-              <Feather name="shield" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Trust Level
-              </AppText>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => router.push('/(tabs)/account/notification')}>
-            <View style={styles.manuButton}>
-              <Feather name="bell" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Notification
-              </AppText>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => router.push('/(tabs)/account/changePassword')}>
-            <View style={styles.manuButton}>
-              <Feather name="key" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Change Password
-              </AppText>
-            </View>
-          </Pressable>
-          <Pressable onPress={openPrivacyPolicy}>
-            <View style={styles.manuButton}>
-              <Feather name="lock" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Privacy Policy              
-              </AppText>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => router.push('/(tabs)/account/contactUs')}>
-            <View style={styles.manuButton}>
-              <Feather name="mail" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Contact Us
-              </AppText>
-            </View>
-          </Pressable>
-        </View>
-        <View style={styles.manuContainer}>
-          <Pressable onPress={handleLogout}>
-            <View style={styles.manuButton}>
-              <Feather name="log-out" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Log Out
-              </AppText>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => router.push('/(tabs)/account/deleteAccount')}>
-            <View style={styles.manuButton}>
-              <Feather name="trash-2" size={20} color='#fff' />
-              <AppText variant="body-md" color="primary">
-                Delete Account
-              </AppText>
-            </View>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => router.push("/(tabs)/account/trustLevelInfo")}
+        >
+          <View style={styles.manuButton}>
+            <Feather name="shield" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Trust Level
+            </AppText>
+          </View>
+        </Pressable>
+        <Pressable onPress={openPrivacyPolicy}>
+          <View style={styles.manuButton}>
+            <Feather name="lock" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Privacy Policy
+            </AppText>
+          </View>
+        </Pressable>
+        <Pressable onPress={() => router.push("/(tabs)/account/contactUs")}>
+          <View style={styles.manuButton}>
+            <Feather name="mail" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Contact Us
+            </AppText>
+          </View>
+        </Pressable>
+      </View>
+      <View style={styles.manuContainer}>
+        <Pressable
+          onPress={() => router.push("/(tabs)/account/changePassword")}
+        >
+          <View style={styles.manuButton}>
+            <Feather name="key" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Change Password
+            </AppText>
+          </View>
+        </Pressable>
+        <Pressable onPress={handleLogout}>
+          <View style={styles.manuButton}>
+            <Feather name="log-out" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Log Out
+            </AppText>
+          </View>
+        </Pressable>
+        <Pressable onPress={() => router.push("/(tabs)/account/deleteAccount")}>
+          <View style={styles.manuButton}>
+            <Feather name="trash-2" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary">
+              Delete Account
+            </AppText>
+          </View>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -205,5 +237,14 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 24,
     paddingVertical: 12
-  }
+  },
+  toggleRow: {
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  toggleLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
 });

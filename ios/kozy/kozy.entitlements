@@ -10,5 +10,10 @@
     <array>
       <string>applinks:getkozy.app</string>
     </array>
+    <!-- Push (expo-notifications). 'development' is correct here: release signing
+         (App Store provisioning) swaps it to 'production' automatically — never
+         hardcode 'production' (the JOOPI mistake, which broke dev-build push). -->
+    <key>aps-environment</key>
+    <string>development</string>
   </dict>
 </plist>
