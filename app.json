@@ -13,7 +13,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.getkozy.kozy",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Allow KOZY to access your location to show where you are on the listing map."
       },
       "buildNumber": "1",
       "associatedDomains": [
