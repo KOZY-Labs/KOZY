@@ -2,6 +2,11 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply plugin: "com.google.gms.google-services"
+// Sentry: uploads JS source maps + ProGuard mappings on RELEASE builds so crash
+// stacks are readable (reads android/sentry.properties — gitignored, holds the
+// auth token). Debug builds skip upload. NOTE: expo prebuild drops this line —
+// see docs/TODO.md prebuild cautions.
+apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute(null, rootDir).text.trim(), "../sentry.gradle")
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
