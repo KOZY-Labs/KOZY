@@ -58,6 +58,13 @@
       "expo-router",
       "expo-notifications",
       [
+        "@sentry/react-native/expo",
+        {
+          "organization": "kozy-labs",
+          "project": "kozy"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/Horizontal-logo.png",

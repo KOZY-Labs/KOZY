@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import * as Sentry from '@sentry/react-native';
 import {
   ThemeProvider as NavigationThemeProvider,
   DarkTheme,
@@ -25,6 +26,17 @@ import ConfirmModalHost from '@/components/ui/confirmModalHost';
 // the matching JS splash so there is no flash between the two.
 ExpoSplashScreen.preventAutoHideAsync().catch(() => {});
 
+// Crash + error reporting. No-op until EXPO_PUBLIC_SENTRY_DSN is set (the DSN is
+// public client config, like the Firebase keys). Breadcrumbs (navigation, network,
+// console) are free context attached to error events — only errors count against
+// the 5k/month free quota. Tracing stays off (separate quota, not needed yet).
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0,
+  environment: process.env.EXPO_PUBLIC_ENV ?? 'development',
+});
+
 const AppDarkTheme = {
   ...DarkTheme,
   colors: {
@@ -34,7 +46,7 @@ const AppDarkTheme = {
   },
 };
 
-export default function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     OpenSans_400Regular: require('../assets/fonts/OpenSans-Regular.ttf'),
@@ -72,3 +84,6 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap adds the top-level error boundary + touch-event breadcrumbs.
+export default Sentry.wrap(RootLayout);
