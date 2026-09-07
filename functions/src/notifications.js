@@ -41,6 +41,9 @@ const notifyNewMessage = onDocumentCreated(
     if (!chatSnap.exists) return;
     const chat = chatSnap.data();
 
+    // Blocked chats send nothing (rules already reject the write; belt & braces).
+    if ((chat.blockedBy ?? []).length > 0) return;
+
     // The request flow writes the first message right after the chat doc, and ①
     // already carried its preview — sending both would double-notify the owner.
     const chatCreatedAt = chat.createdAt?.toMillis?.() ?? 0;
@@ -50,11 +53,13 @@ const notifyNewMessage = onDocumentCreated(
     const recipients = (chat.participants ?? []).filter(
       (uid) => uid !== msg.senderId && !chat.participantsInfo?.[uid]?.deleted
     );
+    // Media messages carry no text — use the same preview the chat list shows.
+    const MEDIA_PREVIEW = { image: '📷 Photo', video: '🎥 Video' };
     await Promise.all(
       recipients.map((uid) =>
         sendChatPush(uid, {
           title: displayName(chat, msg.senderId),
-          body: msg.text ?? '',
+          body: MEDIA_PREVIEW[msg.type] ?? msg.text ?? '',
           chatId: event.params.chatId,
         })
       )

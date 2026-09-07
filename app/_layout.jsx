@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { appTheme } from '@/constants/index';
 import { AuthProvider } from '@/context/AuthContext';
+import { ChatBadgeProvider } from '@/context/ChatBadgeContext';
 import ScreenTracker from '@/components/navigation/screenTracker';
 import NotificationsGate from '@/components/navigation/notificationsGate';
 import SplashGate from '@/components/ui/splashGate';
@@ -56,13 +57,15 @@ export default function RootLayout() {
       >
         <RNEThemeProvider theme={appTheme}>
           <AuthProvider>
-            <SplashGate>
-              <ScreenTracker />
-              <NotificationsGate />
-              <Slot />
-              <ConfirmModalHost />
-              <StatusBar style="auto" />
-            </SplashGate>
+            <ChatBadgeProvider>
+              <SplashGate>
+                <ScreenTracker />
+                <NotificationsGate />
+                <Slot />
+                <ConfirmModalHost />
+                <StatusBar style="auto" />
+              </SplashGate>
+            </ChatBadgeProvider>
           </AuthProvider>
         </RNEThemeProvider>
       </NavigationThemeProvider>

@@ -9,6 +9,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
+import { useChatBadge } from '@/context/ChatBadgeContext';
+
 const HIDDEN_TAB_BAR_STYLE = {
   display: 'none',
   height: 0,
@@ -20,6 +22,7 @@ const HIDDEN_TAB_BAR_STYLE = {
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
+  const { unreadTotal } = useChatBadge();
   const pathname = usePathname();
   const segments = useSegments();
   // Single source of truth for hiding the floating tab bar on immersive sub-screens.
@@ -122,6 +125,18 @@ export default function TabLayout() {
         options={{
           popToTopOnBlur: true,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="bubble.left.fill" color={color} />,
+          // undefined removes the badge entirely when there's nothing unread.
+          tabBarBadge: unreadTotal > 0 ? (unreadTotal > 99 ? '99+' : unreadTotal) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#F0426B',
+            color: '#fff',
+            fontSize: 11,
+            lineHeight: 16,
+            // The floating 56px bar + centered icons put the default badge too low/near;
+            // nudge it onto the icon's top-right corner.
+            marginTop: 2,
+            marginLeft: 14,
+          },
         }}
       />
       <Tabs.Screen

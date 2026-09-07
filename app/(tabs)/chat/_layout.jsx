@@ -42,6 +42,30 @@ export default function ChatStack() {
       />
       {/* Listing detail opened from a chat — the screen supplies its own back button. */}
       <Stack.Screen name="listing/[id]" options={{ title: '' }} />
+      {/* Report User (re-exported contactUs) — needs the stack header for back. */}
+      <Stack.Screen
+        name="report"
+        options={{
+          title: 'Report',
+          headerShown: true,
+          headerBackVisible: false,
+          headerLeft: () => (
+            <Pressable
+              onPress={goBack}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={10}
+            >
+              <Feather
+                name="chevron-left"
+                size={28}
+                color="white"
+                style={{ marginLeft: 2 }}
+              />
+            </Pressable>
+          ),
+        }}
+      />
     </Stack>
   );
 }

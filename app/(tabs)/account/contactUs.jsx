@@ -22,8 +22,11 @@ export default function ContactUs() {
     const params = useLocalSearchParams();
     const backTo = Array.isArray(params.backTo) ? params.backTo[0] : params.backTo;
     const listingId = Array.isArray(params.listingId) ? params.listingId[0] : params.listingId;
+    // Report-a-user flow (chat kebab → Report User) — mirrors the listing report.
+    const reportUserId = Array.isArray(params.reportUserId) ? params.reportUserId[0] : params.reportUserId;
     const { user, uid, profile } = useAuth();
-    const isReport = !!listingId;
+    const isUserReport = !!reportUserId;
+    const isReport = !!listingId || isUserReport;
 
     // Prefill from the profile once at mount — the live users-doc subscription keeps the
     // profile warm well before the user can navigate this deep, so no effect machinery.
@@ -67,6 +70,7 @@ export default function ContactUs() {
             // would come back downgraded to a 'general' message with no target.
             const query = [
                 listingId && `listingId=${encodeURIComponent(listingId)}`,
+                reportUserId && `reportUserId=${encodeURIComponent(reportUserId)}`,
                 backTo && `backTo=${encodeURIComponent(backTo)}`,
             ].filter(Boolean).join('&');
             showAuthGate({
@@ -79,8 +83,8 @@ export default function ContactUs() {
         setSubmitting(true);
         try {
             await createReport({
-                targetType: isReport ? 'listing' : 'general',
-                targetId: listingId ?? null,
+                targetType: isUserReport ? 'user' : isReport ? 'listing' : 'general',
+                targetId: reportUserId ?? listingId ?? null,
                 reporterId: uid,
                 name: name.trim(),
                 email: email.trim(),
@@ -125,12 +129,18 @@ export default function ContactUs() {
             keyboardShouldPersistTaps="handled"
         >
         <DisplayField
-            title={isReport ? 'Report this listing' : 'Have a question, feedback, or need support?'}
+            title={
+                isUserReport
+                    ? 'Report this user'
+                    : isReport ? 'Report this listing' : 'Have a question, feedback, or need support?'
+            }
             style={{ marginBottom: 16 }}
         >
-        {isReport
-            ? 'Tell us what\'s wrong with this listing and we\'ll review it as soon as possible.'
-            : 'We\'re here to help. Reach out and we\'ll get back to you as soon as possible.'}
+        {isUserReport
+            ? 'Tell us what happened with this user and we\'ll review it as soon as possible.'
+            : isReport
+                ? 'Tell us what\'s wrong with this listing and we\'ll review it as soon as possible.'
+                : 'We\'re here to help. Reach out and we\'ll get back to you as soon as possible.'}
         </DisplayField>
         <View style={styles.formField}>
             <View style={{ paddingHorizontal:36 }}>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router, usePathname } from "expo-router";
 import { StyleSheet, View, FlatList, Pressable, Image, ActivityIndicator } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppText from '@/components/ui/appText';
@@ -111,9 +112,9 @@ export default function Chat() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AppText variant="headline-sm" color="primary">Messages</AppText>
-      <View style={styles.content}>
-        {/* Buttons */}
+      {/* Title + CTAs share a row so the buttons align with "Messages". */}
+      <View style={styles.headerRow}>
+        <AppText variant="headline-sm" color="primary">Messages</AppText>
         <View style={styles.buttonContainer}>
           {!isEditMode && (
             <AppButton
@@ -146,6 +147,8 @@ export default function Chat() {
             </>
           )}
         </View>
+      </View>
+      <View style={styles.content}>
         {/* Chat list */}
         <FlatList
           data={chats}
@@ -153,9 +156,10 @@ export default function Chat() {
           contentContainerStyle={{ paddingBottom: 24 }}
           renderItem={({ item }) => {
             const vm = chatViewModel(item, uid);
+            const hasUnread = !vm?.isBlocked && (vm?.unreadCount ?? 0) > 0;
             return (
               <Pressable
-                style={styles.card}
+                style={[styles.card, vm?.isBlocked && styles.cardBlocked]}
                 onPress={() => {
                   if (isEditMode) return;
                   router.push(`chat/${item.id}`);
@@ -167,6 +171,11 @@ export default function Chat() {
                     source={avatarSource(vm?.otherInfo?.avatar)}
                     style={styles.image}
                   />
+                  {vm?.otherInfo?.verified ? (
+                    <View style={styles.verifiedBadge} accessibilityLabel="Verified user">
+                      <Feather name="check-circle" size={14} color={colors.base.success} />
+                    </View>
+                  ) : null}
                 </View>
                 {/* Info */}
                 <View style={styles.infoWrapper}>
@@ -179,16 +188,27 @@ export default function Chat() {
                     {vm?.otherInfo?.name ?? 'User'}, {item.listing?.title ?? ''}
                   </AppText>
                   <AppText
-                    variant="body-xsm"
+                    variant={hasUnread ? 'body-xsm-strong' : 'body-xsm'}
                     color="primary"
                     numberOfLines={1}
                     ellipsizeMode="tail"
-                    style={{ marginTop: 4, flexShrink: 1 }}
+                    style={{ marginTop: 4, flexShrink: 1, opacity: hasUnread ? 1 : 0.7 }}
                   >
-                    {vm?.isPending ? vm.statusLabel : (item.lastMessage || vm?.statusLabel)}
+                    {vm?.isBlocked
+                      ? 'Chat unavailable'
+                      : vm?.isPending ? vm.statusLabel : (item.lastMessage || vm?.statusLabel)}
                   </AppText>
                 </View>
-                <AppText variant="body-xsm">{formatRelative(item.lastMessageAt)}</AppText>
+                <View style={styles.metaColumn}>
+                  <AppText variant="body-xsm">{formatRelative(item.lastMessageAt)}</AppText>
+                  {hasUnread ? (
+                    <View style={styles.unreadPill}>
+                      <AppText variant="body-xsm-strong" style={styles.unreadPillText}>
+                        {vm.unreadCount > 99 ? '99+' : vm.unreadCount}
+                      </AppText>
+                    </View>
+                  ) : null}
+                </View>
                 {isEditMode && (
                   <CheckBox
                     selected={selectedItems.includes(item.id)}
@@ -227,19 +247,50 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     alignItems: 'center',
   },
+  cardBlocked: {
+    opacity: 0.5,
+  },
+  metaColumn: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  unreadPill: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    backgroundColor: '#F0426B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadPillText: {
+    color: '#fff',
+    lineHeight: 15,
+  },
   image: {
     width: 55,
     height: 55,
     borderRadius: 999,
   },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 9999,
+    padding: 2,
+  },
   infoWrapper: {
     flex: 1,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: "10%",
+  },
   buttonContainer: {
-    display: 'flex',
     flexDirection: 'row',
     gap: 6,
-    marginVertical: 12,
-    marginLeft: 'auto',
   },
 });

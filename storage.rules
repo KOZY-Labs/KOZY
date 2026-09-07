@@ -36,6 +36,18 @@ service firebase.storage {
       allow delete: if isSignedIn();
     }
 
+    // Chat media (photo/video messages). Storage rules can't check Firestore chat
+    // participation, so any signed-in user may create here; reads are public like
+    // every other media path. Videos capped at 30MB (stored as-is, no transcode —
+    // matches the chat overrides passed to utils/mediaValidation.js validateVideo).
+    match /chats/{chatId}/media/{file} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && ((isImage() && withinSize())
+          || (isVideo() && request.resource.size < 30 * 1024 * 1024));
+      allow delete: if isSignedIn();
+    }
+
     // User avatar — only the owner can write.
     match /users/{uid}/avatar/{file} {
       allow read: if true;

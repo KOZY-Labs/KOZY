@@ -1,4 +1,6 @@
-import { View, StyleSheet, Image, Pressable } from "react-native";
+import { View, StyleSheet, Image, Pressable, useWindowDimensions } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { Feather } from "@expo/vector-icons";
 import AppText from "../appText";
 import { colors } from "@/constants/colors";
 import { avatarSource } from '@/lib/avatar';
@@ -6,7 +8,35 @@ import { avatarSource } from '@/lib/avatar';
 const MINE_BUBBLE_COLOR = colors.semantic.bg.info;
 const THEIRS_BUBBLE_COLOR = "#1F2937";
 
-export default function MessageBubble({ message, isMine, avatar, onAvatarPress }) {
+// Inline video preview: first frame + play overlay; tapping opens the fullscreen
+// viewer (autoplay + native controls + pinch zoom). Split out as a component
+// because useVideoPlayer is a hook (can't be conditional in the bubble).
+function VideoMessage({ url, width, onPress }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = false;
+    p.muted = true;
+  });
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Play video">
+      <VideoView
+        player={player}
+        style={{ width, height: (width * 9) / 16, borderRadius: 16, backgroundColor: '#000' }}
+        nativeControls={false}
+        contentFit="cover"
+        pointerEvents="none"
+      />
+      <View style={styles.playOverlay} pointerEvents="none">
+        <View style={styles.playCircle}>
+          <Feather name="play" size={22} color="#fff" style={{ marginLeft: 2 }} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+export default function MessageBubble({ message, isMine, avatar, onAvatarPress, showStatus, onMediaPress }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const mediaWidth = Math.round(screenWidth * 0.6);
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     let hours = date.getHours();
@@ -29,6 +59,9 @@ export default function MessageBubble({ message, isMine, avatar, onAvatarPress }
     );
   }
 
+  const isImage = message.type === 'image' && message.mediaUrl;
+  const isVideo = message.type === 'video' && message.mediaUrl;
+
   return (
     <View style={styles.container}>
         {!isMine && (
@@ -37,23 +70,43 @@ export default function MessageBubble({ message, isMine, avatar, onAvatarPress }
           </Pressable>
         )}
         <View style={[styles.messageContainer, isMine ? { alignItems: "flex-end" } : { alignItems: "flex-start" }]}>
-            <View
-                style={[
-                    styles.bubble,
-                    isMine ? styles.mine : styles.theirs,
-                ]}
-            >
+            {isImage ? (
+                <Pressable onPress={() => onMediaPress?.(message)} accessibilityRole="imagebutton">
+                    <Image
+                        source={{ uri: message.mediaUrl }}
+                        style={[styles.mediaImage, { width: mediaWidth, height: mediaWidth }]}
+                    />
+                </Pressable>
+            ) : isVideo ? (
+                <VideoMessage
+                    url={message.mediaUrl}
+                    width={mediaWidth}
+                    onPress={() => onMediaPress?.(message)}
+                />
+            ) : (
                 <View
                     style={[
-                        styles.tail,
-                        isMine ? styles.mineTail : styles.theirsTail,
+                        styles.bubble,
+                        isMine ? styles.mine : styles.theirs,
                     ]}
-                />
-                <AppText variant="body-xs">{message.text}</AppText>
-            </View>
+                >
+                    <View
+                        style={[
+                            styles.tail,
+                            isMine ? styles.mineTail : styles.theirsTail,
+                        ]}
+                    />
+                    <AppText variant="body-xs">{message.text}</AppText>
+                </View>
+            )}
             <AppText variant="caption" color="primary" style={{textAlign: isMine ? "right" : "left"}}>
                 {formatTime(message.createdAt)}
             </AppText>
+            {isMine && showStatus ? (
+                <AppText variant="caption" style={styles.statusText}>
+                    {message.status === 'read' ? 'Read' : 'Delivered'}
+                </AppText>
+            ) : null}
         </View>
     </View>
   );
@@ -106,6 +159,28 @@ messageContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
+  },
+  mediaImage: {
+    borderRadius: 16,
+    backgroundColor: '#191A22',
+  },
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusText: {
+    color: '#9BA1AC',
+    textAlign: 'right',
+    marginTop: 2,
   },
   systemContainer: {
     alignItems: "center",

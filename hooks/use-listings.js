@@ -37,10 +37,11 @@ export function useListings(options) {
 
 // Browse-facing listings (home feed, search, maps): published listings minus the
 // viewer's own, minus ones they already have a chat/request with (those come back
-// if the chat is deleted), and minus ones they reported. Logged-out viewers see
-// everything.
+// if the chat is deleted), minus ones they reported, and minus everything owned by
+// users they've blocked (blocking someone means not seeing their inventory either).
+// Logged-out viewers see everything.
 export function useBrowseListings(options) {
-  const { uid } = useAuth();
+  const { uid, profile } = useAuth();
   const base = useListings(options);
   const { data: chats } = useChats(uid);
   const [reportedIds, setReportedIds] = useState([]);
@@ -53,13 +54,19 @@ export function useBrowseListings(options) {
     return subscribeReportedListingIds(uid, setReportedIds);
   }, [uid]);
 
+  const blockedUsers = profile?.blockedUsers;
   const data = useMemo(() => {
     const chattedListingIds = new Set(chats.map((c) => c.listingId));
     const reported = new Set(reportedIds);
+    const blocked = new Set(blockedUsers ?? []);
     return base.data.filter(
-      (l) => l.ownerId !== uid && !chattedListingIds.has(l.id) && !reported.has(l.id)
+      (l) =>
+        l.ownerId !== uid &&
+        !chattedListingIds.has(l.id) &&
+        !reported.has(l.id) &&
+        !blocked.has(l.ownerId)
     );
-  }, [base.data, chats, uid, reportedIds]);
+  }, [base.data, chats, uid, reportedIds, blockedUsers]);
 
   return { ...base, data };
 }

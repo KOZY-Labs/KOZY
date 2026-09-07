@@ -84,10 +84,20 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/chats/$(chatId)).data;
         }
         allow read: if isSignedIn() && request.auth.uid in chatData().participants;
+        // Blocked chats (chat.blockedBy non-empty) reject new messages server-side —
+        // the client disables the input, this makes it enforceable.
         allow create: if isSignedIn()
           && request.auth.uid in chatData().participants
-          && request.resource.data.senderId == request.auth.uid;
-        allow update: if isAdmin();
+          && request.resource.data.senderId == request.auth.uid
+          && chatData().get('blockedBy', []).size() == 0;
+        // Read receipts: a participant may flip messages they did NOT send to
+        // 'read' — nothing else about the message is editable by clients.
+        allow update: if isAdmin()
+          || (isSignedIn()
+            && request.auth.uid in chatData().participants
+            && resource.data.senderId != request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'read');
         // Participants may delete messages so deleting a chat can purge its thread.
         allow delete: if isAdmin()
           || (isSignedIn() && request.auth.uid in chatData().participants);
