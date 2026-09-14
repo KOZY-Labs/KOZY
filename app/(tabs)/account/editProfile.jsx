@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View, FlatList } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View, FlatList } from 'react-native';
 import { router, useNavigation, useLocalSearchParams } from 'expo-router';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {
   startPersonaVerification,
@@ -96,7 +96,7 @@ export default function EditProfile() {
 
 function EditProfileForm() {
     const { profile, uid } = useAuth();
-    const { focus } = useLocalSearchParams();
+    const { focus, backTo } = useLocalSearchParams();
     // Sliced to the photo cap so a legacy multi-photo profile doesn't read as
     // "dirty" (and prompt to discard) before the user touches anything.
     const existingAvatar = useMemo(
@@ -226,6 +226,54 @@ function EditProfileForm() {
       });
       return unsubscribe;
     }, [navigation]);
+
+    // The header back button leaves via router.replace when a backTo param is set
+    // (Complete-profile gate flows) — and `beforeRemove` cannot intercept a REPLACE,
+    // so the unsaved-changes guard silently skipped that path. Own the button here,
+    // where isDirty is visible, and run the same discard confirm before leaving.
+    useEffect(() => {
+      const leaveScreen = () => {
+        allowLeaveRef.current = true;
+        const target = typeof backTo === 'string' && backTo.length > 0 ? backTo : null;
+        if (target) {
+          router.replace(target);
+        } else if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/account');
+        }
+      };
+      navigation.setOptions({
+        // This form is also mounted in the post stack (post/editProfile), where the
+        // NATIVE back button is still on — leaving it would render two back buttons,
+        // and a native pop races the JS guard ("removed natively but didn't get
+        // removed from JS state"). Our headerLeft below is the only back control.
+        headerBackVisible: false,
+        headerLeft: () => (
+          <Pressable
+            onPress={() => {
+              if (isDirtyRef.current && !allowLeaveRef.current) {
+                showConfirmModal({
+                  title: 'Discard changes?',
+                  message: 'You have unsaved changes. If you leave now, your edits will be lost.',
+                  primaryText: 'Keep Editing',
+                  secondaryText: 'Discard',
+                  onSecondary: leaveScreen,
+                });
+                return;
+              }
+              leaveScreen();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            hitSlop={10}
+            style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}
+          >
+            <Ionicons name="chevron-back" size={24} color="#ffffff" />
+          </Pressable>
+        ),
+      });
+    }, [navigation, backTo]);
 
   const clearFieldError = (field) => {
     setErrors((current) => (current[field] ? { ...current, [field]: null } : current));

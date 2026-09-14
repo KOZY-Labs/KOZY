@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -29,6 +29,10 @@ export default function SearchScreen() {
 
   // Listings behind the last-tapped map marker (single pin or grouped cluster).
   const [areaListings, setAreaListings] = useState([]);
+
+  // While a finger is on the preview map, freeze the outer list — otherwise the
+  // FlatList claims vertical drags and the map can't be panned (Android).
+  const [mapInteracting, setMapInteracting] = useState(false);
 
   const [location, setLocation] = useState('');
   // Set when an autocomplete suggestion is picked: { mainText, latitude, longitude }.
@@ -81,8 +85,16 @@ export default function SearchScreen() {
       return;
     }
     setAreaListings(items);
-    areaSheetRef.current?.snapToIndex(0);
   };
+
+  // Snap only AFTER the sheet has re-rendered with the new listings — snapping in
+  // the same tick as setAreaListings hit a sheet whose snap points still reflected
+  // the previous (empty) content, so the first marker tap did nothing.
+  useEffect(() => {
+    if (areaListings.length === 0) return undefined;
+    const raf = requestAnimationFrame(() => areaSheetRef.current?.snapToIndex(0));
+    return () => cancelAnimationFrame(raf);
+  }, [areaListings]);
 
   const handleOpenListing = (listing) => {
     areaSheetRef.current?.close();
@@ -137,6 +149,7 @@ export default function SearchScreen() {
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!mapInteracting}
           renderItem={() => (
             <>
           <View style={styles.heroBlock}>
@@ -190,7 +203,12 @@ export default function SearchScreen() {
             </SearchSection>
 
             {/* Interactive clustered preview — pan/zoom/pills work in place */}
-            <View style={styles.mapContainer}>
+            <View
+              style={styles.mapContainer}
+              onTouchStart={() => setMapInteracting(true)}
+              onTouchEnd={() => setMapInteracting(false)}
+              onTouchCancel={() => setMapInteracting(false)}
+            >
               <ListingsClusterMap
                 listings={mapListings}
                 style={StyleSheet.absoluteFill}
@@ -308,11 +326,12 @@ export default function SearchScreen() {
           />
         </AppDrawer>
 
+        {/* No onClose clear: the listings persist so a spurious close event can't
+            blank an open sheet; re-tapping any pin sets a fresh array and reopens. */}
         <ListingsAreaSheet
           ref={areaSheetRef}
           listings={areaListings}
           onPressListing={handleOpenListing}
-          onClose={() => setAreaListings([])}
         />
       </View>
     </>

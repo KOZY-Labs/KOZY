@@ -106,6 +106,14 @@ const ReelItem = React.memo(function ReelItem({ item, isActive, insets, height }
   // 🔑 THIS is what actually starts video playback
   useEffect(() => {
     if (!isFocused) {
+      // Only the off-screen rows unload (they're what multiplied decoders into
+      // the MediaCodec OOM). The active row just pauses — one decoder — so
+      // returning from report/detail resumes in place instead of a laggy
+      // reload from 0:00.
+      if (isActive) {
+        player.pause();
+        return;
+      }
       unloadedRef.current = true;
       player.replaceAsync(null).catch(() => {});
       return;

@@ -149,22 +149,35 @@ export default function StepThree() {
     // reopen the preview so the selection is visible again instead of looking lost.
     // On blur, unload the preview's source — this screen stays mounted under the
     // rest of the flow and a paused player would hold its video decoder open.
+    // The video is read through a ref and the effect depends only on the (stable)
+    // player: with `selectedVideo` in the deps, picking a new video mid-focus ran
+    // the cleanup's replaceAsync(null) in a race against the reload and the preview
+    // came back blank. Cleanup now runs only on real blur/unmount.
     // (Tab bar visibility for post sub-screens is handled in (tabs)/_layout.jsx.)
+    const selectedVideoRef = useRef(selectedVideo);
+    selectedVideoRef.current = selectedVideo;
     useFocusEffect(
         useCallback(() => {
-            if (!selectedVideo?.uri) return undefined;
+            const video = selectedVideoRef.current;
+            if (!video?.uri) return undefined;
+            let cancelled = false;
+            // Small delay so the drawer has mounted before we snap it open.
             const t = setTimeout(() => {
+                if (cancelled) return;
                 drawerRef.current?.snapToIndex(1);
                 selectedVideoPlayer
-                    ?.replaceAsync(selectedVideo.uri)
-                    .then(() => selectedVideoPlayer?.play())
+                    ?.replaceAsync(video.uri)
+                    .then(() => {
+                        if (!cancelled) selectedVideoPlayer?.play();
+                    })
                     .catch(() => {});
-            }, 0);
+            }, 250);
             return () => {
+                cancelled = true;
                 clearTimeout(t);
                 selectedVideoPlayer?.replaceAsync(null).catch(() => {});
             };
-        }, [selectedVideo, selectedVideoPlayer])
+        }, [selectedVideoPlayer])
     );
 
 

@@ -2,7 +2,8 @@
 // fetch, loading/not-found states, back button, and the video player (loop, always
 // muted, tap-to-play/pause + custom progress bar). The overlay actions differ per
 // screen, so callers render them via renderOverlay(item, insets).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { View, StyleSheet, useWindowDimensions, Pressable, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,6 +68,7 @@ export default function ListingReelScreen({ listingId, onBack, renderOverlay }) 
 
 function Reel({ item, insets, renderOverlay }) {
   const { height } = useWindowDimensions();
+  const isScreenFocused = useIsFocused();
   const [paused, setPaused] = useState(false);
   const player = useVideoPlayer(item.videoUrl ?? null, (p) => {
     if (!p) return;
@@ -74,9 +76,20 @@ function Reel({ item, insets, renderOverlay }) {
     p.muted = true;
   });
 
+  // Pause while another screen is pushed on top (report form, listing detail…)
+  // and resume in place on return. Deliberately NOT the home feed's unload —
+  // there's a single player here, and unloading forced a laggy full reload from
+  // 0:00 on every return. A user-initiated pause survives the round trip.
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
   useEffect(() => {
-    player?.play();
-  }, [player]);
+    if (!player) return;
+    if (!isScreenFocused) {
+      player.pause();
+      return;
+    }
+    if (!pausedRef.current) player.play();
+  }, [isScreenFocused, player]);
 
   const togglePlay = () => {
     if (!player) return;

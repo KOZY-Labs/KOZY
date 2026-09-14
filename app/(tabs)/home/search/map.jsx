@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,8 +58,15 @@ export default function SearchMapScreen() {
       return;
     }
     setAreaListings(items);
-    areaSheetRef.current?.snapToIndex(0);
   };
+
+  // Snap only AFTER the sheet has re-rendered with the new listings (see the
+  // search screen for the same fix) — same-tick snapping made first taps no-ops.
+  useEffect(() => {
+    if (areaListings.length === 0) return undefined;
+    const raf = requestAnimationFrame(() => areaSheetRef.current?.snapToIndex(0));
+    return () => cancelAnimationFrame(raf);
+  }, [areaListings]);
 
   const handleOpenListing = (listing) => {
     areaSheetRef.current?.close();
@@ -98,11 +105,12 @@ export default function SearchMapScreen() {
         </View>
       )}
 
+      {/* No onClose clear — see the search screen: keeping the data prevents a
+          spurious close event from blanking an open sheet. */}
       <ListingsAreaSheet
         ref={areaSheetRef}
         listings={areaListings}
         onPressListing={handleOpenListing}
-        onClose={() => setAreaListings([])}
       />
     </View>
   );

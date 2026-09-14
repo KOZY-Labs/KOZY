@@ -5,6 +5,7 @@
 // engages when zoomed. Pass `items` (array of {type, url}) to browse a gallery —
 // arrows on both sides plus horizontal swipe (only while not zoomed).
 import { useEffect, useState } from "react";
+import { useEventListener } from "expo";
 import { Modal, StyleSheet, View, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -83,6 +84,13 @@ function FullscreenVideo({ url }) {
   const player = useVideoPlayer(url, (p) => {
     p.loop = false;
     p.play();
+  });
+  // When playback finishes the player parks at the end, where play() is a no-op
+  // (seen on Android: the video "won't play again"). Rewind so the play control
+  // restarts it from the beginning.
+  useEventListener(player, "playToEnd", () => {
+    player.currentTime = 0;
+    player.pause();
   });
   return (
     <VideoView
