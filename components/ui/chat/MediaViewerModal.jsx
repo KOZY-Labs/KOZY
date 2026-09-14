@@ -1,19 +1,23 @@
-// Fullscreen viewer for chat media. Images and videos share the same shell:
-// back button (top-left), pinch to zoom (1–4×) with pan while zoomed. Videos
-// auto-play on open and keep the native controls (pause/seek); pinch still works
-// because it's a two-finger gesture and the pan only engages when zoomed.
+// Fullscreen viewer for media (chat, profile photos, listing galleries). Images and
+// videos share the same shell: close button (top-right), pinch to zoom (1–4×) with
+// pan while zoomed. Videos auto-play on open and keep the native controls (pause/
+// seek); pinch still works because it's a two-finger gesture and the pan only
+// engages when zoomed. Pass `items` (array of {type, url}) to browse a gallery —
+// arrows on both sides plus horizontal swipe (only while not zoomed).
+import { useEffect, useState } from "react";
 import { Modal, StyleSheet, View, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
 import { useVideoPlayer, VideoView } from "expo-video";
 
 import AppIconButton from "../appIconButton";
 
 const MAX_SCALE = 4;
+const SWIPE_THRESHOLD = 60;
 
-function ZoomableView({ children }) {
+function ZoomableView({ children, onSwipe }) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const tx = useSharedValue(0);
@@ -39,6 +43,7 @@ function ZoomableView({ children }) {
     });
 
   // Pan only while zoomed — at 1× taps must reach the video's native controls.
+  // At 1× a horizontal drag pages the gallery instead (when there is one).
   const pan = Gesture.Pan()
     .onUpdate((e) => {
       if (savedScale.value > 1) {
@@ -46,9 +51,16 @@ function ZoomableView({ children }) {
         ty.value = savedTy.value + e.translationY;
       }
     })
-    .onEnd(() => {
+    .onEnd((e) => {
       savedTx.value = tx.value;
       savedTy.value = ty.value;
+      if (savedScale.value <= 1 && onSwipe) {
+        if (e.translationX < -SWIPE_THRESHOLD) {
+          runOnJS(onSwipe)(1);
+        } else if (e.translationX > SWIPE_THRESHOLD) {
+          runOnJS(onSwipe)(-1);
+        }
+      }
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -86,8 +98,26 @@ function FullscreenVideo({ url }) {
   );
 }
 
-export default function MediaViewerModal({ media, onClose }) {
+// `media` opens the viewer (and is the item shown); `items` is an optional gallery
+// the viewer can page through — media should be one of its entries.
+export default function MediaViewerModal({ media, items, onClose }) {
   const insets = useSafeAreaInsets();
+  const [index, setIndex] = useState(0);
+  const list = items?.length ? items : media ? [media] : [];
+
+  // On open, start at the tapped item. Keyed on `media` only — callers commonly
+  // build `items` inline, and re-running on every new array identity would snap
+  // the index back mid-browse.
+  useEffect(() => {
+    if (!media) return;
+    const start = items?.findIndex((item) => item.url === media.url) ?? -1;
+    setIndex(start >= 0 ? start : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [media]);
+
+  const current = list[Math.min(index, list.length - 1)] ?? null;
+  const goTo = (delta) =>
+    setIndex((i) => Math.min(list.length - 1, Math.max(0, i + delta)));
 
   return (
     <Modal
@@ -98,14 +128,36 @@ export default function MediaViewerModal({ media, onClose }) {
     >
       {/* Modal renders in its own native window — needs its own gesture root. */}
       <GestureHandlerRootView style={styles.backdrop}>
-        {media ? (
-          <ZoomableView key={media.url}>
-            {media.type === "video" ? (
-              <FullscreenVideo url={media.url} />
+        {current ? (
+          <ZoomableView key={current.url} onSwipe={list.length > 1 ? goTo : undefined}>
+            {current.type === "video" ? (
+              <FullscreenVideo url={current.url} />
             ) : (
-              <Image source={{ uri: media.url }} style={styles.media} resizeMode="contain" />
+              <Image source={{ uri: current.url }} style={styles.media} resizeMode="contain" />
             )}
           </ZoomableView>
+        ) : null}
+        {list.length > 1 && index > 0 ? (
+          <View style={[styles.navButton, styles.navLeft]}>
+            <AppIconButton
+              icon={<Feather name="chevron-left" />}
+              type="bare"
+              shadow
+              accessibilityLabel="Previous"
+              onPress={() => goTo(-1)}
+            />
+          </View>
+        ) : null}
+        {list.length > 1 && index < list.length - 1 ? (
+          <View style={[styles.navButton, styles.navRight]}>
+            <AppIconButton
+              icon={<Feather name="chevron-right" />}
+              type="bare"
+              shadow
+              accessibilityLabel="Next"
+              onPress={() => goTo(1)}
+            />
+          </View>
         ) : null}
         {/* Top-RIGHT on purpose: iOS AVKit pins its own (immovable) controls to the
             top-left, so the close button lives on the opposite corner for both
@@ -142,5 +194,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 12,
     zIndex: 2,
+  },
+  navButton: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -22,
+    zIndex: 2,
+  },
+  navLeft: {
+    left: 8,
+  },
+  navRight: {
+    right: 8,
   },
 });

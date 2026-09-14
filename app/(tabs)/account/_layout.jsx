@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function AccountStack() {
   return (
-    <Stack screenOptions={{ headerShown: false, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false }}>
+    <Stack screenOptions={{ headerShown: false, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false, headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="index" options={{ title: 'Account' }} />
       <Stack.Screen name="trustLevelInfo" 
         options={{ 

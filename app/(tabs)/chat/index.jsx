@@ -10,6 +10,7 @@ import EmptyListingsState from '@/components/ui/emptyListingsState';
 import CheckBox from '@/components/ui/input/checkbox';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
+import { TOP_INSET_EXTRA } from '@/constants/layout';
 import { useAuth } from '@/context/AuthContext';
 import { useChats } from '@/hooks/use-chats';
 import { chatViewModel, deleteChat } from '@/lib/db/chats';
@@ -39,7 +40,7 @@ export default function Chat() {
 
   if (!isLoggedIn) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
         <AppText variant="headline-sm" color="primary">Messages</AppText>
         <EmptyListingsState
           heading="Nothing here yet"
@@ -58,7 +59,7 @@ export default function Chat() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
         <AppText variant="headline-sm" color="primary">Messages</AppText>
         <View style={styles.noItemContainer}>
           <ActivityIndicator color="#fff" />
@@ -69,7 +70,7 @@ export default function Chat() {
 
   if (!chats || chats.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
         <AppText variant="headline-sm" color="primary">Messages</AppText>
         <EmptyListingsState
           heading="Nothing here yet"
@@ -111,7 +112,7 @@ export default function Chat() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
       {/* Title + CTAs share a row so the buttons align with "Messages". */}
       <View style={styles.headerRow}>
         <AppText variant="headline-sm" color="primary">Messages</AppText>

@@ -8,9 +8,11 @@ import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
 import MediaInput from '@/components/ui/input/mediaInput';
 import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
+import MediaViewerModal from '@/components/ui/chat/MediaViewerModal';
 import InfoList from '@/components/ui/appList';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
+import { TOP_INSET_EXTRA } from '@/constants/layout';
 import validateImage from '@/utils/mediaValidation';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
@@ -40,6 +42,8 @@ export default function StepTwo() {
     const { confirmExit } = usePostFlowExit();
     const [error, setError] = useState(null);
     const [photos, setPhotos] = useState(draft.photos ?? []);
+    // Fullscreen photo viewer (same lightbox as chat media / edit profile).
+    const [viewerMedia, setViewerMedia] = useState(null);
     // Reorder drags and the ScrollView fight over the gesture — freeze scrolling
     // while a tile is being dragged (same pattern as JOOPI's EditProfileScreen).
     const [scrollEnabled, setScrollEnabled] = useState(true);
@@ -82,12 +86,15 @@ export default function StepTwo() {
                 return;
             }
 
-            setPhotos(currentPhotos => {
-                const existingUris = new Set(currentPhotos.map(photo => photo.uri));
-                const uniquePhotos = selectedPhotos.filter(photo => !existingUris.has(photo.uri));
-                return [...currentPhotos, ...uniquePhotos].slice(0, MAX_PHOTOS);
-            });
-            setError(null);
+            // Duplicate uris crash the draggable grid (duplicate keys) — drop them and say so.
+            const existingUris = new Set(photos.map(photo => photo.uri));
+            const uniquePhotos = selectedPhotos.filter(photo => !existingUris.has(photo.uri));
+            setPhotos(currentPhotos => [...currentPhotos, ...uniquePhotos].slice(0, MAX_PHOTOS));
+            setError(
+                uniquePhotos.length < selectedPhotos.length
+                    ? 'That photo is already added.'
+                    : null
+            );
         } catch {
             showAlertModal({
                 title: 'Unable to open gallery',
@@ -124,7 +131,7 @@ export default function StepTwo() {
 
   return (
     <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
     >
@@ -156,6 +163,9 @@ export default function StepTwo() {
                         onDelete={confirmDeletePhoto}
                         onReorder={setPhotos}
                         onDragStateChange={(dragging) => setScrollEnabled(!dragging)}
+                        onPressPhoto={(photo) =>
+                            setViewerMedia({ type: 'image', url: photo.previewUri ?? photo.uri })
+                        }
                     />
                 )}
                 {!!error && (
@@ -182,6 +192,11 @@ export default function StepTwo() {
                 <AppButton text="Continue" onPress={continueToNextStep}/>
             </View>
         </View>
+        <MediaViewerModal
+            media={viewerMedia}
+            items={photos.map((p) => ({ type: 'image', url: p.previewUri ?? p.uri }))}
+            onClose={() => setViewerMedia(null)}
+        />
     </ScrollView>
   );
 }

@@ -5,6 +5,7 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { TOP_INSET_EXTRA } from '@/constants/layout';
 
 import AppIconButton from '@/components/ui/appIconButton';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
@@ -28,7 +29,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {/* 🔝 Top Bar */}
-      <View style={[styles.topBar, { top: insets.top + 12 }]}>
+      <View style={[styles.topBar, { top: insets.top + 12 + TOP_INSET_EXTRA }]}>
         {/* Dark scrim behind the ghost button so the icon reads on any video frame */}
         <View style={styles.searchScrim}>
           <AppIconButton
@@ -180,7 +181,8 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: 'absolute',
-    left: 16,
+    // Reels convention (TikTok/IG) puts search top-right.
+    right: 16,
     zIndex: 10,
   },
   searchScrim: {

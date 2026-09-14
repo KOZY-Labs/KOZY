@@ -18,6 +18,7 @@ import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import FormField from '@/components/ui/form/formField';
 import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
+import { TOP_INSET_EXTRA } from '@/constants/layout';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 import { validateVideo } from '@/utils/mediaValidation';
 
@@ -174,7 +175,7 @@ export default function StepThree() {
         keyExtractor={(item) => item.key}
         keyboardShouldPersistTaps="always"
         renderItem={() => (
-          <View style={[styles.container, { paddingTop: insets.top }]}>
+          <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
             <View style={{ paddingHorizontal: 24, gap: 40 }}>
               <View style={styles.titleContainer}>
                 <AppText variant="headline-md" color="primary">

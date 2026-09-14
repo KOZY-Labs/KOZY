@@ -24,6 +24,7 @@ import AppButton from '@/components/ui/appButton';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import ErrorMessage from '@/components/ui/form/errorMessage';
 import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
+import MediaViewerModal from '@/components/ui/chat/MediaViewerModal';
 import validateImage from '@/utils/mediaValidation';
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from '@/lib/dob.mjs';
 import { GENDER_OPTIONS, PERSONALITY_OPTIONS, SEARCH_LIFESTYLE_OPTIONS } from '@/constants/data';
@@ -36,7 +37,10 @@ import { requestEmailChange } from '@/lib/auth';
 import { authErrorMessage } from '@/lib/auth/errors';
 
 
-const MAX_PHOTOS = 3;
+// Single photo: only the first avatar entry is ever shown anywhere in the app,
+// so the profile keeps exactly one. Legacy 3-photo profiles show (and keep) just
+// the first; saving persists only that one.
+const MAX_PHOTOS = 1;
 
 // Verification-flow announcements fire right as the Persona auth-session browser is
 // closing. On iOS, presenting an RN Modal while that view controller is still
@@ -93,7 +97,12 @@ export default function EditProfile() {
 function EditProfileForm() {
     const { profile, uid } = useAuth();
     const { focus } = useLocalSearchParams();
-    const existingAvatar = useMemo(() => profile?.avatar ?? [], [profile?.avatar]);
+    // Sliced to the photo cap so a legacy multi-photo profile doesn't read as
+    // "dirty" (and prompt to discard) before the user touches anything.
+    const existingAvatar = useMemo(
+      () => (profile?.avatar ?? []).slice(0, MAX_PHOTOS),
+      [profile?.avatar]
+    );
     const genderDrawerRef = useRef(null);
     const personalityDrawerRef = useRef(null);
     const jobDrawerRef = useRef(null);
@@ -152,6 +161,8 @@ function EditProfileForm() {
       existingAvatar.map((url) => ({ uri: url, remoteUrl: url }))
     );
     const [photoError, setPhotoError] = useState(null);
+    // Fullscreen photo viewer (same lightbox as chat media).
+    const [viewerMedia, setViewerMedia] = useState(null);
     const [saving, setSaving] = useState(false);
 
     // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
@@ -398,7 +409,7 @@ function EditProfileForm() {
 
   const addPhoto = async () => {
     if (photos.length >= MAX_PHOTOS) {
-      setPhotoError(`You can upload up to ${MAX_PHOTOS} profile photos.`);
+      setPhotoError('You can upload one profile photo. Remove the current one first.');
       return;
     }
 
@@ -411,8 +422,6 @@ function EditProfileForm() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsMultipleSelection: true,
-        selectionLimit: MAX_PHOTOS - photos.length,
         quality: 1,
       });
 
@@ -424,8 +433,13 @@ function EditProfileForm() {
         return;
       }
 
-      setPhotos((prev) => [...prev, ...result.assets].slice(0, MAX_PHOTOS));
-      setPhotoError(null);
+      // Duplicate uris crash the draggable grid (duplicate keys) — drop them and say so.
+      const existingUris = new Set(photos.map((p) => p.uri));
+      const fresh = result.assets.filter((asset) => !existingUris.has(asset.uri));
+      setPhotos((prev) => [...prev, ...fresh].slice(0, MAX_PHOTOS));
+      setPhotoError(
+        fresh.length < result.assets.length ? 'That photo is already added.' : null
+      );
     } catch {
       showAlertModal({ title: 'Unable to open gallery', message: 'Please try selecting your photos again.' });
     }
@@ -454,8 +468,7 @@ function EditProfileForm() {
         renderItem={() => (
           <View style={styles.container}>
             <View style={[styles.sliderContainer, { paddingVertical: 20 }]}>
-              {/* Photo grid — long-press a photo and drag to reorder; the first
-                  photo is the main avatar. Tap + to add (max 3). */}
+              {/* Single profile photo (the avatar) — tap + to add, X to remove. */}
               <AddedPhotoGrid
                 photos={photos.map((p, i) => ({ ...p, id: p.uri ?? `photo-${i}` }))}
                 maxPhotos={MAX_PHOTOS}
@@ -465,6 +478,9 @@ function EditProfileForm() {
                 }
                 onReorder={setPhotos}
                 onDragStateChange={(dragging) => setPhotoScrollEnabled(!dragging)}
+                onPressPhoto={(photo) =>
+                  setViewerMedia({ type: 'image', url: photo.previewUri ?? photo.uri })
+                }
               />
               {photoError ? <ErrorMessage message={photoError} /> : null}
             </View>
@@ -521,13 +537,13 @@ function EditProfileForm() {
                 placeholder="Select an option"
                 onPress={() => genderDrawerRef.current?.snapToIndex(0)}
                 rightIcon={<Feather name="chevron-down" size={22} color={colors.semantic.text.primary} />}
-                accessibilityLabel="Gender Preference filter"
+                accessibilityLabel="Gender"
               />
             </FormField>
-            <FormField label="Job or Profession">
+            <FormField label="Occupation">
               <DisplayInput
                 value={job}
-                placeholder="Enter your job or profession"
+                placeholder="Enter your occupation"
                 onPress={() => jobDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
@@ -624,15 +640,15 @@ function EditProfileForm() {
       </AppDrawer>
       <AppDrawer
             ref={jobDrawerRef}
-            title="What do you do for work?"
-            description="Tell us what your profession is."
+            title="What do you do?"
+            description="Job, school, or how you spend your days."
             primaryAction={() => {
               jobDrawerRef.current?.close();             
             }}
           >
             <FormField label="">
               <InputRow>
-                <TextField placeholder="ex: Software Engineer" value={job} onChangeText={setJob}/>
+                <TextField placeholder="e.g. Software Engineer, Student" value={job} onChangeText={setJob}/>
               </InputRow>
             </FormField>
       </AppDrawer>
@@ -755,6 +771,7 @@ function EditProfileForm() {
               </FormField>
             </View>
       </AppDrawer>
+      <MediaViewerModal media={viewerMedia} onClose={() => setViewerMedia(null)} />
       <AppDrawer
             ref={emailCheckDrawerRef}
             title="Check your inbox"

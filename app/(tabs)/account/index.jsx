@@ -1,7 +1,8 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Switch, View, Image, ScrollView } from 'react-native';
+import { Linking, Pressable, StyleSheet, Switch, View, Image, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from "@expo/vector-icons";
+import * as Notifications from 'expo-notifications';
 
 import AppText from '@/components/ui/appText';
 import EmptyListingsState from "@/components/ui/emptyListingsState";
@@ -13,6 +14,7 @@ import { openPrivacyPolicy } from "@/lib/links";
 
 import { avatarSource } from '@/lib/avatar';
 import { colors } from '@/constants/colors';
+import { TOP_INSET_EXTRA, tabBarClearance } from '@/constants/layout';
 
 
 export default function AccountScreen() {
@@ -38,7 +40,7 @@ export default function AccountScreen() {
 
   if( !isLoggedIn ) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
         <AppText variant="headline-sm" color="primary">My Page</AppText>
         <EmptyListingsState
           heading="Make it yours"
@@ -52,9 +54,10 @@ export default function AccountScreen() {
 
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}
       contentContainerStyle={{
-        paddingBottom: Math.max(insets.bottom, 16) + 84,
+        // Clear the floating tab bar on every device (S25U gesture nav included).
+        paddingBottom: tabBarClearance(insets),
       }}
       showsVerticalScrollIndicator={false}
     >
@@ -127,6 +130,22 @@ export default function AccountScreen() {
             onValueChange={async (next) => {
               try {
                 await updateUserDoc(uid, { notifPrefs: { push: next } });
+                // The pref is saved either way (it applies as soon as the OS allows),
+                // but turning it on while the system permission is denied delivers
+                // nothing — point the user at device settings.
+                if (next) {
+                  const { granted } = await Notifications.getPermissionsAsync();
+                  if (!granted) {
+                    showConfirmModal({
+                      title: "Notifications are off",
+                      message:
+                        "Notifications are turned off in your device settings. Enable notifications to receive new messages and listing updates.",
+                      primaryText: "Open Settings",
+                      secondaryText: "Cancel",
+                      onPrimary: () => Linking.openSettings(),
+                    });
+                  }
+                }
               } catch (e) {
                 showAlertModal({
                   title: "Update failed",

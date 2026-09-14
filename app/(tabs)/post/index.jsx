@@ -8,6 +8,7 @@ import EmptyListingsState from '@/components/ui/emptyListingsState';
 import { useAuth } from '@/context/AuthContext';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { gateProfileComplete } from '@/lib/profileCompleteness';
+import { TOP_INSET_EXTRA } from '@/constants/layout';
 
 // Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 export default function PostScreen() {
@@ -24,7 +25,7 @@ export default function PostScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
         <AppText variant="headline-sm" color="primary">Add New Listing</AppText>
          <EmptyListingsState
           heading="Let’s List Your Space"

@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
 import { useChatBadge } from '@/context/ChatBadgeContext';
+import { TAB_BAR_HEIGHT, TAB_BAR_BOTTOM_OFFSET } from '@/constants/layout';
 
 const HIDDEN_TAB_BAR_STYLE = {
   display: 'none',
@@ -59,11 +60,11 @@ export default function TabLayout() {
               // left-anchored and narrow on Android.
               left: 16,
               right: 16,
-              bottom: insets.bottom + 10,
+              bottom: insets.bottom + TAB_BAR_BOTTOM_OFFSET,
               overflow: 'hidden',
               borderRadius: 16,
               borderTopWidth: 0,
-              height: 56,
+              height: TAB_BAR_HEIGHT,
               paddingTop: 7,
               shadowColor: '#000',
               shadowOpacity: 0.2,

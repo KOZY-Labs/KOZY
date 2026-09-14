@@ -13,6 +13,7 @@ import AppIconButton from '@/components/ui/appIconButton';
 import AppText from '@/components/ui/appText';
 import VideoReelControls from '@/components/ui/videoReelControls';
 import { colors } from '@/constants/colors';
+import { TOP_INSET_EXTRA } from '@/constants/layout';
 import { useListing } from '@/hooks/use-listings';
 
 export default function ListingReelScreen({ listingId, onBack, renderOverlay }) {
@@ -30,7 +31,7 @@ export default function ListingReelScreen({ listingId, onBack, renderOverlay }) 
 
   return (
     <View style={styles.container}>
-      <View style={[styles.topBar, { top: insets.top + 12 }]}>
+      <View style={[styles.topBar, { top: insets.top + 12 + TOP_INSET_EXTRA }]}>
         <AppIconButton
           icon={<Feather name="arrow-left" size={32} />}
           type="ghost"

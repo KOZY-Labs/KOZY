@@ -55,7 +55,7 @@ export default function MediaInput({
                     <AppText variant='body-md'>Upload File</AppText>
                 </View>
                 <AppText variant='body-xsm' style={{ position: 'absolute', bottom: 16, textAlign: 'center' }}>
-                    ✶ JPG, PNG (Max size: 10MB)
+                    ✶ Max size: 10MB
                 </AppText>
             </View>
         </Pressable>

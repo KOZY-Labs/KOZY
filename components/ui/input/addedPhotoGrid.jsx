@@ -19,6 +19,7 @@ export default function AddedPhotoGrid({
   onAdd,
   onDelete,
   onReorder,
+  onPressPhoto, // optional: tap a photo tile (e.g. open a fullscreen viewer)
   maxPhotos,
   disabled = false,
   // Reorder drags must win over the surrounding ScrollView — the parent flips
@@ -96,7 +97,11 @@ export default function AddedPhotoGrid({
             onReorder?.(newData.filter((item) => !item.add).map((item) => item.photo));
           }}
           onItemPress={(item) => {
-            if (item.add) onAdd();
+            if (item.add) {
+              onAdd();
+            } else {
+              onPressPhoto?.(item.photo);
+            }
           }}
         />
       )}

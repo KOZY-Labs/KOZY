@@ -11,6 +11,7 @@ import { Feather } from '@expo/vector-icons';
 import AppButton from '@/components/ui/appButton';
 import AppText from '@/components/ui/appText';
 import { colors } from '@/constants/colors';
+import { TOP_INSET_EXTRA } from '@/constants/layout';
 import ListingDetailBody from '@/components/ui/listingDetailBody';
 import ListingDetailHeaderActions from '@/components/ui/listingDetailHeaderActions';
 import { useAuth } from '@/context/AuthContext';
@@ -71,7 +72,7 @@ export default function ListingDetailScreen({
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 + TOP_INSET_EXTRA }]}>
         <Pressable
           // The profile/report gates return here via replace(), which can leave this
           // screen as the stack root — an unguarded back() would throw GO_BACK unhandled.

@@ -1,6 +1,8 @@
 // utils/mediaValidation.js
 const MAX_SIZE = 10 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
+// Anything phones actually shoot: iPhone HEIC/HEIF included. Storage rules accept
+// image/* so the gate here is just against non-image files.
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp'];
 
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 const MAX_VIDEO_DURATION_MS = 60 * 1000;
@@ -44,8 +46,10 @@ export function validateVideo(file, options = {}) {
 export default function validateImage(file) {
   const type = file.mimeType ?? file.type;
 
-  if (!ALLOWED_TYPES.includes(type)) {
-    return 'Only JPG or PNG files are allowed.';
+  // Like validateVideo: skip the check when the picker doesn't report a type
+  // (varies by platform) instead of failing on undefined.
+  if (type && !ALLOWED_TYPES.includes(type)) {
+    return 'Unsupported image format. Please choose a photo.';
   }
 
   if (typeof file.fileSize === 'number' && file.fileSize > MAX_SIZE) {

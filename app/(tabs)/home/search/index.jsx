@@ -236,13 +236,15 @@ export default function SearchScreen() {
                 />
               </View>
             </SearchSection>
-            <FormField label="Gender Preference">
+            {/* Filters on the listing owner's gender — label it as such, not as a
+                preference (which read as ambiguous: whose preference?). */}
+            <FormField label="Roommate's Gender">
               <DisplayInput
                 value={gender}
                 placeholder="Open to any"
                 onPress={() => genderDrawerRef.current?.snapToIndex(0)}
                 rightIcon={<Feather name="chevron-down" size={22} color={colors.semantic.text.primary} />}
-                accessibilityLabel="Gender Preference filter"
+                accessibilityLabel="Roommate's gender filter"
               />
             </FormField>
             <FormField label="Room & House Type">
