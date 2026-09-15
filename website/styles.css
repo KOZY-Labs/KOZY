@@ -28,8 +28,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
 .mmenu a{padding:14px 20px;font-size:14px;font-weight:600;color:var(--muted);border-top:1px solid var(--line)}
 
 /* ---------- hero ---------- */
+/* padding-block only: the section is also a .wrap, and a `padding` shorthand here
+   would wipe .wrap's side gutters (it did — the copy ran edge to edge on phones). */
 .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;
-  padding:88px 0 72px;position:relative}
+  padding-block:88px 72px;position:relative}
 .heroGlow{position:absolute;width:640px;height:640px;border-radius:50%;
   background:radial-gradient(closest-side,rgba(38,86,251,.22),transparent 70%);
   top:-260px;right:-140px;pointer-events:none}
@@ -59,9 +61,9 @@ h1.display{font-family:var(--display);font-weight:800;font-size:clamp(40px,5vw,6
 .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);
   width:84px;height:22px;border-radius:12px;background:#000;z-index:3}
 .reelUI{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;
-  font-size:12px}
-/* top-left search button, same scrim treatment as the app's home feed */
-.rSearch{position:absolute;top:40px;left:12px;width:34px;height:34px;border-radius:10px;
+  font-size:12px;text-align:left} /* the mockup mirrors the app — never inherit the hero's centering */
+/* top-right search button (reels convention, matches the app's home feed), same scrim */
+.rSearch{position:absolute;top:40px;right:12px;width:34px;height:34px;border-radius:10px;
   display:flex;align-items:center;justify-content:center;color:#fff;
   background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25)}
 .rSearch svg{width:17px;height:17px}
@@ -154,12 +156,29 @@ h2.bandTitle{font-family:var(--display);font-weight:700;font-size:clamp(26px,3vw
 @media (max-width:768px){
   .wrap{padding:0 20px}
   .navlinks{display:none}
-  .burger{display:flex}
+  /* Negative margin cancels the button's own tap padding so the icon sits exactly
+     on the 20px gutter — same distance from the edge as the logo. */
+  .burger{display:flex;margin-right:-6px}
   .mmenu.open{display:flex}
-  .hero{grid-template-columns:1fr;padding:48px 0 40px;gap:40px}
+  /* Single column: the phone mockup below the copy is centered, so the copy,
+     paragraph and store badges center too — mixed alignment read as broken. */
+  .hero{grid-template-columns:1fr;padding-block:48px 40px;gap:40px;text-align:center}
+  .sub{margin-left:auto;margin-right:auto}
+  .ctaRow{justify-content:center}
+  .heroGlow{top:-320px;right:-240px}
+  /* Scale the mockup with the viewport instead of a fixed 290px that could
+     overhang narrow screens; the inner UI is absolutely positioned so it follows. */
+  .phone{width:min(290px,78vw);height:auto;aspect-ratio:290/600}
   .band{padding:48px 0}
+  h2.bandTitle{max-width:none}
   .cards,.steps{grid-template-columns:1fr}
   .ctaBand{padding:56px 0}
-  .foot{flex-direction:column;align-items:flex-start}
+  .foot{flex-direction:column;align-items:center;text-align:center}
+  .foot .flinks{justify-content:center}
   .legal{padding:44px 0 64px}
+}
+@media (max-width:480px){
+  /* clamp()'s 40px floor ran nearly edge to edge inside 20px gutters */
+  h1.display{font-size:34px}
+  .sub{font-size:15.5px}
 }
