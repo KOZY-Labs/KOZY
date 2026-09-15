@@ -5,6 +5,11 @@
 // The *_LABELS maps are the contract with Firestore: `value` is the form/pill value,
 // the label is what gets stored on the listing doc (see lib/listingDraft.js).
 
+// Auth-flow policy: how long the email "Resend" links stay locked after every send
+// (signup verification + password reset share it). Environment-independent → a
+// constant here, not an env var.
+export const RESEND_COOLDOWN_SEC = 60;
+
 export const LEASE_LABELS = { 'month-to-month': 'Month-to-Month', 'fixed-term': 'Fixed-term' };
 export const ROOM_TYPE_LABELS = { private: 'Private Room', shared: 'Shared Room' };
 export const FURNISHED_LABELS = { furnished: 'Furnished', unfurnished: 'Unfurnished' };

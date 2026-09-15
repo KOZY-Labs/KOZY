@@ -41,7 +41,14 @@ export default function EmailScreen() {
     if (!validate()) return;
     setChecking(true);
     try {
-      if (await isEmailInUse(signup.email.trim())) {
+      const { inUse, pending } = await isEmailInUse(signup.email.trim());
+      if (pending) {
+        setError(
+          "This email is waiting for verification. Check your inbox, or try again in a few minutes."
+        );
+        return;
+      }
+      if (inUse) {
         setError("An account with this email already exists. Log in instead.");
         return;
       }

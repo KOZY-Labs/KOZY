@@ -13,15 +13,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppText from "@/components/ui/appText";
-import AppButton from "@/components/ui/appButton";
 import { LoginBackground } from "@/components/ui/loginBackground";
 import AppHeader from "@/components/ui/appHeader";
-import AuthCard from "@/components/ui/authInputCard";
+import EmailSentCard, { CardLink } from "@/components/ui/emailSentCard";
 import AppLogo from "@/components/ui/appMainLogo";
 import { colors } from "@/constants/colors";
 import { resendVerificationEmail, reloadUser, isEmailVerified } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { showAlertModal } from "@/components/ui/confirmModalHost";
+import useCooldown, { formatCooldown } from "@/hooks/use-cooldown";
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000; // stop auto-polling after 5 minutes
@@ -33,6 +33,9 @@ export default function Verify() {
   const insets = useSafeAreaInsets();
   const { signup } = useSignup();
   const navigatedRef = useRef(false); // guard so poll + foreground checks can't double-navigate
+  // Resend cooldown (RESEND_COOLDOWN_SEC) — armed on arrival (the previous step
+  // just sent the link) and re-armed on every resend.
+  const { seconds: cooldownSeconds, active: cooldownActive, start: startCooldown } = useCooldown();
 
   const goNext = () => {
     if (navigatedRef.current) return;
@@ -73,6 +76,7 @@ export default function Verify() {
     }, POLL_INTERVAL_MS);
 
     checkVerified(); // also check immediately on mount
+    startCooldown(); // the signup step just sent the link — hold Resend
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,8 +91,10 @@ export default function Verify() {
   }, []);
 
   const handleResend = async () => {
+    if (cooldownActive) return;
     try {
       await resendVerificationEmail();
+      startCooldown();
       showAlertModal({
         title: "Email sent",
         message:
@@ -118,27 +124,28 @@ export default function Verify() {
               <AppLogo />
             </View>
             <View style={styles.midContent}>
-              <AuthCard
+              <EmailSentCard
                 title="Check Your Email"
                 description={`We’ve sent a verification link to ${
                   signup.email || "your email"
                 }. Open it to verify — this screen updates automatically.`}
-              />
-              <View style={styles.statusRow}>
-                <ActivityIndicator color={colors.base.accent} />
-                <AppText variant="body-sm" color="primary" style={styles.statusText}>
-                  Waiting for verification…
-                </AppText>
-              </View>
+              >
+                <View style={styles.statusRow}>
+                  <ActivityIndicator color={colors.base.accent} />
+                  <AppText variant="body-sm" textColor={colors.base.gray800}>
+                    Waiting for verification…
+                  </AppText>
+                </View>
+                {/* Resend lives with the status inside the card; locked for
+                    RESEND_COOLDOWN_SEC after every send. */}
+                <CardLink
+                  text={cooldownActive ? `Resend in ${formatCooldown(cooldownSeconds)}` : 'Resend Email'}
+                  onPress={handleResend}
+                  disabled={cooldownActive}
+                />
+              </EmailSentCard>
             </View>
-            <View style={styles.footerContent}>
-              <AppButton
-                text="Resend Email"
-                onPress={handleResend}
-                type="bare"
-                underline
-              />
-            </View>
+            <View style={styles.footerContent} />
           </View>
         </ScrollView>
       </View>
@@ -176,10 +183,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 20,
-  },
-  statusText: {
-    marginLeft: 4,
   },
   footerContent: {
     height: 160,

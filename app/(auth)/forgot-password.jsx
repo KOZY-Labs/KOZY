@@ -5,7 +5,6 @@ import { useCallback, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
 import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
 
 import TextField from "@/components/ui/input/textField";
 import AppButton from "@/components/ui/appButton";
@@ -14,11 +13,13 @@ import ErrorMessage from "@/components/ui/form/errorMessage";
 import { colors } from "@/constants/colors";
 import { LoginBackground } from "@/components/ui/loginBackground";
 import AuthCard from "@/components/ui/authInputCard";
+import EmailSentCard, { CardLink } from "@/components/ui/emailSentCard";
 import AppLogo from "@/components/ui/appMainLogo";
 import AppHeader from "@/components/ui/appHeader";
 import { requestPasswordReset } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { showAlertModal } from "@/components/ui/confirmModalHost";
+import useCooldown, { formatCooldown } from "@/hooks/use-cooldown";
 
 export default function ForgotPassword() {
   const insets = useSafeAreaInsets();
@@ -27,6 +28,8 @@ export default function ForgotPassword() {
   const [authError, setAuthError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  // Resend cooldown (RESEND_COOLDOWN_SEC) — armed on every successful send.
+  const { seconds: cooldownSeconds, active: cooldownActive, start: startCooldown } = useCooldown();
 
   // A stale auth error shouldn't follow the user back to this screen.
   useFocusEffect(
@@ -58,10 +61,11 @@ export default function ForgotPassword() {
       });
     }
     setSent(true);
+    startCooldown();
   };
 
   const handleSend = async () => {
-    if (submitting) return;
+    if (submitting || cooldownActive) return;
     // Clear before validating so the field error and the auth pill never show together.
     setAuthError(null);
     if (!validate()) return;
@@ -109,21 +113,29 @@ export default function ForgotPassword() {
             </View>
             <View style={styles.midContent}>
               {sent ? (
-                <AuthCard
+                <EmailSentCard
                   title="Check your email"
                   description="We just sent you a reset link"
                 >
-                  <View style={styles.sentBody}>
-                    <View style={styles.sentIcon}>
-                      <Feather name="mail" size={28} color={colors.base.accent} />
-                    </View>
-                    <Text style={styles.sentText} allowFontScaling={false}>
-                      If an account exists for {email.trim()}, we’ve sent a
-                      password reset link. Open it, choose a new password, then
-                      come back and log in.
-                    </Text>
-                  </View>
-                </AuthCard>
+                  <Text style={styles.sentText} allowFontScaling={false}>
+                    If an account exists for {email.trim()}, we’ve sent a
+                    password reset link. Open it, choose a new password, then
+                    come back and log in.
+                  </Text>
+                  <Text style={styles.caption} allowFontScaling={false}>
+                    Didn’t get the email?
+                  </Text>
+                  <CardLink
+                    text={
+                      cooldownActive
+                        ? `Resend in ${formatCooldown(cooldownSeconds)}`
+                        : 'Resend link'
+                    }
+                    disabled={cooldownActive}
+                    loading={submitting}
+                    onPress={handleSend}
+                  />
+                </EmailSentCard>
               ) : (
                 <AuthCard
                   title="Forgot Password?"
@@ -148,37 +160,27 @@ export default function ForgotPassword() {
                   </View>
                 </AuthCard>
               )}
-            </View>
-            <View style={styles.footerContent}>
-              {authError ? (
-                <View style={styles.errorPill}>
-                  <ErrorMessage message={authError} />
-                </View>
-              ) : null}
-              {sent ? (
-                <>
+              {/* Actions sit right under the card (not marooned at the screen
+                  bottom) so the input and its CTA read as one unit. */}
+              <View style={styles.actions}>
+                {authError ? (
+                  <View style={styles.errorPill}>
+                    <ErrorMessage message={authError} />
+                  </View>
+                ) : null}
+                {sent ? (
                   <AppButton text="Back to Log In" onPress={goBackToLogin} />
-                  <Text style={styles.caption} allowFontScaling={false}>
-                    Didn’t get the email?
-                  </Text>
+                ) : (
                   <AppButton
-                    type="bare"
-                    underline
-                    text="Resend link"
+                    text="Send Reset Link"
                     loading={submitting}
                     loadingLabel="Sending"
                     onPress={handleSend}
                   />
-                </>
-              ) : (
-                <AppButton
-                  text="Send Reset Link"
-                  loading={submitting}
-                  loadingLabel="Sending"
-                  onPress={handleSend}
-                />
-              )}
+                )}
+              </View>
             </View>
+            <View style={styles.footerContent} />
           </View>
         </ScrollView>
       </View>
@@ -212,27 +214,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   footerContent: {
-    height: 160,
-    justifyContent: "flex-end",
+    height: 100,
+    width: "100%",
+  },
+  actions: {
+    width: "100%",
     alignItems: "center",
     gap: 12,
-    width: "100%",
+    marginTop: 20,
   },
   inputGroup: {
     width: "100%",
-  },
-  sentBody: {
-    alignItems: "center",
-    gap: 16,
-    paddingVertical: 8,
-  },
-  sentIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(38, 86, 251, 0.12)",
   },
   sentText: {
     fontSize: 13,
@@ -242,10 +234,11 @@ const styles = StyleSheet.create({
     color: colors.base.gray800,
   },
   caption: {
-    width: "80%",
-    fontSize: 10,
-    color: colors.semantic.text.primary,
+    fontSize: 12,
+    // Inside the white card now — dark text, and no negative gap to the link.
+    color: colors.base.gray700,
     textAlign: "center",
+    marginBottom: -8,
   },
   errorPill: {
     backgroundColor: colors.base.white,
