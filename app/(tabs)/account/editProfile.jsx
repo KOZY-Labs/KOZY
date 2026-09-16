@@ -27,7 +27,13 @@ import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
 import MediaViewerModal from '@/components/ui/chat/MediaViewerModal';
 import validateImage from '@/utils/mediaValidation';
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from '@/lib/dob.mjs';
-import { GENDER_OPTIONS, PERSONALITY_OPTIONS, SEARCH_LIFESTYLE_OPTIONS } from '@/constants/data';
+import {
+  GENDER_OPTIONS,
+  PERSONALITY_OPTIONS,
+  SEARCH_LIFESTYLE_OPTIONS,
+  DISPLAY_NAME_MIN_LEN,
+  DISPLAY_NAME_MAX_LEN,
+} from '@/constants/data';
 import { useAuth } from '@/context/AuthContext';
 import { updateUserDoc } from '@/lib/db/users';
 import { syncProfileCaches } from '@/lib/db/profileSync';
@@ -111,6 +117,8 @@ function EditProfileForm() {
     const myVerificationDrawerRef = useRef(null);
     const emailEditDrawerRef = useRef(null);
     const emailCheckDrawerRef = useRef(null);
+    // Public display name — never locked (unlike the legal name below).
+    const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
     const [firstName, setFirstName] = useState(profile?.firstName ?? '');
     const [lastName, setLastName] = useState(profile?.lastName ?? '');
     const [dob, setDob] = useState(profile?.dob ?? '');
@@ -177,6 +185,7 @@ function EditProfileForm() {
         photos.length !== existingAvatar.length ||
         photos.some((p, i) => p.remoteUrl !== existingAvatar[i]);
       return (
+        displayName !== (profile?.displayName ?? '') ||
         firstName !== (profile?.firstName ?? '') ||
         lastName !== (profile?.lastName ?? '') ||
         dob !== (profile?.dob ?? '') ||
@@ -187,7 +196,7 @@ function EditProfileForm() {
         aboutMe !== (profile?.aboutMe ?? '') ||
         photosChanged
       );
-    }, [firstName, lastName, dob, gender, job, personality, lifestylePreferences, aboutMe, photos, profile, existingAvatar]);
+    }, [displayName, firstName, lastName, dob, gender, job, personality, lifestylePreferences, aboutMe, photos, profile, existingAvatar]);
 
     const isDirtyRef = useRef(false);
     isDirtyRef.current = isDirty;
@@ -279,13 +288,20 @@ function EditProfileForm() {
     setErrors((current) => (current[field] ? { ...current, [field]: null } : current));
   };
 
-  // First name is the public display name shown on listings and chats, so it can't be blank.
-  // Each identity field is validated while it is still editable (not yet locked).
+  // The displayName is the public display name shown on listings and chats, so it can't
+  // be blank. Each legal-identity field is validated while still editable (not locked).
   const validate = () => {
     const nextErrors = {};
 
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      nextErrors.displayName = 'Enter a display name — this is the name other members see.';
+    } else if (trimmedName.length < DISPLAY_NAME_MIN_LEN || trimmedName.length > DISPLAY_NAME_MAX_LEN) {
+      nextErrors.displayName = `Display name must be ${DISPLAY_NAME_MIN_LEN}–${DISPLAY_NAME_MAX_LEN} characters.`;
+    }
+
     if (!identityLocked.firstName && !firstName.trim()) {
-      nextErrors.firstName = 'Enter your first name — this is the name other users see.';
+      nextErrors.firstName = 'Enter your legal first name.';
     } else if (!identityLocked.firstName && firstName.trim().length < 2) {
       nextErrors.firstName = 'First name must be at least 2 characters.';
     }
@@ -332,6 +348,7 @@ function EditProfileForm() {
 
       const updates = {
         ...identity,
+        displayName: displayName.trim(),
         gender: gender ?? '',
         occupation: job ?? '',
         personality,
@@ -348,6 +365,7 @@ function EditProfileForm() {
       await syncProfileCaches(uid, { ...profile, ...updates });
       // Sync local state to what was persisted, so the unsaved-changes guard doesn't
       // fire for whitespace-only differences or freshly-uploaded photos.
+      setDisplayName(updates.displayName);
       if (identity.firstName != null) setFirstName(identity.firstName);
       if (identity.lastName != null) setLastName(identity.lastName);
       setPhotos(avatar.map((url) => ({ uri: url, remoteUrl: url })));
@@ -537,11 +555,29 @@ function EditProfileForm() {
               Keeping your ID, photo, and profile details up to date helps us build trust in the KOZY community.
             </DisplayField>
 
-            {/* Identity — each field is editable until Persona verification locks it.
-                Fields still blank at verification time stay editable (legacy data). */}
+            {/* Display name — public, always editable. */}
+            <FormField label="Display Name" error={errors.displayName}>
+              <TextField
+                value={displayName}
+                error={!!errors.displayName}
+                placeholder="Display Name"
+                maxLength={DISPLAY_NAME_MAX_LEN}
+                onChangeText={(text) => {
+                  setDisplayName(text);
+                  clearFieldError('displayName');
+                }}
+              />
+            </FormField>
+            <AppText variant="body-xsm" style={styles.fieldCaption}>
+              This is the name other KOZY members will see.
+            </AppText>
+
+            {/* Legal identity — used only for verification, never shown publicly. Each
+                field is editable until Persona verification locks it. Fields still
+                blank at verification time stay editable (legacy data). */}
             {[
-              { key: 'firstName', label: 'First Name', value: firstName, set: setFirstName, placeholder: 'First Name' },
-              { key: 'lastName', label: 'Last Name', value: lastName, set: setLastName, placeholder: 'Last Name' },
+              { key: 'firstName', label: 'Legal First Name', value: firstName, set: setFirstName, placeholder: 'Legal First Name' },
+              { key: 'lastName', label: 'Legal Last Name', value: lastName, set: setLastName, placeholder: 'Legal Last Name' },
               {
                 key: 'dob',
                 label: 'Date of Birth',
@@ -849,6 +885,13 @@ const styles = StyleSheet.create({
   },
   lockedCaption: {
     color: colors.semantic.text.disabled,
+    marginBottom: 20,
+  },
+  fieldCaption: {
+    color: colors.semantic.text.disabled,
+    // Pull up under the field it explains (FormField carries its own 16px bottom
+    // margin), then restore the normal field rhythm below.
+    marginTop: -8,
     marginBottom: 20,
   },
   mapContainer: {

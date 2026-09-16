@@ -8,7 +8,8 @@ const initialSignup = {
   verificationToken: "", // 서버에서 주는 토큰이 있으면 저장
   password: "",
   profile: {
-    firstName: "",
+    displayName: "", // public display name — the only name other members see
+    firstName: "", // legal name: identity verification only
     lastName: "",
     dob: "", // "YYYY-MM-DD" 같은 문자열 추천
   },

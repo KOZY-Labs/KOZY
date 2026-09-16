@@ -10,6 +10,10 @@
 // constant here, not an env var.
 export const RESEND_COOLDOWN_SEC = 60;
 
+// Public display name (users.displayName) length rules — shared by signup + edit profile.
+export const DISPLAY_NAME_MIN_LEN = 2;
+export const DISPLAY_NAME_MAX_LEN = 20;
+
 export const LEASE_LABELS = { 'month-to-month': 'Month-to-Month', 'fixed-term': 'Fixed-term' };
 export const ROOM_TYPE_LABELS = { private: 'Private Room', shared: 'Shared Room' };
 export const FURNISHED_LABELS = { furnished: 'Furnished', unfurnished: 'Unfurnished' };

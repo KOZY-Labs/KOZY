@@ -1,7 +1,7 @@
 import { useSignup } from "@/context/SignupContext";
 import { useCallback, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
-import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TextField from "@/components/ui/input/textField";
@@ -15,6 +15,8 @@ import AppLogo from "@/components/ui/appMainLogo";
 import { signUpWithEmail } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from "@/lib/dob.mjs";
+import { DISPLAY_NAME_MIN_LEN, DISPLAY_NAME_MAX_LEN } from "@/constants/data";
+import { colors } from "@/constants/colors";
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
@@ -23,6 +25,7 @@ export default function Profile() {
   const [authError, setAuthError] = useState(null);
 
   const [errors, setErrors] = useState({
+    displayName: null,
     firstName: null,
     lastName: null,
     dob: null,
@@ -37,19 +40,27 @@ export default function Profile() {
 
   const validate = () => {
     const nextErrors = {
+      displayName: null,
       firstName: null,
       lastName: null,
       dob: null,
     };
 
+    const displayName = signup.profile.displayName?.trim() ?? "";
+    if (!displayName) {
+      nextErrors.displayName = "Display name is required.";
+    } else if (displayName.length < DISPLAY_NAME_MIN_LEN || displayName.length > DISPLAY_NAME_MAX_LEN) {
+      nextErrors.displayName = `Display name must be ${DISPLAY_NAME_MIN_LEN}–${DISPLAY_NAME_MAX_LEN} characters.`;
+    }
+
     if (!signup.profile.firstName?.trim()) {
-      nextErrors.firstName = "First name is required.";
+      nextErrors.firstName = "Legal first name is required.";
     } else if (signup.profile.firstName.trim().length < 2) {
       nextErrors.firstName = "First name must be at least 2 characters.";
     }
 
     if (!signup.profile.lastName?.trim()) {
-      nextErrors.lastName = "Last name is required.";
+      nextErrors.lastName = "Legal last name is required.";
     }
 
     if (!signup.profile.dob) {
@@ -61,7 +72,7 @@ export default function Profile() {
     }
 
     setErrors(nextErrors);
-    return !nextErrors.firstName && !nextErrors.lastName && !nextErrors.dob;
+    return Object.values(nextErrors).every((e) => !e);
   };
 
   // Account is created here (end of the flow), which also sends the email verification link.
@@ -104,9 +115,27 @@ export default function Profile() {
             <View style={styles.midContent}>
               <AuthCard
                 title="Tell Us About Yourself"
-                description="Make your experience more personal and trustworthy"
+                description="Your display name is public. Your legal name and date of birth are used only for identity verification."
               >
                 <View style={styles.inputGroup}>
+                  <FormField error={errors.displayName}>
+                    <TextField
+                      value={signup.profile.displayName}
+                      onChangeText={(text) => {
+                        setProfile({ displayName: text });
+                        setErrors((e) => ({ ...e, displayName: null }));
+                        setAuthError(null);
+                      }}
+                      placeholder="Display Name"
+                      type="auth"
+                      maxLength={DISPLAY_NAME_MAX_LEN}
+                      error={!!errors.displayName}
+                    />
+                    <Text style={styles.helper} allowFontScaling={false}>
+                      This is the name other KOZY members will see.
+                    </Text>
+                  </FormField>
+
                   <FormField error={errors.firstName}>
                     <TextField
                       value={signup.profile.firstName}
@@ -115,7 +144,7 @@ export default function Profile() {
                         setErrors((e) => ({ ...e, firstName: null }));
                         setAuthError(null);
                       }}
-                      placeholder="First Name"
+                      placeholder="Legal First Name"
                       type="auth"
                       error={!!errors.firstName}
                     />
@@ -129,7 +158,7 @@ export default function Profile() {
                         setErrors((e) => ({ ...e, lastName: null }));
                         setAuthError(null);
                       }}
-                      placeholder="Last Name"
+                      placeholder="Legal Last Name"
                       type="auth"
                       error={!!errors.lastName}
                     />
@@ -208,6 +237,13 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     width: '100%',
+  },
+  helper: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 6,
+    // Inside the white AuthCard — dark helper text.
+    color: colors.base.gray700,
   },
   errorPill: {
     backgroundColor: '#FFFFFF',

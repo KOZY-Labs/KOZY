@@ -66,7 +66,7 @@ export default function AccountScreen() {
       </AppText>
       <View style={styles.content}>
         <View style={styles.userInfo}>
-          {/* Avatar/name opens Edit Profile; shows the public display name (first name). */}
+          {/* Avatar/name opens Edit Profile; shows the public display name (displayName). */}
           <Pressable
             style={styles.name}
             accessibilityRole="button"
@@ -78,7 +78,7 @@ export default function AccountScreen() {
               style={{ width: 55, height: 55, borderRadius: 999 }}
             />
             <AppText variant="body-md" color="primary">
-              {currUser?.firstName || currUser?.name}
+              {currUser?.displayName || currUser?.firstName || currUser?.name}
             </AppText>
           </Pressable>
         </View>
