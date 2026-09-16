@@ -19,9 +19,7 @@ export default function UploadedPost() {
 }
 
 function UploadedPostOverlay({ item, insets }) {
-  const { onShare, onReport } = useListingActions(item, {
-    reportBackTo: `/(tabs)/post/uploadedPost/${item.id}`,
-  });
+  const { onShare, onReport } = useListingActions(item);
 
   return (
     <ListingReelOverlay

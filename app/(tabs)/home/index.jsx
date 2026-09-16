@@ -85,9 +85,7 @@ export default function HomeScreen() {
    Owns its listing actions via the shared hook (per-item saved state via the store
    subscription), so the feed and the detail screens can never drift. */
 const ReelItem = React.memo(function ReelItem({ item, isActive, insets, height }) {
-  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, {
-    reportBackTo: '/(tabs)/home',
-  });
+  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item);
   // Icon shows only for a USER-initiated pause — auto-pause of off-screen reels
   // while swiping must not flash a play icon.
   const [paused, setPaused] = useState(false);

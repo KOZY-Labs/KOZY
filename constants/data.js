@@ -128,3 +128,12 @@ export const SEARCH_LIFESTYLE_OPTIONS = [
   'Work from Home',
   'Go to Office',
 ].map((label) => ({ label, value: label }));
+
+// Report reasons (reports.reasonCode). `only` restricts a reason to one target type.
+export const REPORT_REASONS = [
+  { value: 'scam', label: 'Scam or misleading information' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'harassment', label: 'Discrimination or harassment' },
+  { value: 'unavailable', label: 'Duplicate or no longer available', only: 'listing' },
+  { value: 'other', label: 'Other' },
+];

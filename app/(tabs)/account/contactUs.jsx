@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Platform, StyleSheet, View, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 
 import AppButton from '@/components/ui/appButton';
 import TextField from '@/components/ui/input/textField';
@@ -15,22 +15,15 @@ import { showAuthGate } from '@/lib/authGate';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// General contact form only. Listing/user reports go through the report drawer
+// (components/ui/reportDrawerHost.jsx) — they no longer route here.
 export default function ContactUs() {
     const insets = useSafeAreaInsets();
-    // Report flow (listing detail → Report) passes `listingId` so the submission is tied
-    // to the listing, and `backTo` so submitting returns the user to where they came from.
-    const params = useLocalSearchParams();
-    const backTo = Array.isArray(params.backTo) ? params.backTo[0] : params.backTo;
-    const listingId = Array.isArray(params.listingId) ? params.listingId[0] : params.listingId;
-    // Report-a-user flow (chat kebab → Report User) — mirrors the listing report.
-    const reportUserId = Array.isArray(params.reportUserId) ? params.reportUserId[0] : params.reportUserId;
     const { user, uid, profile } = useAuth();
-    const isUserReport = !!reportUserId;
-    const isReport = !!listingId || isUserReport;
 
     // Prefill from the profile once at mount — the live users-doc subscription keeps the
     // profile warm well before the user can navigate this deep, so no effect machinery.
-    const [name, setName] = useState(profile?.name ?? '');
+    const [name, setName] = useState(profile?.displayName || profile?.name || '');
     const [email, setEmail] = useState(user?.email || profile?.email || '');
     const [errors, setErrors] = useState({});
     const [body, setBody] = useState('');
@@ -60,55 +53,37 @@ export default function ContactUs() {
     };
 
     const handleSubmit = async () => {
-        if (submittedRef.current) return; // one submission per visit — no duplicate reports
+        if (submittedRef.current) return; // one submission per visit — no duplicates
         if (!validateForm()) return;
         // firestore.rules requires reporterId == auth.uid; without a session the write
         // would fail with a raw permission error. Use the shared gate (Sign Up / Log In
         // with a redirect back here) — a dead-end alert would lose the typed message.
         if (!uid) {
-            // Carry the report params through the login round-trip, or the submission
-            // would come back downgraded to a 'general' message with no target.
-            const query = [
-                listingId && `listingId=${encodeURIComponent(listingId)}`,
-                reportUserId && `reportUserId=${encodeURIComponent(reportUserId)}`,
-                backTo && `backTo=${encodeURIComponent(backTo)}`,
-            ].filter(Boolean).join('&');
             showAuthGate({
                 title: 'Sign in required',
                 message: 'Sign Up or Log In to send us a message.',
-                redirect: `/(tabs)/account/contactUs${query ? `?${query}` : ''}`,
+                redirect: '/(tabs)/account/contactUs',
             });
             return;
         }
         setSubmitting(true);
         try {
             await createReport({
-                targetType: isUserReport ? 'user' : isReport ? 'listing' : 'general',
-                targetId: reportUserId ?? listingId ?? null,
+                targetType: 'general',
                 reporterId: uid,
                 name: name.trim(),
                 email: email.trim(),
                 message: body.trim(),
             });
-            // Navigate right away — the modal host is mounted at the root, so the
-            // confirmation survives navigation and a backdrop dismiss can't strand
-            // the user on a still-filled form. General contact instead clears the
-            // message, so re-sending requires typing a new one.
-            if (backTo) {
-                submittedRef.current = true;
-                router.replace(backTo);
-            } else {
-                setBody('');
-            }
+            // Clear before the modal so a hardware-back dismiss can't re-send the
+            // same message; Close lands on My Page.
+            setBody('');
             showAlertModal({
                 title: 'Thank you for reaching out!',
                 message:
                     'We\'ll review your message and respond within 1–2 business days.\n\nStill need help? Email us at info@getkozy.app',
                 buttonText: 'Close',
-                // General contact: Close lands on My Page (the report flow already
-                // navigated to backTo above). Hardware-back dismiss stays here, which
-                // is why the form is cleared before the modal, not after.
-                onPress: backTo ? undefined : () => router.dismissTo('/(tabs)/account'),
+                onPress: () => router.dismissTo('/(tabs)/account'),
             });
         } catch (e) {
             showAlertModal({ title: 'Message not sent', message: e?.message ?? 'Please try again.' });
@@ -129,18 +104,10 @@ export default function ContactUs() {
             keyboardShouldPersistTaps="handled"
         >
         <DisplayField
-            title={
-                isUserReport
-                    ? 'Report this user'
-                    : isReport ? 'Report this listing' : 'Have a question, feedback, or need support?'
-            }
+            title="Have a question, feedback, or need support?"
             style={{ marginBottom: 16 }}
         >
-        {isUserReport
-            ? 'Tell us what happened with this user and we\'ll review it as soon as possible.'
-            : isReport
-                ? 'Tell us what\'s wrong with this listing and we\'ll review it as soon as possible.'
-                : 'We\'re here to help. Reach out and we\'ll get back to you as soon as possible.'}
+            {"We're here to help. Reach out and we'll get back to you as soon as possible."}
         </DisplayField>
         <View style={styles.formField}>
             <View style={{ paddingHorizontal:36 }}>

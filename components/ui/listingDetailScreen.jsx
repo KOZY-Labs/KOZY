@@ -22,7 +22,6 @@ import { useExistingChat } from '@/hooks/use-chats';
 
 export default function ListingDetailScreen({
   listingId,
-  reportBackTo,
   onBack, // defaults to popping the stack
   backFallback = '/(tabs)/home', // where back lands when there is no history to pop
   showChatCta = false,
@@ -35,7 +34,7 @@ export default function ListingDetailScreen({
   const { uid } = useAuth();
   const { data: item, loading, reload } = useListing(listingId);
   const existingChat = useExistingChat(showChatCta ? listingId : null, uid);
-  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, { reportBackTo });
+  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item);
   const { sendChatRequest, requesting } = useChatRequest(item, {
     backTo: chatBackTo,
     onSuccess: onChatSuccess,

@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Share } from 'react-native';
-import { router } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
 import { showAuthGate } from '@/lib/authGate';
+import { showReportDrawer } from '@/components/ui/reportDrawerHost';
 import { listingShareUrl } from '@/lib/links';
 import { subscribeSavedListingIds, toggleSavedListing } from '@/lib/db/savedListings';
 
 // Shared save/share/report behavior for listing screens (feed, reels, details).
 // Saves live in users/{uid}/savedListings — the subscription applies local writes
 // instantly, so the heart needs no optimistic state of its own.
-export function useListingActions(item, { reportBackTo } = {}) {
+export function useListingActions(item) {
   const { isLoggedIn, uid } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
 
@@ -63,19 +63,11 @@ export function useListingActions(item, { reportBackTo } = {}) {
     }
   }, []);
 
+  // The drawer host gates on auth itself (sign-up/log-in prompt when logged out).
   const onReport = useCallback(() => {
-    if (!isLoggedIn) {
-      showAuthGate({
-        title: 'Report this listing',
-        message: 'Sign Up or Log In to report listings.',
-      });
-      return;
-    }
-    router.push({
-      pathname: '/(tabs)/account/contactUs',
-      params: { backTo: reportBackTo, listingId: itemRef.current?.id },
-    });
-  }, [isLoggedIn, reportBackTo]);
+    const id = itemRef.current?.id;
+    if (id) showReportDrawer({ targetType: 'listing', targetId: id });
+  }, []);
 
   return { isSaved, onToggleSave, onShare, onReport };
 }

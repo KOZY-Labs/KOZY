@@ -11,7 +11,6 @@ export default function UploadedPostDetail() {
   return (
     <ListingDetailScreen
       listingId={listingId}
-      reportBackTo={`/(tabs)/post/uploadedPost/detail/${listingId}`}
       backFallback={`/(tabs)/post/uploadedPost/${listingId}`}
       // Pick up edits made in the post flow when coming back from /post/edit/[id].
       reloadOnFocus

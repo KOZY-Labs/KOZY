@@ -30,7 +30,6 @@ export default function DetailScreen() {
   return (
     <ListingDetailScreen
       listingId={listingId}
-      reportBackTo="/(tabs)/home"
       onBack={handleBack}
       showChatCta
       chatBackTo={`/home/${listingId}`}

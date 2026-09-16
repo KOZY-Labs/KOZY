@@ -21,6 +21,7 @@ import ScreenTracker from '@/components/navigation/screenTracker';
 import NotificationsGate from '@/components/navigation/notificationsGate';
 import SplashGate from '@/components/ui/splashGate';
 import ConfirmModalHost from '@/components/ui/confirmModalHost';
+import ReportDrawerHost from '@/components/ui/reportDrawerHost';
 
 // Hold the native splash until fonts are ready; SplashGate then takes over with
 // the matching JS splash so there is no flash between the two.
@@ -75,6 +76,7 @@ function RootLayout() {
                 <NotificationsGate />
                 <Slot />
                 <ConfirmModalHost />
+                <ReportDrawerHost />
                 <StatusBar style="auto" />
               </SplashGate>
             </ChatBadgeProvider>

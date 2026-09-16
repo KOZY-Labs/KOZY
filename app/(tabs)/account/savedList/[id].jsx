@@ -19,9 +19,7 @@ export default function SavedList() {
 }
 
 function SavedReelOverlay({ item, insets }) {
-  const { isSaved, onToggleSave, onShare } = useListingActions(item, {
-    reportBackTo: '/(tabs)/account/savedList',
-  });
+  const { isSaved, onToggleSave, onShare } = useListingActions(item);
 
   // Unsaving from the saved-list reel returns to the list (the reel no longer belongs there).
   const handleToggleSave = useCallback(async () => {

@@ -30,9 +30,7 @@ export default function SearchResultListItem() {
 }
 
 function SearchReelOverlay({ item, insets }) {
-  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item, {
-    reportBackTo: '/(tabs)/home/search',
-  });
+  const { isSaved, onToggleSave, onShare, onReport } = useListingActions(item);
 
   return (
     <ListingReelOverlay

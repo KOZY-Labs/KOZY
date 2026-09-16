@@ -11,7 +11,6 @@ export default function SavedListDetail() {
   return (
     <ListingDetailScreen
       listingId={listingId}
-      reportBackTo="/(tabs)/account/savedList"
       backFallback="/(tabs)/account/savedList"
       showChatCta
       chatBackTo={`/(tabs)/account/savedList/detail/${listingId}`}

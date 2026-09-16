@@ -28,6 +28,7 @@ import {
   unblockUserInChats,
 } from "@/lib/db/chats";
 import { uploadChatMedia } from "@/lib/utils/uploadMedia";
+import { showReportDrawer } from "@/components/ui/reportDrawerHost";
 import validateImage, { validateVideo } from "@/utils/mediaValidation";
 
 import { avatarSource } from '@/lib/avatar';
@@ -241,11 +242,7 @@ export default function ChatScreen() {
     // --- kebab: report / block ---
 
     const handleReportUser = () => {
-        // Re-exported contactUs route so we stay inside the chat stack.
-        router.push({
-            pathname: '/(tabs)/chat/report',
-            params: { reportUserId: vm.otherId, backTo: `/chat/${threadId}` },
-        });
+        showReportDrawer({ targetType: 'user', targetId: vm.otherId });
     };
 
     const handleBlockToggle = () => {
