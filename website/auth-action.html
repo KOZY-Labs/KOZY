@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <title>KOZY — Account action</title>
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -10,6 +10,12 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Open+Sans:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="/styles.css">
   <style>
+    /* iOS Safari: the page is shorter than the viewport, so once the keyboard
+       scrolls an input into view and closes, the document is left offset with
+       nothing to scroll back to (pulling down just triggers refresh). Keep the
+       page at least viewport-tall and snap back when the field loses focus. */
+    html,body{min-height:100dvh}
+    body{overscroll-behavior-y:contain}
     .authCard{max-width:420px;margin:64px auto 96px;background:var(--surface);
       border:1px solid var(--line);border-radius:20px;padding:32px 28px}
     .authCard h1{font-family:var(--display);font-weight:800;font-size:24px;margin-bottom:8px}
@@ -110,6 +116,9 @@
         const email = await verifyPasswordResetCode(auth, oobCode);
         document.getElementById('resetEmail').textContent = email;
         show('reset');
+        document.addEventListener('focusout', (e) => {
+          if (e.target?.tagName === 'INPUT') setTimeout(() => window.scrollTo({ top: 0 }), 50);
+        });
         document.getElementById('resetForm').addEventListener('submit', async (e) => {
           e.preventDefault();
           const pw1 = document.getElementById('pw1').value;
