@@ -54,8 +54,12 @@ export default function AccountScreen() {
 
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}
+      style={styles.container}
       contentContainerStyle={{
+        // Both paddings live on the content container: on Android, padding set on
+        // the ScrollView itself shrinks the scrollable area and clips the bottom
+        // by that amount, so the last rows ended up hidden under the tab bar.
+        paddingTop: insets.top + TOP_INSET_EXTRA,
         // Clear the floating tab bar on every device (S25U gesture nav included).
         paddingBottom: tabBarClearance(insets),
       }}
