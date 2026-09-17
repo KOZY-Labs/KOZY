@@ -1,66 +1,119 @@
-// Shared listing-detail body used by the home / saved-list / my-listings detail
-// screens and the post-flow preview. Screens keep their own data fetching, top bar
-// and footer CTAs; this renders everything in between (title → move-in details).
-import { memo, useCallback, useState } from 'react';
-import { View, StyleSheet, FlatList, Image, Dimensions } from 'react-native';
+import { memo, useMemo, useState } from 'react';
+import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { Feather } from '@expo/vector-icons';
 
 import DisplayField from '@/components/ui/displayField';
 import AppText from '@/components/ui/appText';
 import ProfileSection from '@/components/ui/profileSection';
 import ListingLocationMap from '@/components/ui/listingLocationMap';
+import MediaViewerModal from '@/components/ui/mediaViewerModal';
 import { colors } from '@/constants/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Pages render inside the screen's 16px side padding, so this — not SCREEN_WIDTH —
-// is the paging interval; dividing by the full width drifts the dot index on 4+ images.
+// The body renders inside the screen's 16px side padding.
 const PAGE_WIDTH = SCREEN_WIDTH - 32;
 const EMPTY_IMAGES = [];
+const GAP = 6;
+const MAX_TILES = 6;
 
-// Owns activeIndex so a swipe only re-renders the carousel — not the MapView,
-// profile section, and display fields below it.
-const ImageCarousel = memo(function ImageCarousel({ images }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const keyExtractor = useCallback((uri, index) => `${uri}-${index}`, []);
-  const renderItem = useCallback(
-    ({ item: image }) => (
-      <View style={{ width: PAGE_WIDTH }}>
-        <Image
-          source={{ uri: image }}
-          style={styles.fullImage}
-          resizeMode="cover"
-        />
+// Poster-style video tile: a single paused player (no autoplay) showing the first
+// frame under a play glyph. Tapping opens the fullscreen viewer.
+function VideoTile({ url, width, height, onPress }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = false;
+    p.muted = true;
+  });
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Play listing video"
+      style={[styles.tile, { width, height }]}
+    >
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        nativeControls={false}
+        pointerEvents="none"
+      />
+      <View style={styles.playOverlay} pointerEvents="none">
+        <View style={styles.playCircle}>
+          <Feather name="play" size={20} color="#fff" style={{ marginLeft: 2 }} />
+        </View>
       </View>
-    ),
-    []
+    </Pressable>
   );
-  const onMomentumScrollEnd = useCallback((e) => {
-    setActiveIndex(Math.round(e.nativeEvent.contentOffset.x / PAGE_WIDTH));
-  }, []);
+}
+
+// Video on the left (9:16), photos tiled on the right. Adaptive: ≤3 photos stack in
+// one column; 4–6 fill a 2×3 grid; beyond 6 the last tile carries a "+N" overlay.
+// Every tile opens the same viewer, which pages through video + all photos —
+// so a shared link lands on a page where the whole listing is one tap away.
+const MediaGallery = memo(function MediaGallery({ videoUrl, images }) {
+  const [viewer, setViewer] = useState(null);
+
+  const items = useMemo(
+    () => [
+      ...(videoUrl ? [{ type: 'video', url: videoUrl }] : []),
+      ...images.map((url) => ({ type: 'image', url })),
+    ],
+    [videoUrl, images]
+  );
+
+  const hasVideo = !!videoUrl;
+  const videoW = hasVideo ? Math.round(PAGE_WIDTH * 0.46) : 0;
+  const height = hasVideo ? Math.round((videoW * 16) / 9) : Math.round(PAGE_WIDTH * 0.75);
+  const gridW = hasVideo ? PAGE_WIDTH - videoW - GAP : PAGE_WIDTH;
+
+  const shown = images.slice(0, MAX_TILES);
+  const extra = images.length - shown.length;
+  const columns = shown.length > 3 ? 2 : 1;
+  // Rows follow the count so 4 photos fill 2 rows instead of leaving a third
+  // empty; an odd last photo spans the full row width.
+  const rows = Math.max(Math.ceil(shown.length / columns), 1);
+  const tileW = (gridW - GAP * (columns - 1)) / columns;
+  const tileH = (height - GAP * (rows - 1)) / rows;
+  const lastSpansRow = columns === 2 && shown.length % 2 === 1;
+
+  if (!hasVideo && images.length === 0) return null;
 
   return (
     <>
-      <FlatList
-        data={images}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={keyExtractor}
-        onMomentumScrollEnd={onMomentumScrollEnd}
-        style={styles.slider}
-        renderItem={renderItem}
-      />
-      <View style={styles.pagination}>
-        {images.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.dot,
-              activeIndex === index && styles.activeDot,
-            ]}
+      <View style={[styles.gallery, { height }]}>
+        {hasVideo ? (
+          <VideoTile
+            url={videoUrl}
+            width={videoW}
+            height={height}
+            onPress={() => setViewer({ type: 'video', url: videoUrl })}
           />
-        ))}
+        ) : null}
+        <View style={[styles.grid, { width: gridW }]}>
+          {shown.map((url, index) => {
+            const isLast = index === shown.length - 1;
+            return (
+              <Pressable
+                key={`${url}-${index}`}
+                onPress={() => setViewer({ type: 'image', url })}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={`Listing photo ${index + 1} of ${images.length}`}
+                style={[styles.tile, { width: isLast && lastSpansRow ? gridW : tileW, height: tileH }]}
+              >
+                <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+                {isLast && extra > 0 ? (
+                  <View style={styles.moreOverlay} pointerEvents="none">
+                    <AppText variant="headline-sm" textColor="#fff">+{extra}</AppText>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
+      <MediaViewerModal media={viewer} items={items} onClose={() => setViewer(null)} />
     </>
   );
 });
@@ -74,7 +127,7 @@ export default memo(function ListingDetailBody({ listing }) {
     <>
       <AppText variant='headline-sm'>{listing.title}</AppText>
       <AppText variant='body-sm'>${listing.price}</AppText>
-      <ImageCarousel images={images} />
+      <MediaGallery videoUrl={listing.videoUrl ?? null} images={images} />
 
       {/* Details */}
       <View style={styles.content}>
@@ -128,34 +181,40 @@ export default memo(function ListingDetailBody({ listing }) {
 });
 
 const styles = StyleSheet.create({
-  slider: {
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginTop: 6,
-  },
-  fullImage: {
-    // Listing photos are captured square in the post flow — mirror that here.
-    width: '100%',
-    height: undefined,
-    aspectRatio: 1,
-    borderRadius: 0,
-  },
-  pagination: {
+  gallery: {
     flexDirection: 'row',
+    gap: GAP,
+    marginTop: 12,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: GAP,
+    alignContent: 'flex-start',
+  },
+  tile: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: colors.base.gray800,
+  },
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    gap: 6,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.base.gray700,
+  playCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  activeDot: {
-    backgroundColor: colors.base.white,
-    width: 8,
-    height: 8,
+  moreOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   section: {
     marginBottom: 16,

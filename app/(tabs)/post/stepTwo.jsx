@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { Platform, StyleSheet, View, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
 import MediaInput from '@/components/ui/input/mediaInput';
 import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
-import MediaViewerModal from '@/components/ui/chat/MediaViewerModal';
+import MediaViewerModal from '@/components/ui/mediaViewerModal';
 import InfoList from '@/components/ui/appList';
 import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
-import { TOP_INSET_EXTRA } from '@/constants/layout';
 import validateImage from '@/utils/mediaValidation';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
@@ -49,7 +47,6 @@ export default function StepTwo() {
     // while a tile is being dragged (same pattern as JOOPI's EditProfileScreen).
     const [scrollEnabled, setScrollEnabled] = useState(true);
 
-    const insets = useSafeAreaInsets();
     const footerPadding = useStickyFooterPadding(2);
 
     const openGallery = async () => {
@@ -134,7 +131,7 @@ export default function StepTwo() {
   return (
     <View style={{ flex: 1 }}>
     <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA, paddingBottom: footerPadding }]}
+        contentContainerStyle={[styles.container, { paddingBottom: footerPadding }]}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
     >

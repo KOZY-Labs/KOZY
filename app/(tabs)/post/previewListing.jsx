@@ -82,7 +82,7 @@ export default function PreviewListing() {
     // Capture before resetDraft() clears the edit state.
     const backTo = returnTo ?? `/(tabs)/account/myListings/detail/${editingId}`;
     showAlertModal({
-      title: 'Your listing is updated ✅',
+      title: 'Listing updated ✅',
       message: 'Your changes are live.',
       buttonText: 'View My listing',
       onPress: () => {
@@ -149,7 +149,7 @@ export default function PreviewListing() {
 
   const showPublishedAlert = (listingId) => {
     showAlertModal({
-      title: 'Your listing is live 🎉',
+      title: 'Listing is live 🎉',
       message: 'Your room is ready to be discovered. You can update it anytime.',
       buttonText: 'View My listing',
       onPress: () => {

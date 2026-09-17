@@ -34,7 +34,7 @@ export default function ListingReelScreen({ listingId, onBack, renderOverlay }) 
     <View style={styles.container}>
       <View style={[styles.topBar, { top: insets.top + 12 + TOP_INSET_EXTRA }]}>
         <AppIconButton
-          icon={<Feather name="arrow-left" size={32} />}
+          icon={<Feather name="chevron-left" size={28} />}
           type="ghost"
           size="lg"
           shadow

@@ -1,41 +1,16 @@
-import { Pressable } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { Stack, router } from 'expo-router';
+import { Stack } from 'expo-router';
 
-// Pop the stack so back always slides left-to-right; replace is only a
-// no-history fallback (e.g. deep links) since it animates like a push.
-const goBack = (fallback) => {
-  if (router.canGoBack()) {
-    router.back();
-  } else {
-    router.replace(fallback);
-  }
-};
+import HeaderBackButton from '@/components/navigation/headerBackButton';
 
 export default function SearchStack() {
   return (
-    <Stack screenOptions={{ headerShown: true, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false, headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack screenOptions={{ headerShown: true, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false, headerBackButtonDisplayMode: 'minimal', headerBackVisible: false, headerLeft: () => <HeaderBackButton fallback="/home" /> }}>
       <Stack.Screen
         name="index"
         options={{
           title: 'Search',
           headerShown: true,
-          headerBackVisible: false,
-          headerLeft: () => (
-            <Pressable
-              onPress={() => goBack('/home')}
-              accessibilityRole="button"
-              accessibilityLabel="Back to home"
-              hitSlop={10}
-            >
-              <Feather 
-                name="chevron-left" 
-                size={28} 
-                color="white"
-                style={{ marginLeft: 2 }} 
-              />
-            </Pressable>
-          ),
+          headerLeft: () => <HeaderBackButton fallback="/home" accessibilityLabel="Back to home" />,
         }}
       />
       <Stack.Screen
@@ -43,17 +18,7 @@ export default function SearchStack() {
         options={{
           title: 'Map',
           headerShown: true,
-          headerBackVisible: false,
-          headerLeft: () => (
-            <Pressable
-              onPress={() => goBack('/home/search')}
-              accessibilityRole="button"
-              accessibilityLabel="Back to search"
-              hitSlop={10}
-            >
-              <Feather name="chevron-left" size={28} color="white" />
-            </Pressable>
-          ),
+          headerLeft: () => <HeaderBackButton fallback="/home/search" accessibilityLabel="Back to search" />,
         }}
       />
       <Stack.Screen
@@ -61,7 +26,6 @@ export default function SearchStack() {
         options={{
           title: '',
           headerShown: false,
-          headerBackVisible: true,
         }}
       />
     </Stack>

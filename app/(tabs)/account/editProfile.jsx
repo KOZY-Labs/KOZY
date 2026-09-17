@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View, FlatList } from 'react-native';
 import { router, useNavigation, useLocalSearchParams } from 'expo-router';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {
   startPersonaVerification,
@@ -24,8 +24,9 @@ import AppButton from '@/components/ui/appButton';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import ErrorMessage from '@/components/ui/form/errorMessage';
 import { avatarSource } from '@/lib/avatar';
+import HeaderBackButton from '@/components/navigation/headerBackButton';
 import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
-import MediaViewerModal from '@/components/ui/chat/MediaViewerModal';
+import MediaViewerModal from '@/components/ui/mediaViewerModal';
 import validateImage from '@/utils/mediaValidation';
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from '@/lib/dob.mjs';
 import {
@@ -250,7 +251,7 @@ function EditProfileForm() {
         // removed from JS state"). Our headerLeft below is the only back control.
         headerBackVisible: false,
         headerLeft: () => (
-          <Pressable
+          <HeaderBackButton
             onPress={() => {
               if (isDirtyRef.current && !allowLeaveRef.current) {
                 showConfirmModal({
@@ -264,13 +265,7 @@ function EditProfileForm() {
               }
               leaveScreen();
             }}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            hitSlop={10}
-            style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}
-          >
-            <Ionicons name="chevron-back" size={24} color="#ffffff" />
-          </Pressable>
+          />
         ),
       });
     }, [navigation, backTo]);

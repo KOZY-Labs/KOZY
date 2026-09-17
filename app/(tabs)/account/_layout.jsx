@@ -1,109 +1,42 @@
-import { Stack, router } from 'expo-router';
-import { Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Stack } from 'expo-router';
+
+import HeaderBackButton from '@/components/navigation/headerBackButton';
 
 export default function AccountStack() {
   return (
-    <Stack screenOptions={{ headerShown: false, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false, headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack screenOptions={{ headerShown: false, headerTitleAlign: 'center', headerTitleAllowFontScaling: false, headerBackAllowFontScaling: false, headerBackButtonDisplayMode: 'minimal', headerBackVisible: false, headerLeft: () => <HeaderBackButton fallback="/(tabs)/account" /> }}>
       <Stack.Screen name="index" options={{ title: 'Account' }} />
       <Stack.Screen name="trustLevelInfo" 
         options={{ 
           title: '',
           headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
       }} />
       <Stack.Screen name="editProfile" 
         options={({ route }) => ({
           title: 'Edit Profile',
           headerShown: true,
-          headerBackVisible: false,
-          headerBackTitleVisible: false,
-          headerLeft: () => (
-            <Pressable
-              onPress={() => {
-                const backTo = route?.params?.backTo;
-
-                if (typeof backTo === 'string' && backTo.length > 0) {
-                  router.replace(backTo);
-                  return;
-                }
-
-                if (router.canGoBack()) {
-                  router.back();
-                  return;
-                }
-
-                router.replace('/(tabs)/account');
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              hitSlop={10}
-              style={{
-                width: 32,
-                height: 32,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Ionicons name="chevron-back" size={24} color="#ffffff" />
-            </Pressable>
-          ),
+          headerLeft: () => <HeaderBackButton backTo={route?.params?.backTo} fallback="/(tabs)/account" />,
       })} />
       <Stack.Screen name="notification"
         options={{
           title: 'Notifications',
           headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
       }} />
       <Stack.Screen name="security"
         options={{
           title: 'Account & Security',
           headerShown: true,
-          headerBackVisible: true,
       }} />
       <Stack.Screen name="contactUs" 
         options={({ route }) => ({ 
           title: 'Contact Us',
           headerShown: true,
-          headerBackVisible: false,
-          headerBackTitleVisible: false,
-          headerLeft: () => (
-            <Pressable
-              onPress={() => {
-                const backTo = route?.params?.backTo;
-
-                if (typeof backTo === 'string' && backTo.length > 0) {
-                  router.replace(backTo);
-                  return;
-                }
-
-                if (router.canGoBack()) {
-                  router.back();
-                  return;
-                }
-
-                router.replace('/(tabs)/account');
-              }}
-              hitSlop={10}
-              style={{
-                width: 32,
-                height: 32,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Ionicons name="chevron-back" size={24} color={'#ffffff'} />
-            </Pressable>
-          )
+          headerLeft: () => <HeaderBackButton backTo={route?.params?.backTo} fallback="/(tabs)/account" />,
       })} />
       <Stack.Screen name="savedList/index"
         options={{ 
           title: 'Saved Listings',
           headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
       }} />
       <Stack.Screen name="savedList/[id]" 
         options={{ 
@@ -115,16 +48,12 @@ export default function AccountStack() {
         options={{ 
           title: '',
           headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
         }}
       />
       <Stack.Screen name="myListings/index" 
         options={{ 
           title: 'My Listings',
           headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
         }}
       />
       <Stack.Screen name="myListings/[id]" 
@@ -137,8 +66,6 @@ export default function AccountStack() {
         options={{ 
           title: '',
           headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
         }}
       />
     </Stack>

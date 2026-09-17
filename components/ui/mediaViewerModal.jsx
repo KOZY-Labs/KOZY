@@ -13,7 +13,8 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-g
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
 import { useVideoPlayer, VideoView } from "expo-video";
 
-import AppIconButton from "../appIconButton";
+import AppIconButton from "./appIconButton";
+import AppText from "./appText";
 
 const MAX_SCALE = 4;
 const SWIPE_THRESHOLD = 60;
@@ -101,7 +102,7 @@ function FullscreenVideo({ url }) {
       // Already fullscreen — the native fullscreen button (top-left on iOS, where it
       // collides with our back button) is redundant. AirPlay's position is fixed by
       // AVKit and can't be moved.
-      allowsFullscreen={false}
+      fullscreenOptions={{ enable: false }}
     />
   );
 }
@@ -144,6 +145,16 @@ export default function MediaViewerModal({ media, items, onClose }) {
               <Image source={{ uri: current.url }} style={styles.media} resizeMode="contain" />
             )}
           </ZoomableView>
+        ) : null}
+        {/* Type + position: with videos and photos mixed in one gallery, the pill
+            is what tells the viewer "this is the video, the rest are photos". */}
+        {list.length > 1 && current ? (
+          <View style={[styles.counter, { bottom: insets.bottom + 50 }]} pointerEvents="none">
+            <Feather name={current.type === "video" ? "video" : "image"} size={13} color="#fff" />
+            <AppText variant="body-xsm-strong" textColor="#fff">
+              {Math.min(index, list.length - 1) + 1} / {list.length}
+            </AppText>
+          </View>
         ) : null}
         {list.length > 1 && index > 0 ? (
           <View style={[styles.navButton, styles.navLeft]}>
@@ -201,6 +212,18 @@ const styles = StyleSheet.create({
   closeButton: {
     position: "absolute",
     right: 12,
+    zIndex: 2,
+  },
+  counter: {
+    position: "absolute",
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.6)",
     zIndex: 2,
   },
   navButton: {

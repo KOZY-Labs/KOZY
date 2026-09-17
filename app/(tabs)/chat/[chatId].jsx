@@ -7,7 +7,7 @@ import { Feather } from '@expo/vector-icons';
 
 import MessageBubble from "@/components/ui/chat/MessageBubble";
 import ChatInput from "@/components/ui/chat/ChatInput";
-import MediaViewerModal from "@/components/ui/chat/MediaViewerModal";
+import MediaViewerModal from "@/components/ui/mediaViewerModal";
 import AppText from "@/components/ui/appText";
 import AppButton from "@/components/ui/appButton";
 import AppIconButton from "@/components/ui/appIconButton";

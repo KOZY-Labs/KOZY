@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { Platform, StyleSheet, View, FlatList, Pressable, useWindowDimensions } from 'react-native';
+import { InteractionManager, Platform, StyleSheet, View, FlatList, Pressable, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -18,7 +17,6 @@ import AppDrawer from '@/components/ui/drawer/AppDrawer';
 import FormField from '@/components/ui/form/formField';
 import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
-import { TOP_INSET_EXTRA } from '@/constants/layout';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 import { validateVideo } from '@/utils/mediaValidation';
 
@@ -85,7 +83,6 @@ export default function StepThree() {
     const [videoError, setVideoError] = useState(null);
     const [activeSampleIndex, setActiveSampleIndex] = useState(0);
     const { width: screenWidth } = useWindowDimensions();
-    const insets = useSafeAreaInsets();
     const sampleVideoWidth = Math.min(screenWidth - 96, 360);
     const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
     const drawerRef = useRef(null);
@@ -100,12 +97,10 @@ export default function StepThree() {
     // Auto-play the preview: load the picked video and start it (handles re-selection too).
     useEffect(() => {
         if (!selectedVideoPlayer || !selectedVideo?.uri) return;
-        try {
-            selectedVideoPlayer.replace(selectedVideo.uri);
-        } catch {
-            // first render already created the player with this source
-        }
-        selectedVideoPlayer.play();
+        selectedVideoPlayer
+            .replaceAsync(selectedVideo.uri)
+            .then(() => selectedVideoPlayer.play())
+            .catch(() => {});
     }, [selectedVideo, selectedVideoPlayer]);
 
     const openAlbum = async () => {
@@ -161,20 +156,28 @@ export default function StepThree() {
             const video = selectedVideoRef.current;
             if (!video?.uri) return undefined;
             let cancelled = false;
-            // Small delay so the drawer has mounted before we snap it open.
-            const t = setTimeout(() => {
-                if (cancelled) return;
-                drawerRef.current?.snapToIndex(1);
-                selectedVideoPlayer
-                    ?.replaceAsync(video.uri)
-                    .then(() => {
-                        if (!cancelled) selectedVideoPlayer?.play();
-                    })
-                    .catch(() => {});
-            }, 250);
+            let t = null;
+            // Open only after the push/pop transition has finished: a snap issued
+            // while the screen is still animating in (edit flow, heavier mount with
+            // the sample players) was dropped by the sheet, so the saved video
+            // looked missing. runAfterInteractions waits for the navigation
+            // animation; the short delay lets the sheet measure its snap points.
+            const task = InteractionManager.runAfterInteractions(() => {
+                t = setTimeout(() => {
+                    if (cancelled) return;
+                    drawerRef.current?.snapToIndex(1);
+                    selectedVideoPlayer
+                        ?.replaceAsync(video.uri)
+                        .then(() => {
+                            if (!cancelled) selectedVideoPlayer?.play();
+                        })
+                        .catch(() => {});
+                }, 150);
+            });
             return () => {
                 cancelled = true;
-                clearTimeout(t);
+                task.cancel();
+                if (t) clearTimeout(t);
                 selectedVideoPlayer?.replaceAsync(null).catch(() => {});
             };
         }, [selectedVideoPlayer])
@@ -188,7 +191,7 @@ export default function StepThree() {
         keyExtractor={(item) => item.key}
         keyboardShouldPersistTaps="always"
         renderItem={() => (
-          <View style={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}>
+          <View style={styles.container}>
             <View style={{ paddingHorizontal: 24, gap: 40 }}>
               <View style={styles.titleContainer}>
                 <AppText variant="headline-md" color="primary">
