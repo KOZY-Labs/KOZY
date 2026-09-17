@@ -14,7 +14,7 @@
       "bundleIdentifier": "app.getkozy.kozy",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "Allow KOZY to access your location to show where you are on the listing map."
+        "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access your location to show where you are on the listing map."
       },
       "buildNumber": "2",
       "associatedDomains": [
@@ -80,7 +80,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow KOZY to access your photos so you can add images to your listing."
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos so you can add images to your listing.",
+   "cameraPermission": "Allow $(PRODUCT_NAME) to use your camera to take photos and record a video tour of your room.",
+   "microphonePermission": "Allow $(PRODUCT_NAME) to use your microphone to record sound in your room tour video."
         }
       ],
       "expo-video"

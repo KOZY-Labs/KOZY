@@ -50,13 +50,13 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your camera</string>
+    <string>Allow $(PRODUCT_NAME) to use your camera to take photos and record a video tour of your room.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Allow KOZY to access your location to show where you are on the listing map.</string>
+    <string>Allow $(PRODUCT_NAME) to access your location to show where you are on the listing map.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>Allow $(PRODUCT_NAME) to use your microphone to record sound in your room tour video.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Allow KOZY to access your photos so you can add images to your listing.</string>
+    <string>Allow $(PRODUCT_NAME) to access your photos so you can add images to your listing.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
