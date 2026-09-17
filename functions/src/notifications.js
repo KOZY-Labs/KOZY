@@ -54,12 +54,17 @@ const notifyNewMessage = onDocumentCreated(
       (uid) => uid !== msg.senderId && !chat.participantsInfo?.[uid]?.deleted
     );
     // Media messages carry no text — use the same preview the chat list shows.
+    // Keep in sync with lib/db/chats.js previewFor().
     const MEDIA_PREVIEW = { image: '📷 Photo', video: '🎥 Video' };
+    const photoCount = Array.isArray(msg.mediaUrls) ? msg.mediaUrls.length : 0;
+    const preview = msg.type === 'image' && photoCount > 1
+      ? `📷 ${photoCount} Photos`
+      : (MEDIA_PREVIEW[msg.type] ?? msg.text ?? '');
     await Promise.all(
       recipients.map((uid) =>
         sendChatPush(uid, {
           title: displayName(chat, msg.senderId),
-          body: MEDIA_PREVIEW[msg.type] ?? msg.text ?? '',
+          body: preview,
           chatId: event.params.chatId,
         })
       )

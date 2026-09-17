@@ -10,6 +10,9 @@
 // constant here, not an env var.
 export const RESEND_COOLDOWN_SEC = 60;
 
+// Max photos per chat message (multi-select send). Bubbles render a fixed 3×3 grid.
+export const CHAT_MAX_PHOTOS = 9;
+
 // Public display name (users.displayName) length rules — shared by signup + edit profile.
 export const DISPLAY_NAME_MIN_LEN = 2;
 export const DISPLAY_NAME_MAX_LEN = 20;

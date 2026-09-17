@@ -30,6 +30,7 @@ import {
 import { uploadChatMedia } from "@/lib/utils/uploadMedia";
 import { showReportDrawer } from "@/components/ui/reportDrawerHost";
 import validateImage, { validateVideo } from "@/utils/mediaValidation";
+import { CHAT_MAX_PHOTOS } from "@/constants/data";
 
 import { avatarSource } from '@/lib/avatar';
 
@@ -58,8 +59,9 @@ export default function ChatScreen() {
     const { chat, messages, loading } = useChatThread(threadId);
     const vm = chatViewModel(chat, uid);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-    const [uploading, setUploading] = useState(null); // { kind, progress 0..1 } | null
+    const [uploading, setUploading] = useState(null); // { kind, progress 0..1, count?, done? } | null
     const [viewerMedia, setViewerMedia] = useState(null); // { type: 'image'|'video', url } | null
+    const [viewerItems, setViewerItems] = useState(null); // gallery for multi-photo bubbles
     const profileDrawerRef = useRef(null);
     const isFocusedRef = useRef(false);
 
@@ -135,6 +137,37 @@ export default function ChatScreen() {
         }
     };
 
+    // Multi-photo send: uploads run one at a time (aggregate progress = finished
+    // photos + the current one's fraction) and the message is all-or-nothing —
+    // any failed upload cancels the send so the recipient never gets a partial set.
+    const sendPhotosMessage = async (assets) => {
+        const count = assets.length;
+        setUploading({ kind: 'image', progress: 0, count, done: 0 });
+        try {
+            const urls = [];
+            for (let i = 0; i < count; i += 1) {
+                const url = await uploadChatMedia(threadId, assets[i], 'image', (sent, total) => {
+                    if (total > 0) setUploading({ kind: 'image', progress: (i + sent / total) / count, count, done: i });
+                });
+                urls.push(url);
+                setUploading({ kind: 'image', progress: (i + 1) / count, count, done: i + 1 });
+            }
+            await sendMessage(threadId, {
+                senderId: uid,
+                type: 'image',
+                mediaUrls: urls,
+                otherIds: vm?.otherId ? [vm.otherId] : [],
+            });
+        } catch (e) {
+            showAlertModal({
+                title: 'Upload failed',
+                message: e?.message ?? 'Could not send the photos. Please try again.',
+            });
+        } finally {
+            setUploading(null);
+        }
+    };
+
     const pickFromCamera = async () => {
         if (uploading) return;
         const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -153,8 +186,9 @@ export default function ChatScreen() {
         await sendMediaMessage(asset, 'image');
     };
 
-    // One picker for both photos and videos — the asset's own type picks the
-    // validation (photo 10MB / video 30s·30MB) and the message kind.
+    // One picker for both photos and videos. Photos can be multi-selected (up to
+    // CHAT_MAX_PHOTOS, one message); a video always goes alone — a mixed selection
+    // is rejected rather than split into several messages.
     const pickFromLibrary = async () => {
         if (uploading) return;
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -165,18 +199,40 @@ export default function ChatScreen() {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images', 'videos'],
             quality: 0.8,
+            allowsMultipleSelection: true,
+            selectionLimit: CHAT_MAX_PHOTOS,
+            orderedSelection: true,
         });
-        if (result.canceled || !result.assets?.[0]) return;
-        const asset = result.assets[0];
-        const kind = asset.type === 'video' ? 'video' : 'image';
-        const error = kind === 'video'
-            ? validateVideo(asset, CHAT_VIDEO_LIMITS)
-            : validateImage(asset);
-        if (error) {
-            showAlertModal({ title: kind === 'video' ? 'Invalid video' : 'Invalid photo', message: error });
+        if (result.canceled || !result.assets?.length) return;
+        const assets = result.assets;
+        const hasVideo = assets.some((a) => a.type === 'video');
+
+        if (hasVideo && assets.length > 1) {
+            showAlertModal({
+                title: 'Videos are sent one at a time',
+                message: 'Select a single video, or only photos, to send.',
+            });
             return;
         }
-        await sendMediaMessage(asset, kind);
+        if (hasVideo) {
+            const asset = assets[0];
+            const error = validateVideo(asset, CHAT_VIDEO_LIMITS);
+            if (error) {
+                showAlertModal({ title: 'Invalid video', message: error });
+                return;
+            }
+            await sendMediaMessage(asset, 'video');
+            return;
+        }
+        for (const asset of assets) {
+            const error = validateImage(asset);
+            if (error) {
+                showAlertModal({ title: 'Invalid photo', message: error });
+                return;
+            }
+        }
+        if (assets.length === 1) await sendMediaMessage(assets[0], 'image');
+        else await sendPhotosMessage(assets);
     };
 
     const handleAcceptRequest = async () => {
@@ -431,8 +487,12 @@ export default function ChatScreen() {
                         avatar={item.senderId === uid ? myAvatar : otherAvatar}
                         onAvatarPress={openProfile}
                         showStatus={item.id === lastOwnMessageId}
-                        onMediaPress={(msg) => {
-                            if (msg.mediaUrl) setViewerMedia({ type: msg.type, url: msg.mediaUrl });
+                        onMediaPress={(msg, index = 0) => {
+                            const urls = msg.mediaUrls?.length ? msg.mediaUrls : msg.mediaUrl ? [msg.mediaUrl] : [];
+                            if (!urls.length) return;
+                            const items = urls.map((url) => ({ type: msg.type, url }));
+                            setViewerItems(items.length > 1 ? items : null);
+                            setViewerMedia(items[Math.min(index, items.length - 1)]);
                         }}
                     />
                 );
@@ -465,14 +525,18 @@ export default function ChatScreen() {
                 }
             />
         </View>
-        <MediaViewerModal media={viewerMedia} onClose={() => setViewerMedia(null)} />
+        <MediaViewerModal media={viewerMedia} items={viewerItems} onClose={() => setViewerMedia(null)} />
         {/* Blocks every touch while media streams to Storage — same treatment as the
             publish flow (previewListing), so upload states look identical app-wide. */}
         {uploading ? (
             <View style={styles.uploadOverlay}>
                 <ActivityIndicator size="large" color="#fff" />
                 <AppText variant="body-md-strong" textColor="#fff">
-                    {uploading.kind === 'video' ? 'Sending video…' : 'Sending photo…'}
+                    {uploading.kind === 'video'
+                        ? 'Sending video…'
+                        : uploading.count > 1
+                            ? `Sending photos (${Math.min(uploading.done + 1, uploading.count)}/${uploading.count})…`
+                            : 'Sending photo…'}
                 </AppText>
                 <View style={styles.progressTrack}>
                     <View style={[styles.progressFill, { width: `${Math.round(uploading.progress * 100)}%` }]} />

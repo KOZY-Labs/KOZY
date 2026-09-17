@@ -34,6 +34,28 @@ function VideoMessage({ url, width, onPress }) {
   );
 }
 
+// Multi-photo bubble: 2 → 2 columns, 3 → 3 columns, 4 → 2×2, 5–9 → fixed 3×3
+// grid (last row left-aligned). Tapping a tile opens the viewer at that photo.
+const GRID_GAP = 3;
+function PhotoGrid({ urls, width, onPressPhoto }) {
+  const columns = urls.length <= 2 ? urls.length : urls.length === 4 ? 2 : 3;
+  const tile = Math.floor((width - GRID_GAP * (columns - 1)) / columns);
+  return (
+    <View style={[styles.grid, { width, gap: GRID_GAP }]}>
+      {urls.map((url, i) => (
+        <Pressable
+          key={`${url}-${i}`}
+          onPress={() => onPressPhoto?.(i)}
+          accessibilityRole="imagebutton"
+          accessibilityLabel={`Photo ${i + 1} of ${urls.length}`}
+        >
+          <Image source={{ uri: url }} style={[styles.gridTile, { width: tile, height: tile }]} />
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 export default function MessageBubble({ message, isMine, avatar, onAvatarPress, showStatus, onMediaPress }) {
   const { width: screenWidth } = useWindowDimensions();
   const mediaWidth = Math.round(screenWidth * 0.6);
@@ -59,7 +81,8 @@ export default function MessageBubble({ message, isMine, avatar, onAvatarPress, 
     );
   }
 
-  const isImage = message.type === 'image' && message.mediaUrl;
+  const photoUrls = message.type === 'image' && message.mediaUrls?.length > 1 ? message.mediaUrls : null;
+  const isImage = message.type === 'image' && (message.mediaUrl || message.mediaUrls?.[0]);
   const isVideo = message.type === 'video' && message.mediaUrl;
 
   return (
@@ -70,10 +93,16 @@ export default function MessageBubble({ message, isMine, avatar, onAvatarPress, 
           </Pressable>
         )}
         <View style={[styles.messageContainer, isMine ? { alignItems: "flex-end" } : { alignItems: "flex-start" }]}>
-            {isImage ? (
-                <Pressable onPress={() => onMediaPress?.(message)} accessibilityRole="imagebutton">
+            {photoUrls ? (
+                <PhotoGrid
+                    urls={photoUrls}
+                    width={mediaWidth}
+                    onPressPhoto={(i) => onMediaPress?.(message, i)}
+                />
+            ) : isImage ? (
+                <Pressable onPress={() => onMediaPress?.(message, 0)} accessibilityRole="imagebutton">
                     <Image
-                        source={{ uri: message.mediaUrl }}
+                        source={{ uri: message.mediaUrl ?? message.mediaUrls[0] }}
                         style={[styles.mediaImage, { width: mediaWidth, height: mediaWidth }]}
                     />
                 </Pressable>
@@ -162,6 +191,15 @@ messageContainer: {
   },
   mediaImage: {
     borderRadius: 16,
+    backgroundColor: '#191A22',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  gridTile: {
     backgroundColor: '#191A22',
   },
   playOverlay: {
