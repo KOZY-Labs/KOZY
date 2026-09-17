@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { DraggableGrid } from 'react-native-draggable-grid';
 
+import AppText from '@/components/ui/appText';
 import { colors } from '@/constants/colors';
 
 const COLUMNS = 3;
@@ -20,6 +21,7 @@ export default function AddedPhotoGrid({
   onDelete,
   onReorder,
   onPressPhoto, // optional: tap a photo tile (e.g. open a fullscreen viewer)
+  mainLabel, // optional chip on the FIRST photo (e.g. 'Main') — order is the cover
   maxPhotos,
   disabled = false,
   // Reorder drags must win over the surrounding ScrollView — the parent flips
@@ -66,6 +68,11 @@ export default function AddedPhotoGrid({
             transition={150}
             accessibilityLabel="Listing photo. Long press and drag to reorder."
           />
+          {mainLabel && item.photo.id === photos[0]?.id ? (
+            <View style={styles.mainChip} pointerEvents="none">
+              <AppText variant="body-xsm" style={styles.mainChipText}>{mainLabel}</AppText>
+            </View>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Delete listing photo"
@@ -141,5 +148,18 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  // Bottom-left, diagonal from the delete button.
+  mainChip: {
+    position: 'absolute',
+    left: 6,
+    bottom: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.base.gray800Alpha,
+  },
+  mainChipText: {
+    color: colors.base.white,
   },
 });

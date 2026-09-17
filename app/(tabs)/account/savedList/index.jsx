@@ -22,6 +22,8 @@ export default function SavedList() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
+  // Which card is inline-previewing (one at a time — see ResultVideoCard).
+  const [previewId, setPreviewId] = useState(null);
 
   // Saved ids live in users/{uid}/savedListings — saves/unsaves anywhere reflect here.
   useEffect(() => {
@@ -121,7 +123,7 @@ export default function SavedList() {
           />
         )}
       </View>
-      {/* Windowed: each card mounts an autoplaying video player — never all at once. */}
+      {/* Windowed list of static cover cards (see ResultVideoCard). */}
       <FlatList
         data={listings}
         keyExtractor={(item) => item.id}
@@ -139,11 +141,14 @@ export default function SavedList() {
         renderItem={({ item }) => (
           <ResultVideoCard
             item={item}
+            previewing={previewId === item.id}
+            onTogglePreview={() => setPreviewId((current) => (current === item.id ? null : item.id))}
             onPress={() => {
               if (isEditMode) {
                 return;
               }
 
+              setPreviewId(null);
               router.push(`account/savedList/${item.id}`);
             }}
             accessibilityLabel={

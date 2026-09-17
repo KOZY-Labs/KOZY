@@ -57,7 +57,10 @@ function resultFromParams(queryParams) {
 
 // referenceId should be the Firebase uid so the inquiry links back to the user.
 // Returns { type: 'completed' | 'pending' | 'failed' | 'cancel', inquiryId }.
-export async function startPersonaVerification(referenceId) {
+// `identity` ({ firstName, lastName, dob: 'MM/DD/YYYY' }) prefills the inquiry so the
+// Persona template can compare the ID's extracted name/DOB against what the user
+// entered and decline a mismatch (template-side "expectation" rule).
+export async function startPersonaVerification(referenceId, identity = {}) {
   const templateId = process.env.EXPO_PUBLIC_PERSONA_TEMPLATE_ID;
   const environmentId = process.env.EXPO_PUBLIC_PERSONA_ENVIRONMENT_ID;
   if (!templateId || !environmentId) {
@@ -76,6 +79,11 @@ export async function startPersonaVerification(referenceId) {
     'reference-id': referenceId,
     'redirect-uri': redirectUri,
   });
+  if (identity.firstName) params.set('fields[name-first]', identity.firstName);
+  if (identity.lastName) params.set('fields[name-last]', identity.lastName);
+  // Persona wants ISO dates; the app stores MM/DD/YYYY.
+  const [mm, dd, yyyy] = (identity.dob ?? '').split('/');
+  if (yyyy && mm && dd) params.set('fields[birthdate]', `${yyyy}-${mm}-${dd}`);
 
   const redirected = new Promise((resolve) => {
     deliverRedirect = (p) => resolve({ from: 'route', params: p });

@@ -15,7 +15,7 @@ import AppLogo from "@/components/ui/appMainLogo";
 import { signUpWithEmail } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from "@/lib/dob.mjs";
-import { DISPLAY_NAME_MIN_LEN, DISPLAY_NAME_MAX_LEN } from "@/constants/data";
+import { DISPLAY_NAME_MIN_LEN, DISPLAY_NAME_MAX_LEN, LEGAL_NAME_MAX_LEN } from "@/constants/data";
 import { colors } from "@/constants/colors";
 
 export default function Profile() {
@@ -129,6 +129,7 @@ export default function Profile() {
                       placeholder="Display Name"
                       type="auth"
                       maxLength={DISPLAY_NAME_MAX_LEN}
+                      suffixText={`${(signup.profile.displayName ?? '').length}/${DISPLAY_NAME_MAX_LEN}`}
                       error={!!errors.displayName}
                     />
                     <Text style={styles.helper} allowFontScaling={false}>
@@ -146,6 +147,8 @@ export default function Profile() {
                       }}
                       placeholder="Legal First Name"
                       type="auth"
+                      maxLength={LEGAL_NAME_MAX_LEN}
+                      suffixText={`${(signup.profile.firstName ?? '').length}/${LEGAL_NAME_MAX_LEN}`}
                       error={!!errors.firstName}
                     />
                   </FormField>
@@ -160,6 +163,8 @@ export default function Profile() {
                       }}
                       placeholder="Legal Last Name"
                       type="auth"
+                      maxLength={LEGAL_NAME_MAX_LEN}
+                      suffixText={`${(signup.profile.lastName ?? '').length}/${LEGAL_NAME_MAX_LEN}`}
                       error={!!errors.lastName}
                     />
                   </FormField>

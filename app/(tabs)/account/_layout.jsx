@@ -57,12 +57,11 @@ export default function AccountStack() {
           headerBackVisible: true,
           headerBackTitleVisible: false
       }} />
-      <Stack.Screen name="changePassword"
+      <Stack.Screen name="security"
         options={{
-          title: 'Change Password',
+          title: 'Account & Security',
           headerShown: true,
           headerBackVisible: true,
-          headerBackTitleVisible: false
       }} />
       <Stack.Screen name="contactUs" 
         options={({ route }) => ({ 
@@ -99,13 +98,6 @@ export default function AccountStack() {
             </Pressable>
           )
       })} />
-      <Stack.Screen name="deleteAccount"
-        options={{
-          title: 'Delete Account',
-          headerShown: true,
-          headerBackVisible: true,
-          headerBackTitleVisible: false
-      }} />
       <Stack.Screen name="savedList/index"
         options={{ 
           title: 'Saved Listings',

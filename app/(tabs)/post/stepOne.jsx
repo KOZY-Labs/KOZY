@@ -13,6 +13,7 @@ import TextField from '@/components/ui/input/textField';
 import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import Dropdown from '@/components/ui/input/dropdown';
 import DisplayInput from '@/components/ui/input/displayInput';
 import { useListingDraft } from '@/context/ListingDraftContext';
@@ -99,6 +100,7 @@ const createDepositOptions = (priceValue) => {
 export default function StepOne() {
     const { draft, setFields } = useListingDraft();
     const { confirmExit } = usePostFlowExit();
+    const footerPadding = useStickyFooterPadding(2);
     // Initialize from the shared draft so going back/forward (and "Edit Listing") keeps values.
     const [roomTitle, setRoomTitle] = useState(draft.roomTitle || null);
     const [price, setPrice] = useState(draft.price || null);
@@ -339,7 +341,7 @@ export default function StepOne() {
             has no JS scroll calls at all, so nothing can yank the position. Android
             is handled by the window's default adjustResize. */}
         <ScrollView
-            contentContainerStyle={{ flexGrow: 1 }}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: footerPadding }}
             keyboardShouldPersistTaps="handled"
             automaticallyAdjustKeyboardInsets
         >
@@ -563,26 +565,22 @@ export default function StepOne() {
                                 onChangeText={setDescription}
                             />
                         </FormField>
-                        <View style={styles.buttonContainer}>
-                            <View style={{ flex: 1 }}>
-                                <AppButton
-                                    text="Cancel"
-                                    type="secondary"
-                                    onPress={confirmExit}
-                                />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <AppButton
-                                    text="Continue"
-                                    loading={submitting}
-                                    loadingLabel="Locating address"
-                                    onPress={continueToStepTwo}
-                                />
-                            </View>
-                        </View>
                     </View>
                 </View>
         </ScrollView>
+        <StickyFooter>
+            <AppButton
+                text="Continue"
+                loading={submitting}
+                loadingLabel="Locating address"
+                onPress={continueToStepTwo}
+            />
+            <AppButton
+                text="Cancel"
+                type="secondary"
+                onPress={confirmExit}
+            />
+        </StickyFooter>
         <AppDrawer
             ref={availableMonthDrawerRef}
             scrollable={false}
@@ -699,11 +697,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === 'ios' ? 50 : 16,
-  },
-  buttonContainer:{
-    width: '100%',
-    flexDirection: 'row',
-    gap: 8,
   },
   titleContainer:{
     alignItems: 'center',

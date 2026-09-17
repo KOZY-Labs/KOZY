@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Platform, StyleSheet, View, FlatList, Pressable } from 'react-native';
+import { StyleSheet, View, FlatList, Pressable } from 'react-native';
 import { router } from 'expo-router';
 
 import { useListingDraft } from '@/context/ListingDraftContext';
@@ -8,11 +8,12 @@ import { useAuth } from '@/context/AuthContext';
 import { draftToPreview } from '@/lib/listingDraft';
 import AppText from '@/components/ui/appText';
 import AppButton from '@/components/ui/appButton';
-import DisplayField from '@/components/ui/displayField';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import ProfileSection from '@/components/ui/profileSection';
 
 // Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
 export default function StepFour() {
+  const footerPadding = useStickyFooterPadding(2);
     const { draft } = useListingDraft();
     const { confirmExit } = usePostFlowExit();
     const { profile } = useAuth();
@@ -24,6 +25,7 @@ export default function StepFour() {
             data={[{ key: 'content' }]}
             keyExtractor={(item) => item.key}
             keyboardShouldPersistTaps="always"
+            contentContainerStyle={{ paddingBottom: footerPadding }}
             renderItem={() => (
                 <View style={styles.container}>
                     <View style={{ gap: 40 }}>
@@ -44,25 +46,21 @@ export default function StepFour() {
                         >
                             <AppText variant='button-sm'>Edit Profile</AppText>
                         </Pressable>
-                        <View style={styles.buttonContainer}>
-                            <View style={{ flex: 1 }}>
-                                <AppButton
-                                    text="Cancel"
-                                    type='secondary'
-                                    onPress={confirmExit}
-                                />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <AppButton
-                                    text="Continue"
-                                    onPress={() => router.push('post/previewListing')}
-                                />
-                            </View>
-                        </View>
                     </View>
                 </View>
             )}
-        />   
+        />
+        <StickyFooter>
+            <AppButton
+                text="Continue"
+                onPress={() => router.push('post/previewListing')}
+            />
+            <AppButton
+                text="Cancel"
+                type='secondary'
+                onPress={confirmExit}
+            />
+        </StickyFooter>
     </View>
   );
 }
@@ -71,12 +69,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'black',
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 50 : 16,
-  },
-  buttonContainer:{
-    width: '100%',
-    flexDirection: 'row',
-    gap: 8,
   },
   titleContainer:{
     alignItems: 'center',

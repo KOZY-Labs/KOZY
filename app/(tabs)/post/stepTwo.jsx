@@ -10,6 +10,7 @@ import MediaInput from '@/components/ui/input/mediaInput';
 import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
 import MediaViewerModal from '@/components/ui/chat/MediaViewerModal';
 import InfoList from '@/components/ui/appList';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import { colors } from '@/constants/colors';
 import { TOP_INSET_EXTRA } from '@/constants/layout';
@@ -49,6 +50,7 @@ export default function StepTwo() {
     const [scrollEnabled, setScrollEnabled] = useState(true);
 
     const insets = useSafeAreaInsets();
+    const footerPadding = useStickyFooterPadding(2);
 
     const openGallery = async () => {
         const availableSlots = MAX_PHOTOS - photos.length;
@@ -130,8 +132,9 @@ export default function StepTwo() {
 
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + TOP_INSET_EXTRA, paddingBottom: footerPadding }]}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
     >
@@ -163,10 +166,16 @@ export default function StepTwo() {
                         onDelete={confirmDeletePhoto}
                         onReorder={setPhotos}
                         onDragStateChange={(dragging) => setScrollEnabled(!dragging)}
+                        mainLabel="Main"
                         onPressPhoto={(photo) =>
                             setViewerMedia({ type: 'image', url: photo.previewUri ?? photo.uri })
                         }
                     />
+                )}
+                {photos.length > 0 && (
+                    <AppText variant="body-xsm" style={styles.helperText}>
+                        Long-press and drag to reorder. The first photo is your cover photo.
+                    </AppText>
                 )}
                 {!!error && (
                     <AppText
@@ -180,24 +189,21 @@ export default function StepTwo() {
                 )}
             </View>
         </View>
-        <View style={styles.buttonContainer}>
-            <View style={{ flex: 1 }}>
-                <AppButton
-                    text="Cancel"
-                    type="secondary"
-                    onPress={confirmExit}
-                />
-            </View>
-            <View style={{ flex: 1 }}>
-                <AppButton text="Continue" onPress={continueToNextStep}/>
-            </View>
-        </View>
         <MediaViewerModal
             media={viewerMedia}
             items={photos.map((p) => ({ type: 'image', url: p.previewUri ?? p.uri }))}
             onClose={() => setViewerMedia(null)}
         />
     </ScrollView>
+    <StickyFooter>
+        <AppButton text="Continue" onPress={continueToNextStep}/>
+        <AppButton
+            text="Cancel"
+            type="secondary"
+            onPress={confirmExit}
+        />
+    </StickyFooter>
+    </View>
   );
 }
 
@@ -207,17 +213,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === 'ios' ? 50 : 16,
   },
-  buttonContainer:{
-    width: '100%',
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 24,
-  },
   titleContainer:{
     alignItems: 'center',
     gap: 8,
   },
   errorText: {
     marginTop: 8,
+  },
+  helperText: {
+    marginTop: 10,
+    color: colors.semantic.text.tertiary,
   },
 });

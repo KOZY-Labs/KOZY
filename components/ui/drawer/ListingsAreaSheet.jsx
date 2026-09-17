@@ -1,7 +1,7 @@
 // Bottom sheet listing every result inside a tapped map marker (a single pin or a
 // grouped cluster). Used by the search preview map and the full-screen map so a
 // marker tap previews the area's listings instead of navigating away.
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from '@gorhom/bottom-sheet';
@@ -13,6 +13,8 @@ import { colors } from '@/constants/colors';
 const ListingsAreaSheet = forwardRef(({ listings = [], onPressListing, onClose }, ref) => {
   const insets = useSafeAreaInsets();
   const count = listings.length;
+  // One inline preview at a time (see ResultVideoCard).
+  const [previewId, setPreviewId] = useState(null);
 
   // Fixed snap points on purpose: deriving them from `count` reconfigured the
   // sheet mid-open (0 → N changes the array), which fired a spurious onClose and
@@ -37,12 +39,11 @@ const ListingsAreaSheet = forwardRef(({ listings = [], onPressListing, onClose }
         />
       )}
     >
-      {/* Windowed list: each card mounts an autoplaying video player, so a dense
-          cluster (30+ leaves) must only mount the cards actually near the viewport —
-          never the whole set at once. Rendered unconditionally (empty data mounts no
-          cards): gating it on count>0 made the very first open mount the content and
-          snap in the same pass, and the snap was dropped — the first pin tap did
-          nothing until a second tap. */}
+      {/* Windowed list so a dense cluster (30+ leaves) only mounts cards near the
+          viewport. Rendered unconditionally (empty data mounts no cards): gating it
+          on count>0 made the very first open mount the content and snap in the same
+          pass, and the snap was dropped — the first pin tap did nothing until a
+          second tap. */}
       <BottomSheetFlatList
           data={listings}
           keyExtractor={(item) => item.id}
@@ -60,7 +61,15 @@ const ListingsAreaSheet = forwardRef(({ listings = [], onPressListing, onClose }
             </AppText>
           }
           renderItem={({ item }) => (
-            <ResultVideoCard item={item} onPress={() => onPressListing?.(item)} />
+            <ResultVideoCard
+              item={item}
+              previewing={previewId === item.id}
+              onTogglePreview={() => setPreviewId((current) => (current === item.id ? null : item.id))}
+              onPress={() => {
+                setPreviewId(null);
+                onPressListing?.(item);
+              }}
+            />
           )}
         />
     </BottomSheet>

@@ -106,6 +106,25 @@ export const semanticColors = {
       },
     },
 
+    // Destructive CTAs (delete account) — red so they can't be mistaken for Save.
+    danger: {
+      normal: {
+        bg: baseColors.warning,
+        text: baseColors.white,
+        border: 'transparent',
+      },
+      pressed: {
+        bg: baseColors.warning,
+        text: baseColors.white,
+        border: 'transparent',
+      },
+      disabled: {
+        bg: baseColors.gray500Alpha,
+        text: baseColors.black,
+        border: '#3f3f3fff',
+      },
+    },
+
     bare: {
       normal: {
         bg: 'transparent',

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router  } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 
@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { draftToPreview, normalizeDraft, ownerFromProfile } from '@/lib/listingDraft';
 import { createListing, updateListing, deleteListing } from '@/lib/db/listings';
 import { uploadListingImages, uploadListingVideo } from '@/lib/utils/uploadMedia';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import AppButton from '@/components/ui/appButton';
 import ListingDetailBody from '@/components/ui/listingDetailBody';
 import { showAlertModal } from '@/components/ui/confirmModalHost';
@@ -45,6 +46,7 @@ function findDraftProblem(draft) {
 }
 
 export default function PreviewListing() {
+  const footerPadding = useStickyFooterPadding(2);
   const { draft, editingId, returnTo, resetDraft } = useListingDraft();
   const { profile, uid } = useAuth();
   const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
@@ -206,27 +208,28 @@ export default function PreviewListing() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={[styles.container, { paddingBottom: footerPadding }]}
           keyboardShouldPersistTaps="handled"
         >
           <ListingDetailBody listing={item} />
-          <AppButton
-            text="Edit Listing"
-            type="secondary"
-            style={{ marginBottom: 10 }}
-            onPress={() => {router.push({
-              pathname: '/(tabs)/post/stepOne',
-              params: { id: item.id }
-            })}}
-          />
-          <AppButton
-            text={isEditing ? 'Save Changes' : 'Confirm & Publish'}
-            type="primary"
-            loading={publishing}
-            loadingLabel={isEditing ? 'Saving' : 'Publishing'}
-            onPress={isEditing ? handleUpdate : handlePublish}
-          />
         </ScrollView>
+      <StickyFooter>
+        <AppButton
+          text={isEditing ? 'Save Changes' : 'Confirm & Publish'}
+          type="primary"
+          loading={publishing}
+          loadingLabel={isEditing ? 'Saving' : 'Publishing'}
+          onPress={isEditing ? handleUpdate : handlePublish}
+        />
+        <AppButton
+          text="Edit Listing"
+          type="secondary"
+          onPress={() => {router.push({
+            pathname: '/(tabs)/post/stepOne',
+            params: { id: item.id }
+          })}}
+        />
+      </StickyFooter>
 
       {/* Blocks every touch while media streams to Storage; the bar tracks real bytes. */}
       {publishing && (
@@ -251,7 +254,6 @@ const styles = StyleSheet.create({
   container: { 
     backgroundColor: 'black', 
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 50 : 16,
     overflow: 'hidden'
   },
   center: {

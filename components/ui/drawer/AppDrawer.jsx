@@ -16,6 +16,7 @@ const AppDrawer = forwardRef(
       primaryAction,
       secondaryAction,
       primaryActionText,
+      primaryType = 'primary', // AppButton type for the primary CTA (e.g. 'danger')
       secondaryActionText,
       description,
       align,
@@ -67,7 +68,7 @@ const AppDrawer = forwardRef(
                   <AppButton
                     text={primaryActionText || "Save"}
                     onPress={primaryAction}
-                    type="primary"
+                    type={primaryType}
                     state={primaryDisabled ? "disabled" : "normal"}
                   />
               </View>

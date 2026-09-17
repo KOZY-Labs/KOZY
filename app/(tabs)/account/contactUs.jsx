@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { Platform, StyleSheet, View, KeyboardAvoidingView, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import AppButton from '@/components/ui/appButton';
@@ -12,13 +11,14 @@ import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { useAuth } from '@/context/AuthContext';
 import { createReport } from '@/lib/db/reports';
 import { showAuthGate } from '@/lib/authGate';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // General contact form only. Listing/user reports go through the report drawer
 // (components/ui/reportDrawerHost.jsx) — they no longer route here.
 export default function ContactUs() {
-    const insets = useSafeAreaInsets();
+    const footerPadding = useStickyFooterPadding();
     const { user, uid, profile } = useAuth();
 
     // Prefill from the profile once at mount — the live users-doc subscription keeps the
@@ -100,7 +100,7 @@ export default function ContactUs() {
         >
         <ScrollView
             // Bottom clearance from insets — the floating tab bar overlays this screen.
-            contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 92 }]}
+            contentContainerStyle={[styles.container, { paddingBottom: footerPadding }]}
             keyboardShouldPersistTaps="handled"
         >
         <DisplayField
@@ -147,18 +147,18 @@ export default function ContactUs() {
                     />
                 </FormField>
             </View>
-            <View style={styles.buttonContainer}>
-                <AppButton
-                    text="Send Message"
-                    size="lg"
-                    type='primary'
-                    loading={submitting}
-                    onPress={handleSubmit}
-                />
-            </View>
         </View>
         </ScrollView>
         </KeyboardAvoidingView>
+        <StickyFooter>
+            <AppButton
+                text="Send Message"
+                size="lg"
+                type='primary'
+                loading={submitting}
+                onPress={handleSubmit}
+            />
+        </StickyFooter>
     </View>
   );
 }
@@ -173,10 +173,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     paddingHorizontal: 16,
     paddingTop: 20,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
   },
   formField: {
     flex: 1,

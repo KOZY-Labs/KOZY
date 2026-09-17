@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View, FlatList } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View, FlatList } from 'react-native';
 import { router, useNavigation, useLocalSearchParams } from 'expo-router';
-import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {
   startPersonaVerification,
@@ -23,7 +23,8 @@ import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
 import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHost';
 import ErrorMessage from '@/components/ui/form/errorMessage';
-import AddedPhotoGrid from '@/components/ui/input/addedPhotoGrid';
+import { avatarSource } from '@/lib/avatar';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import MediaViewerModal from '@/components/ui/chat/MediaViewerModal';
 import validateImage from '@/utils/mediaValidation';
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from '@/lib/dob.mjs';
@@ -33,20 +34,19 @@ import {
   SEARCH_LIFESTYLE_OPTIONS,
   DISPLAY_NAME_MIN_LEN,
   DISPLAY_NAME_MAX_LEN,
+  LEGAL_NAME_MAX_LEN,
 } from '@/constants/data';
 import { useAuth } from '@/context/AuthContext';
 import { updateUserDoc } from '@/lib/db/users';
 import { syncProfileCaches } from '@/lib/db/profileSync';
 import { trustLevelFor } from '@/lib/trustLevel.mjs';
 import { uploadUserAvatar } from '@/lib/utils/uploadMedia';
-import { requestEmailChange } from '@/lib/auth';
-import { authErrorMessage } from '@/lib/auth/errors';
+import { openTerms } from '@/lib/links';
 
 
 // Single photo: only the first avatar entry is ever shown anywhere in the app,
 // so the profile keeps exactly one. Legacy 3-photo profiles show (and keep) just
 // the first; saving persists only that one.
-const MAX_PHOTOS = 1;
 
 // Verification-flow announcements fire right as the Persona auth-session browser is
 // closing. On iOS, presenting an RN Modal while that view controller is still
@@ -103,10 +103,11 @@ export default function EditProfile() {
 function EditProfileForm() {
     const { profile, uid } = useAuth();
     const { focus, backTo } = useLocalSearchParams();
+    const footerPadding = useStickyFooterPadding();
     // Sliced to the photo cap so a legacy multi-photo profile doesn't read as
     // "dirty" (and prompt to discard) before the user touches anything.
     const existingAvatar = useMemo(
-      () => (profile?.avatar ?? []).slice(0, MAX_PHOTOS),
+      () => (profile?.avatar ?? []).slice(0, 1),
       [profile?.avatar]
     );
     const genderDrawerRef = useRef(null);
@@ -115,8 +116,6 @@ function EditProfileForm() {
     const lifestyleDrawerRef = useRef(null);
     const aboutMeDrawerRef = useRef(null);
     const myVerificationDrawerRef = useRef(null);
-    const emailEditDrawerRef = useRef(null);
-    const emailCheckDrawerRef = useRef(null);
     // Public display name — never locked (unlike the legal name below).
     const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
     const [firstName, setFirstName] = useState(profile?.firstName ?? '');
@@ -133,14 +132,11 @@ function EditProfileForm() {
     // second state would only invite the two drifting apart (e.g. an admin flip or a
     // Persona webhook landing mid-session).
     const verified = !!profile?.verified;
-    // Locked per field, not per account: a verified user whose stored field is still
-    // blank (legacy signup data) must be able to fill it in, or the profile gate
-    // would send them here forever with nothing editable.
-    const identityLocked = {
-      firstName: verified && !!profile?.firstName?.trim(),
-      lastName: verified && !!profile?.lastName?.trim(),
-      dob: verified && !!profile?.dob?.trim?.(),
-    };
+    // All-or-nothing: verification locks the whole legal identity. (A verified doc
+    // with a blank identity field can't happen through the app; if data ever does,
+    // it's fixed with an admin script, not per-field UI.)
+    const identityLocked = { firstName: verified, lastName: verified, dob: verified };
+    const [identityExpanded, setIdentityExpanded] = useState(false);
     const [verifying, setVerifying] = useState(false);
     // When a Persona inquiry was just submitted (module-level flag — the deep-link
     // return remounts this screen) and the webhook flips users.verified (via the
@@ -159,11 +155,6 @@ function EditProfileForm() {
         });
       }
     }, [verified, verifying]);
-    const [newEmail, setNewEmail] = useState('');
-    const [emailPassword, setEmailPassword] = useState('');
-    const [showEmailPassword, setShowEmailPassword] = useState(false);
-    const [emailError, setEmailError] = useState(null);
-    const [changingEmail, setChangingEmail] = useState(false);
     // Unified photo list: existing avatar URLs carry `remoteUrl`; new picks are local assets.
     const [photos, setPhotos] = useState(() =>
       existingAvatar.map((url) => ({ uri: url, remoteUrl: url }))
@@ -404,7 +395,11 @@ function EditProfileForm() {
     // opens the verified drawer. Cleared below on cancel/failure.
     setAwaitingVerification(true);
     try {
-      const result = await startPersonaVerification(uid);
+      const result = await startPersonaVerification(uid, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        dob,
+      });
       if (result.type === 'completed' || result.type === 'pending') {
         // `verified` / `persona` / trustLevel 3 are server-only now: the
         // Persona webhook (functions/src/personaWebhook.js) writes them via the Admin
@@ -448,37 +443,8 @@ function EditProfileForm() {
     }
   };
 
-  const handleEmailChange = async () => {
-    const email = newEmail.trim();
-    if (!email || !email.includes('@')) {
-      setEmailError('Enter a valid email address.');
-      return;
-    }
-    if (!emailPassword) {
-      setEmailError('Enter your current password.');
-      return;
-    }
-    setChangingEmail(true);
-    setEmailError(null);
-    try {
-      await requestEmailChange(email, emailPassword);
-      emailEditDrawerRef.current?.close();
-      emailCheckDrawerRef.current?.snapToIndex(0);
-      setNewEmail('');
-      setEmailPassword('');
-    } catch (e) {
-      setEmailError(authErrorMessage(e));
-    } finally {
-      setChangingEmail(false);
-    }
-  };
-
+  // Picks (or replaces) the single profile photo.
   const addPhoto = async () => {
-    if (photos.length >= MAX_PHOTOS) {
-      setPhotoError('You can upload one profile photo. Remove the current one first.');
-      return;
-    }
-
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -499,27 +465,69 @@ function EditProfileForm() {
         return;
       }
 
-      // Duplicate uris crash the draggable grid (duplicate keys) — drop them and say so.
-      const existingUris = new Set(photos.map((p) => p.uri));
-      const fresh = result.assets.filter((asset) => !existingUris.has(asset.uri));
-      setPhotos((prev) => [...prev, ...fresh].slice(0, MAX_PHOTOS));
-      setPhotoError(
-        fresh.length < result.assets.length ? 'That photo is already added.' : null
-      );
+      setPhotos([result.assets[0]]);
+      setPhotoError(null);
     } catch {
       showAlertModal({ title: 'Unable to open gallery', message: 'Please try selecting your photos again.' });
     }
   };
 
-  const removePhoto = (index) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  const removePhoto = () => {
+    setPhotos([]);
     setPhotoError(null);
   };
 
-  // Photo drag-to-reorder shares AddedPhotoGrid (react-native-draggable-grid,
-  // the setup proven in JOOPI). The outer list must stop scrolling during a drag.
-  const [photoScrollEnabled, setPhotoScrollEnabled] = useState(true);
+  const avatar = photos[0] ?? null;
+  const avatarUri = avatar ? avatar.previewUri ?? avatar.uri : null;
+  const handleAvatarMenu = () => {
+    showConfirmModal({
+      title: 'Profile photo',
+      primaryText: 'Change photo',
+      secondaryText: 'Remove photo',
+      tertiaryText: 'Cancel',
+      onPrimary: addPhoto,
+      onSecondary: removePhoto,
+    });
+  };
 
+
+  // Legal identity fields, rendered in two places: inline inputs while unverified,
+  // or read-only under the ID Verification row once verified.
+  const identityFields = [
+    { key: 'firstName', label: 'Legal First Name', value: firstName, set: setFirstName, placeholder: 'Legal First Name', maxLength: LEGAL_NAME_MAX_LEN, suffixText: `${firstName.length}/${LEGAL_NAME_MAX_LEN}` },
+    { key: 'lastName', label: 'Legal Last Name', value: lastName, set: setLastName, placeholder: 'Legal Last Name', maxLength: LEGAL_NAME_MAX_LEN, suffixText: `${lastName.length}/${LEGAL_NAME_MAX_LEN}` },
+    {
+      key: 'dob',
+      label: 'Date of Birth',
+      value: dob,
+      set: (text) => setDob(formatDob(text)),
+      placeholder: 'MM/DD/YYYY',
+      keyboardType: 'number-pad',
+      maxLength: 10,
+    },
+  ].map(({ key, label, value, set, ...inputProps }) =>
+    identityLocked[key] ? (
+      <FormField key={key} label={label}>
+        <DisplayInput
+          value={value}
+          rightIcon={<Feather name="lock" size={16} color={colors.semantic.text.disabled} />}
+          accessibilityLabel={`${label} (locked after verification)`}
+        />
+      </FormField>
+    ) : (
+      <FormField key={key} label={label} error={errors[key]}>
+        <TextField
+          value={value}
+          error={!!errors[key]}
+          onChangeText={(text) => {
+            set(text);
+            clearFieldError(key);
+          }}
+          {...inputProps}
+        />
+      </FormField>
+    )
+  );
 
   return (
     <View style={{ flex: 1, overflow: 'visible' }}>
@@ -527,33 +535,59 @@ function EditProfileForm() {
         data={[{ key: 'content' }]}
         keyExtractor={(item) => item.key}
         keyboardShouldPersistTaps="always"
-        scrollEnabled={photoScrollEnabled}
         // Native keyboard insets: the focused field scrolls into view instead of
         // being covered (same pattern as stepOne).
         automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{ paddingBottom: footerPadding }}
         renderItem={() => (
           <View style={styles.container}>
-            <View style={[styles.sliderContainer, { paddingVertical: 20 }]}>
-              {/* Single profile photo (the avatar) — tap + to add, X to remove. */}
-              <AddedPhotoGrid
-                photos={photos.map((p, i) => ({ ...p, id: p.uri ?? `photo-${i}` }))}
-                maxPhotos={MAX_PHOTOS}
-                onAdd={addPhoto}
-                onDelete={(photo) =>
-                  removePhoto(photos.findIndex((p) => p.uri === photo.uri))
-                }
-                onReorder={setPhotos}
-                onDragStateChange={(dragging) => setPhotoScrollEnabled(!dragging)}
-                onPressPhoto={(photo) =>
-                  setViewerMedia({ type: 'image', url: photo.previewUri ?? photo.uri })
-                }
-              />
+            {/* Avatar preview exactly as other members see it — round frame plus the
+                verified badge — with tap-to-view and a change/remove menu. */}
+            <View style={styles.avatarSection}>
+              <View>
+                <Pressable
+                  onPress={avatarUri ? () => setViewerMedia({ type: 'image', url: avatarUri }) : addPhoto}
+                  accessibilityRole="button"
+                  accessibilityLabel={avatarUri ? 'View profile photo' : 'Add profile photo'}
+                >
+                  <Image source={avatarSource(avatarUri)} style={styles.avatar} />
+                </Pressable>
+                {verified ? (
+                  <View style={styles.avatarBadge} accessibilityLabel="Verified">
+                    <Feather name="check-circle" size={18} color={colors.base.success} />
+                  </View>
+                ) : null}
+              </View>
+              <Pressable
+                onPress={avatarUri ? handleAvatarMenu : addPhoto}
+                accessibilityRole="button"
+                hitSlop={8}
+              >
+                <AppText variant="body-sm-strong" style={styles.avatarAction}>
+                  {avatarUri ? 'Edit photo' : 'Add photo'}
+                </AppText>
+              </Pressable>
               {photoError ? <ErrorMessage message={photoError} /> : null}
             </View>
             {/* Help Text */}
-            <DisplayField title="My Profile" style={{ marginBottom: 16 }}>
+            <DisplayField style={{ marginBottom: 8 }}>
               Keeping your ID, photo, and profile details up to date helps us build trust in the KOZY community.
             </DisplayField>
+            {/* The ID Verification row sits at the bottom of a long form — surface the
+                nudge up here where new users actually look. */}
+            {!verified ? (
+              <Pressable
+                onPress={() => myVerificationDrawerRef.current?.snapToIndex(0)}
+                accessibilityRole="button"
+                style={styles.verifyNudge}
+              >
+                <Feather name="shield" size={16} color={colors.base.success} />
+                <AppText variant="body-xsm" style={styles.verifyNudgeText}>
+                  Verify your identity to earn the Verified badge
+                </AppText>
+                <Feather name="chevron-right" size={16} color={colors.base.success} />
+              </Pressable>
+            ) : null}
 
             {/* Display name — public, always editable. */}
             <FormField label="Display Name" error={errors.displayName}>
@@ -562,6 +596,7 @@ function EditProfileForm() {
                 error={!!errors.displayName}
                 placeholder="Display Name"
                 maxLength={DISPLAY_NAME_MAX_LEN}
+                suffixText={`${displayName.length}/${DISPLAY_NAME_MAX_LEN}`}
                 onChangeText={(text) => {
                   setDisplayName(text);
                   clearFieldError('displayName');
@@ -572,49 +607,10 @@ function EditProfileForm() {
               This is the name other KOZY members will see.
             </AppText>
 
-            {/* Legal identity — used only for verification, never shown publicly. Each
-                field is editable until Persona verification locks it. Fields still
-                blank at verification time stay editable (legacy data). */}
-            {[
-              { key: 'firstName', label: 'Legal First Name', value: firstName, set: setFirstName, placeholder: 'Legal First Name' },
-              { key: 'lastName', label: 'Legal Last Name', value: lastName, set: setLastName, placeholder: 'Legal Last Name' },
-              {
-                key: 'dob',
-                label: 'Date of Birth',
-                value: dob,
-                set: (text) => setDob(formatDob(text)),
-                placeholder: 'MM/DD/YYYY',
-                keyboardType: 'number-pad',
-                maxLength: 10,
-              },
-            ].map(({ key, label, value, set, ...inputProps }) =>
-              identityLocked[key] ? (
-                <FormField key={key} label={label}>
-                  <DisplayInput
-                    value={value}
-                    rightIcon={<Feather name="lock" size={16} color={colors.semantic.text.disabled} />}
-                    accessibilityLabel={`${label} (locked after verification)`}
-                  />
-                </FormField>
-              ) : (
-                <FormField key={key} label={label} error={errors[key]}>
-                  <TextField
-                    value={value}
-                    error={!!errors[key]}
-                    onChangeText={(text) => {
-                      set(text);
-                      clearFieldError(key);
-                    }}
-                    {...inputProps}
-                  />
-                </FormField>
-              )
-            )}
-            {verified ? (
-              <AppText variant="body-xsm" style={styles.lockedCaption}>
-                Verified via Persona — your legal name and date of birth can no longer be edited.
-              </AppText>
-            ) : null}
+            {/* Legal identity — used only for verification, never shown publicly.
+                Editable until Persona verification locks it; once verified the fields
+                move under the ID Verification row (tap to expand, read-only). */}
+            {!verified ? identityFields : null}
             <FormField label="Gender">
               <DisplayInput
                 value={gender}
@@ -656,7 +652,14 @@ function EditProfileForm() {
                 onPress={() => aboutMeDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
-            <View style={styles.idVerificationContainer}>
+            {/* Verified: the row itself expands to show the locked legal identity. */}
+            <Pressable
+              style={styles.idVerificationContainer}
+              onPress={verified ? () => setIdentityExpanded((v) => !v) : undefined}
+              disabled={!verified}
+              accessibilityRole={verified ? 'button' : undefined}
+              accessibilityState={verified ? { expanded: identityExpanded } : undefined}
+            >
               <AppText variant="body-sm-strong" color="primary">
                 ID Verification
               </AppText>
@@ -666,6 +669,12 @@ function EditProfileForm() {
                   <AppText variant="body-sm-strong" style={{ color: colors.base.success }}>
                     Verified
                   </AppText>
+                  <Feather
+                    name={identityExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={colors.semantic.text.primary}
+                    style={{ marginLeft: 6 }}
+                  />
                 </View>
               ) : (
                 <View style={{ width: 92 }}>
@@ -679,34 +688,27 @@ function EditProfileForm() {
                   />
                 </View>
               )}
-            </View>
-            <View style={styles.emailContainer}>
-              <FormField label="My Email" style={styles.emailField}>
-                <DisplayInput
-                  value={profile?.email}
-                  placeholder="Please Verify your email."
-                />
-              </FormField>
-              <View style={styles.emailButtonContainer}>
-                  <AppButton
-                    text="Edit Email"
-                    size="sm"
-                    type='primary'
-                    onPress={() => emailEditDrawerRef.current?.snapToIndex(0)}
-                  />
-                </View>
-            </View>
-            <View style={{ marginTop: 32 }}>
-              <AppButton
-                text="Save Changes"
-                loading={saving}
-                loadingLabel="Saving"
-                onPress={saveProfile}
-              />
-            </View>
+            </Pressable>
+            {verified && identityExpanded ? (
+              <View style={styles.identityExpanded}>
+                {identityFields}
+                <AppText variant="body-xsm" style={styles.lockedCaption}>
+                  Verified via Persona — your legal name and date of birth can no longer be edited.
+                </AppText>
+              </View>
+            ) : null}
           </View>
         )}
       />
+      <StickyFooter>
+        <AppButton
+          text="Save Changes"
+          loading={saving}
+          loadingLabel="Saving"
+          state={isDirty ? 'normal' : 'disabled'}
+          onPress={saveProfile}
+        />
+      </StickyFooter>
       {/* Drawers */}
       <AppDrawer
             ref={genderDrawerRef}
@@ -785,88 +787,29 @@ function EditProfileForm() {
             primaryActionText="Start Verification"
             primaryAction={handleStartVerification}
           >
-            <AppText variant='body-xsm' style={{ marginBottom: 16, textAlign: 'center' }}>
-              For security and trust, please verify your identity. This only takes a few minutes.
+            <AppText variant='body-xsm' style={{ marginBottom: 12, textAlign: 'center' }}>
+              Help keep the KOZY community safe by verifying your identity.
+            </AppText>
+            <AppText variant='body-xsm' style={{ marginBottom: 12, textAlign: 'center' }}>
+              Your legal name and date of birth are used only for verification and will
+              not be shown publicly. To change verified details later, contact us.
             </AppText>
             {/* Verification saves and permanently locks these values — show exactly
                 what will be locked so unsaved edits can't slip through unseen. */}
-            <AppText variant='body-sm-strong' style={{ marginBottom: 16, textAlign: 'center' }}>
+            <AppText variant='body-sm-strong' style={{ marginBottom: 12, textAlign: 'center' }}>
               This will be locked as:{'\n'}{firstName.trim()} {lastName.trim()}, born {dob}
             </AppText>
             <AppText variant='body-xsm' style={{ textAlign: 'center' }}>
-            *We use Persona to securely verify your ID.
+              Verification is securely provided by Persona. You may see a system prompt
+              — tap Continue to open Persona.
             </AppText>
-      </AppDrawer>
-      <AppDrawer
-            ref={emailEditDrawerRef}
-            title="Update email address"
-            align="center"
-            description="Enter your new email and current password"
-            primaryActionText={changingEmail ? 'Sending...' : 'Send Verification Link'}
-            primaryAction={handleEmailChange}
-          >
-            <View>
-              <AppText variant='body-xsm'>
-                ✶ We’ll send a verification link to your new email.
+            <Pressable onPress={openTerms} accessibilityRole="link" hitSlop={8} style={{ marginTop: 12 }}>
+              <AppText variant='body-xsm' style={{ textAlign: 'center', textDecorationLine: 'underline' }}>
+                Terms of Service
               </AppText>
-              <AppText variant='body-xsm'>
-                ✶ Your login email changes only after you open that link.
-              </AppText>
-            </View>
-            <View style={{ marginTop: 32 }}>
-              <FormField label="" error={emailError}>
-                <InputRow>
-                  <TextField
-                    placeholder="New email address"
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    error={!!emailError}
-                    value={newEmail}
-                    onChangeText={(text) => {
-                      setNewEmail(text);
-                      setEmailError(null);
-                    }}
-                  />
-                </InputRow>
-              </FormField>
-              <FormField label="">
-                <InputRow>
-                  <TextField
-                    placeholder="Current password"
-                    secureTextEntry={!showEmailPassword}
-                    autoCapitalize="none"
-                    rightIcon={
-                      <MaterialIcons
-                        name={showEmailPassword ? 'visibility-off' : 'visibility'}
-                        size={20}
-                        color={colors.semantic.input.textDisabled}
-                      />
-                    }
-                    onRightIconPress={() => setShowEmailPassword((value) => !value)}
-                    rightIconAccessibilityLabel={showEmailPassword ? 'Hide password' : 'Show password'}
-                    error={!!emailError}
-                    value={emailPassword}
-                    onChangeText={(text) => {
-                      setEmailPassword(text);
-                      setEmailError(null);
-                    }}
-                  />
-                </InputRow>
-              </FormField>
-            </View>
+            </Pressable>
       </AppDrawer>
       <MediaViewerModal media={viewerMedia} onClose={() => setViewerMedia(null)} />
-      <AppDrawer
-            ref={emailCheckDrawerRef}
-            title="Check your inbox"
-            align="center"
-            description="We’ve sent a verification link to your new email. Open it to finish the change, then log in again with your new email."
-            primaryActionText="Done"
-            primaryAction={() => {
-              emailCheckDrawerRef.current?.close()
-            }}
-          >
-      </AppDrawer>
     </View>
   );
 }
@@ -875,7 +818,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'black',
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 50 : 16,
   },
   loadingContainer: {
     flex: 1,
@@ -886,6 +828,16 @@ const styles = StyleSheet.create({
   lockedCaption: {
     color: colors.semantic.text.disabled,
     marginBottom: 20,
+  },
+  verifyNudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  verifyNudgeText: {
+    flex: 1,
+    color: colors.base.success,
   },
   fieldCaption: {
     color: colors.semantic.text.disabled,
@@ -926,53 +878,36 @@ const styles = StyleSheet.create({
     borderBottomWidth:1,
     borderColor: colors.semantic.input.border.normal.color,
   },
-  emailContainer:{
-    width: '100%',
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-end',
-  },
-  emailField: {
-    flex: 1,
-    minWidth: 0,
-  },
-  emailButtonContainer: {
-    width: 104,
-    flexShrink: 0,
-    marginBottom: 20,
+  identityExpanded: {
+    marginTop: -12,
+    marginBottom: 12,
   },
   image: {
     width: '100%',
     aspectRatio: 1,
     borderRadius: 4,
   },
-  photoDragging: {
-    opacity: 0.75,
-    transform: [{ scale: 1.03 }],
-  },
-  sliderContainer: {
-    position: 'relative',
-  },
-  addTile: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.semantic.input.border.normal.color,
-    backgroundColor: colors.semantic.bg.greyAlpha,
-    justifyContent: 'center',
+  avatarSection: {
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    paddingTop: 20,
   },
-  removePhotoButton: {
+  avatar: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: colors.semantic.bg.grey,
+  },
+  // Same badge treatment as chat list / My Page, scaled to the larger avatar.
+  avatarBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 9999,
+    padding: 3,
+  },
+  avatarAction: {
+    color: colors.base.accent,
   },
 });

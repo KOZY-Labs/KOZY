@@ -19,6 +19,7 @@ import { useListing } from '@/hooks/use-listings';
 import { useListingActions } from '@/hooks/use-listing-actions';
 import { useChatRequest } from '@/hooks/use-chat-request';
 import { useExistingChat } from '@/hooks/use-chats';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 export default function ListingDetailScreen({
   listingId,
@@ -31,6 +32,7 @@ export default function ListingDetailScreen({
   footer = null, // (item) => node — extra content under the body (e.g. Edit Listing)
 }) {
   const insets = useSafeAreaInsets();
+  const footerPadding = useStickyFooterPadding();
   const { uid } = useAuth();
   const { data: item, loading, reload } = useListing(listingId);
   const existingChat = useExistingChat(showChatCta ? listingId : null, uid);
@@ -68,6 +70,10 @@ export default function ListingDetailScreen({
     );
   }
 
+  // No chat CTA on the viewer's own listing.
+  const showChat = showChatCta && uid !== item.ownerId;
+  const hasStickyCta = showChat || !!footer;
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -90,30 +96,35 @@ export default function ListingDetailScreen({
         />
       </View>
       <ScrollView
-        // The floating tab bar (bottom: insets.bottom+10, height 56) overlays the
-        // screen, so the scroll content needs clearance computed from the insets —
-        // a platform-hardcoded value left Android's tail hidden behind the bar.
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 92 }]}
+        contentContainerStyle={[
+          styles.container,
+          { paddingBottom: hasStickyCta ? footerPadding : insets.bottom + 24 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <ListingDetailBody listing={item} />
-        {/* No chat CTA on the viewer's own listing */}
-        {showChatCta && uid !== item.ownerId && (
-          <AppButton
-            text={
-              existingChat
-                ? (existingChat.requestStatus === 'accepted' ? 'Chat in Progress' : 'Chat Request Sent')
-                : 'Send Chat Request'
-            }
-            type="primary"
-            state={existingChat ? 'disabled' : 'normal'}
-            loading={requesting}
-            loadingLabel="Sending request"
-            onPress={sendChatRequest}
-          />
-        )}
-        {footer?.(item)}
       </ScrollView>
+      {/* Primary action pinned to the bottom edge — no scrolling to the end of a
+          long listing to reach it. The tab bar is hidden on every detail route. */}
+      {hasStickyCta ? (
+        <StickyFooter>
+          {showChat ? (
+            <AppButton
+              text={
+                existingChat
+                  ? (existingChat.requestStatus === 'accepted' ? 'Chat in Progress' : 'Chat Request Sent')
+                  : 'Send Chat Request'
+              }
+              type="primary"
+              state={existingChat ? 'disabled' : 'normal'}
+              loading={requesting}
+              loadingLabel="Sending request"
+              onPress={sendChatRequest}
+            />
+          ) : null}
+          {footer?.(item)}
+        </StickyFooter>
+      ) : null}
     </>
   );
 }

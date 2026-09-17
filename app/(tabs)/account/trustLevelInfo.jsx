@@ -1,6 +1,5 @@
 import { router } from "expo-router";
 import { StyleSheet, View, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import AppText from '@/components/ui/appText';
@@ -8,6 +7,7 @@ import AppButton from '@/components/ui/appButton';
 import { colors } from '@/constants/colors';
 import { useAuth } from '@/context/AuthContext';
 import { trustLevelFor } from '@/lib/trustLevel.mjs';
+import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 const BACK_TO = '/(tabs)/account/trustLevelInfo';
 
@@ -61,7 +61,7 @@ const LEVELS = [
 ];
 
 export default function TrustLevelInfo() {
-  const insets = useSafeAreaInsets();
+  const footerPadding = useStickyFooterPadding();
   const { profile } = useAuth();
   const myLevel = trustLevelFor(profile);
 
@@ -72,10 +72,10 @@ export default function TrustLevelInfo() {
     });
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
       style={styles.container}
-      // Bottom clearance from insets — the floating tab bar overlays this screen.
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
+      contentContainerStyle={[styles.content, { paddingBottom: footerPadding }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.intro}>
@@ -146,6 +146,8 @@ export default function TrustLevelInfo() {
         );
       })}
 
+    </ScrollView>
+    <StickyFooter>
       <AppButton
         text="Return to My Page"
         type="secondary"
@@ -154,7 +156,8 @@ export default function TrustLevelInfo() {
           else router.replace('/(tabs)/account');
         }}
       />
-    </ScrollView>
+    </StickyFooter>
+    </View>
   );
 }
 

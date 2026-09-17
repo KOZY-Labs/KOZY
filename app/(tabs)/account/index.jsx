@@ -73,10 +73,17 @@ export default function AccountScreen() {
             accessibilityLabel="Edit profile"
             onPress={() => router.push("/(tabs)/account/editProfile")}
           >
-            <Image
-              source={avatarSource(currUser?.avatar)}
-              style={{ width: 55, height: 55, borderRadius: 999 }}
-            />
+            <View>
+              <Image
+                source={avatarSource(currUser?.avatar)}
+                style={{ width: 55, height: 55, borderRadius: 999 }}
+              />
+              {currUser?.verified ? (
+                <View style={styles.verifiedBadge} accessibilityLabel="Verified">
+                  <Feather name="check-circle" size={14} color={colors.base.success} />
+                </View>
+              ) : null}
+            </View>
             <AppText variant="body-md" color="primary">
               {currUser?.displayName || currUser?.firstName || currUser?.name}
             </AppText>
@@ -87,7 +94,7 @@ export default function AccountScreen() {
         <Pressable onPress={() => router.push("/(tabs)/account/editProfile")}>
           <View style={styles.manuButton}>
             <Feather name="edit" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
               Edit Profile
             </AppText>
           </View>
@@ -95,7 +102,7 @@ export default function AccountScreen() {
         <Pressable onPress={() => router.push("/(tabs)/account/savedList")}>
           <View style={styles.manuButton}>
             <Feather name="bookmark" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
               Saved Listings
             </AppText>
           </View>
@@ -103,7 +110,7 @@ export default function AccountScreen() {
         <Pressable onPress={() => router.push("/(tabs)/account/myListings")}>
           <View style={styles.manuButton}>
             <Feather name="list" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
               My Listings
             </AppText>
           </View>
@@ -161,7 +168,7 @@ export default function AccountScreen() {
         >
           <View style={styles.manuButton}>
             <Feather name="shield" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
               Trust Level
             </AppText>
           </View>
@@ -169,7 +176,7 @@ export default function AccountScreen() {
         <Pressable onPress={openPrivacyPolicy}>
           <View style={styles.manuButton}>
             <Feather name="lock" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
               Privacy Policy
             </AppText>
           </View>
@@ -177,36 +184,28 @@ export default function AccountScreen() {
         <Pressable onPress={() => router.push("/(tabs)/account/contactUs")}>
           <View style={styles.manuButton}>
             <Feather name="mail" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
               Contact Us
             </AppText>
           </View>
         </Pressable>
       </View>
       <View style={styles.manuContainer}>
-        <Pressable
-          onPress={() => router.push("/(tabs)/account/changePassword")}
-        >
+        {/* Email / password / delete live one level down — My Page keeps only the
+            navigational entry and Log Out. */}
+        <Pressable onPress={() => router.push("/(tabs)/account/security")}>
           <View style={styles.manuButton}>
-            <Feather name="key" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
-              Change Password
+            <Feather name="settings" size={20} color="#fff" />
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
+              Account & Security
             </AppText>
           </View>
         </Pressable>
         <Pressable onPress={handleLogout}>
           <View style={styles.manuButton}>
             <Feather name="log-out" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
+            <AppText variant="body-md" color="primary" style={styles.manuLabel}>
               Log Out
-            </AppText>
-          </View>
-        </Pressable>
-        <Pressable onPress={() => router.push("/(tabs)/account/deleteAccount")}>
-          <View style={styles.manuButton}>
-            <Feather name="trash-2" size={20} color="#fff" />
-            <AppText variant="body-md" color="primary">
-              Delete Account
             </AppText>
           </View>
         </Pressable>
@@ -257,9 +256,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12
   },
+  // Android mis-measures some row labels (rendered "Account &", node text intact)
+  // when the Text sizes itself; letting it fill the row sidesteps the measurement.
+  manuLabel: {
+    flex: 1,
+  },
   toggleRow: {
     justifyContent: 'space-between',
     paddingVertical: 6,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 9999,
+    padding: 2,
   },
   toggleLabel: {
     flexDirection: 'row',

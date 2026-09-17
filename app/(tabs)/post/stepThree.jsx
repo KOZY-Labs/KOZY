@@ -311,21 +311,17 @@ export default function StepThree() {
           </Pressable>
 
           <View style={styles.sheetButtons}>
-            <View style={{ flex: 1 }}>
-              <AppButton text="Cancel" type="secondary" onPress={confirmExit} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <AppButton
-                text="Continue"
-                state={selectedVideo ? "normal" : "disabled"}
-                onPress={() => {
-                  if (!selectedVideo) return;
-                  setVideo(selectedVideo);
-                  drawerRef.current?.close();
-                  router.push("post/stepFour");
-                }}
-              />
-            </View>
+            <AppButton
+              text="Continue"
+              state={selectedVideo ? "normal" : "disabled"}
+              onPress={() => {
+                if (!selectedVideo) return;
+                setVideo(selectedVideo);
+                drawerRef.current?.close();
+                router.push("post/stepFour");
+              }}
+            />
+            <AppButton text="Cancel" type="secondary" onPress={confirmExit} />
           </View>
         </View>
       </AppDrawer>
@@ -398,9 +394,9 @@ const styles = StyleSheet.create({
         aspectRatio: 9 / 16,
     },
 
+    // Stacked like every other two-button footer: primary on top.
     sheetButtons: {
         width: '100%',
-        flexDirection: 'row',
         gap: 12,
     },
     replaceButton:{

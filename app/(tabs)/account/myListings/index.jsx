@@ -20,6 +20,8 @@ export default function MyListings() {
   const { uid, profile } = useAuth();
   const { data: listings, loading, reload } = useMyListings(uid);
   const [isEditMode, setIsEditMode] = useState(false);
+  // Which card is inline-previewing (one at a time — see ResultVideoCard).
+  const [previewId, setPreviewId] = useState(null);
 
   // Same gate as the Post tab — this empty state is another entry into the post flow.
   const startNewPost = () => {
@@ -95,7 +97,7 @@ export default function MyListings() {
           />
         )}
       </View>
-      {/* Windowed: each card mounts an autoplaying video player — never all at once. */}
+      {/* Windowed list of static cover cards (see ResultVideoCard). */}
       <FlatList
         data={listings}
         keyExtractor={(item) => item.id}
@@ -113,11 +115,14 @@ export default function MyListings() {
         renderItem={({ item }) => (
           <ResultVideoCard
             item={item}
+            previewing={previewId === item.id}
+            onTogglePreview={() => setPreviewId((current) => (current === item.id ? null : item.id))}
             onPress={() => {
               if (isEditMode) {
                 return;
               }
 
+              setPreviewId(null);
               router.push(`account/myListings/${item.id}`);
             }}
             accessibilityLabel={

@@ -34,14 +34,17 @@ export default function TabLayout() {
   const onHomeSearch = segments.includes('home') && segments.includes('search');
   const onChatSubScreen =
     segments.includes('chat') && segments[segments.length - 1] !== 'chat';
-  const onAccountImmersive =
-    pathname.startsWith('/account/editProfile') ||
-    /^\/account\/(myListings|savedList)\/[^/]+/.test(pathname); // deeper than the list index
+  // Every screen pushed from My Page is a focused task (edit, settings, a list,
+  // a detail) — the bar comes back on Back, same as chat/post sub-screens.
+  const onAccountImmersive = pathname.startsWith('/account/');
+  // Listing detail from the feed — the sticky CTA owns the bottom edge.
+  const onHomeDetail = /^\/home\/[^/]+$/.test(pathname);
   const shouldHideTabBar =
     onPostSubScreen ||
     onHomeSearch ||
     onChatSubScreen ||
     onAccountImmersive ||
+    onHomeDetail ||
     pathname.startsWith('/post/') ||
     pathname.startsWith('/home/search');
 
