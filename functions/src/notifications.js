@@ -20,11 +20,12 @@ const notifyChatRequested = onDocumentCreated(
     const chat = event.data?.data();
     if (!chat?.ownerId) return;
     const name = displayName(chat, chat.requesterId);
+    // Push copy convention (all three chat pushes): title = who, body = what.
     await sendChatPush(chat.ownerId, {
-      title: 'New chat request',
+      title: name,
       body: chat.lastMessage
-        ? `${name}: ${chat.lastMessage}`
-        : `${name} wants to chat about "${chat.listing?.title ?? 'your listing'}"`,
+        ? chat.lastMessage
+        : `Wants to chat about "${chat.listing?.title ?? 'your listing'}"`,
       chatId: event.params.chatId,
     });
   }
@@ -82,8 +83,8 @@ const notifyRequestAccepted = onDocumentUpdated(
     if (after.requestStatus !== 'accepted' || before.requestStatus === 'accepted') return;
     if (!after.requesterId) return;
     await sendChatPush(after.requesterId, {
-      title: 'Chat request accepted',
-      body: `${displayName(after, after.ownerId)} accepted your chat request. Say hi!`,
+      title: displayName(after, after.ownerId),
+      body: 'Accepted your chat request — say hi!',
       chatId: event.params.chatId,
     });
   }
