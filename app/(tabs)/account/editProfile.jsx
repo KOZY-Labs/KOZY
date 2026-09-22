@@ -158,6 +158,18 @@ function EditProfileForm() {
         });
       }
     }, [verified, verifying]);
+    // Server-side identity check failed (ID approved by Persona, but the name or
+    // DOB on it doesn't match this profile). Legal fields stay editable so the
+    // user can correct them and retry.
+    const personaStatus = profile?.persona?.status;
+    useEffect(() => {
+      if (personaStatus === 'mismatch' && !verifying && consumeAwaitingVerification()) {
+        announceVerification({
+          title: 'ID doesn’t match your profile',
+          message: 'Persona finished checking your ID, but the name or date of birth on it doesn’t match your profile. Update your legal name or date of birth to match your ID, then verify again.',
+        });
+      }
+    }, [personaStatus, verifying]);
     // Unified photo list: existing avatar URLs carry `remoteUrl`; new picks are local assets.
     const [photos, setPhotos] = useState(() =>
       existingAvatar.map((url) => ({ uri: url, remoteUrl: url }))

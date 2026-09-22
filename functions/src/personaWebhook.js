@@ -9,6 +9,7 @@ const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const { FieldValue } = require('firebase-admin/firestore');
 const { db } = require('./admin');
+const { extractIdentity, findMismatches } = require('./identityMatch');
 
 const PERSONA_WEBHOOK_SECRET = defineSecret('PERSONA_WEBHOOK_SECRET');
 // Which Persona environment this deployment's webhook/secret belongs to — stamped
@@ -16,6 +17,12 @@ const PERSONA_WEBHOOK_SECRET = defineSecret('PERSONA_WEBHOOK_SECRET');
 // (and resettable) before going live. Set in functions/.env; flip to 'production'
 // together with the production webhook secret (see docs/TODO.md launch checklist).
 const PERSONA_ENVIRONMENT = defineString('PERSONA_ENVIRONMENT', { default: 'sandbox' });
+// Server-side name/DOB match against the ID (functions/src/identityMatch.js).
+// 'off' = trust Persona's approval as-is (current plan: Persona can't compare
+// the ID to our prefilled fields, and we decided to launch without the check).
+// Flip to 'on' + redeploy once the plan upgrade lands if we want a second gate
+// on top of Persona's own Inquiry Comparison check. Set in functions/.env.
+const PERSONA_IDENTITY_MATCH = defineString('PERSONA_IDENTITY_MATCH', { default: 'off' });
 
 // Persona-Signature: "t=<unix>,v1=<hex>[,v1=<hex>...]" — HMAC-SHA256 of "<t>.<rawBody>".
 // Multiple v1 entries appear during secret rotation; any single match passes.
@@ -139,6 +146,31 @@ const personaWebhook = onRequest(
       if (userSnap.data().verified === true) {
         res.status(200).send('already verified');
         return;
+      }
+
+      // Persona approved the ID itself; we still require it to be THIS user's ID.
+      // (Persona's own Inquiry Comparison check is plan-locked — see docs/TODO.md.)
+      // Mismatch → not verified, stamped so the app can tell the user and support
+      // can see why. No ID values are stored, only which fields disagreed.
+      const matchEnabled = PERSONA_IDENTITY_MATCH.value() === 'on';
+      const identity = matchEnabled ? extractIdentity(req.body) : null;
+      const mismatches = identity ? findMismatches(userSnap.data(), identity) : [];
+      if (mismatches.length) {
+        await userRef.update({
+          'persona.status': 'mismatch',
+          'persona.inquiryId': inquiryId,
+          'persona.eventId': eventId,
+          'persona.mismatch': mismatches,
+          'persona.lastFailedAt': FieldValue.serverTimestamp(),
+          'persona.environment': PERSONA_ENVIRONMENT.value(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        logger.warn('personaWebhook: identity mismatch', { uid, inquiryId, mismatches });
+        res.status(200).send('mismatch recorded');
+        return;
+      }
+      if (matchEnabled && !identity) {
+        logger.warn('personaWebhook: no identity attributes in payload, skipping match check', { inquiryId });
       }
 
       await userRef.update({
