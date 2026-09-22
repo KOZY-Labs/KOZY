@@ -18,13 +18,15 @@ import { colors } from '@/constants/colors';
 import { useBrowseListings } from '@/hooks/use-listings';
 import { filterWithCoordinates } from '@/lib/geo/mapRegion';
 import { filterListings } from '@/lib/listingFilters';
-import { SEARCH_ROOM_TYPE_OPTIONS, SEARCH_LIFESTYLE_OPTIONS, GENDER_OPTIONS } from '@/constants/data';
+import { SEARCH_ROOM_TYPE_OPTIONS, SEARCH_LIFESTYLE_OPTIONS, SEARCH_AMENITY_OPTIONS, GENDER_OPTIONS } from '@/constants/data';
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const genderDrawerRef = useRef(null);
   const roomTypeDrawerRef = useRef(null);
   const lifestyleDrawerRef = useRef(null);
+  const amenityDrawerRef = useRef(null);
   const areaSheetRef = useRef(null);
 
   // Listings behind the last-tapped map marker (single pin or grouped cluster).
@@ -44,6 +46,7 @@ export default function SearchScreen() {
   const [gender, setGender] = useState(''); // '' = open to any (no gender filter)
   const [roomTypes, setRoomTypes] = useState([]);
   const [lifestyleMatches, setLifestyleMatches] = useState([]);
+  const [amenities, setAmenities] = useState([]);
 
   const { data: listings } = useBrowseListings();
 
@@ -59,8 +62,9 @@ export default function SearchScreen() {
         gender,
         roomTypes,
         lifestyleMatches,
+        amenities,
       }),
-    [listings, locationQuery, budgetFrom, budgetTo, gender, roomTypes, lifestyleMatches]
+    [listings, locationQuery, budgetFrom, budgetTo, gender, roomTypes, lifestyleMatches, amenities]
   );
 
   // Latest preview-map position — handed off to the full-screen map so it opens in place.
@@ -73,6 +77,7 @@ export default function SearchScreen() {
     gender,
     roomTypes: JSON.stringify(roomTypes),
     lifestyleMatches: JSON.stringify(lifestyleMatches),
+    amenities: JSON.stringify(amenities),
   });
 
   // Marker taps preview the area's listings in a sheet; opening a listing from there
@@ -98,9 +103,10 @@ export default function SearchScreen() {
 
   const handleOpenListing = (listing) => {
     areaSheetRef.current?.close();
+    // The reel pages through the area's listings (swipe up/down) in sheet order.
     router.push({
       pathname: '/home/search/[id]',
-      params: { id: listing.id },
+      params: { id: listing.id, ids: areaListings.map((l) => l.id).join(',') },
     });
   };
 
@@ -151,7 +157,7 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
           scrollEnabled={!mapInteracting}
           renderItem={() => (
-            <>
+            <DismissKeyboard>
           <View style={styles.heroBlock}>
             <SearchSection label="Location">
               <View style={styles.locationInput}>
@@ -272,6 +278,13 @@ export default function SearchScreen() {
                 isMulti
               />
             </FormField>
+            <FormField label="Amenities">
+              <DisplayInput
+                value={amenities}
+                onPress={() => amenityDrawerRef.current?.snapToIndex(0)}
+                isMulti
+              />
+            </FormField>
             <FormField label="Lifestyle Match">
               <DisplayInput
                 value={lifestyleMatches}
@@ -280,7 +293,7 @@ export default function SearchScreen() {
               />
             </FormField>
           </View>
-            </>
+            </DismissKeyboard>
           )}
         />
 
@@ -309,6 +322,20 @@ export default function SearchScreen() {
             items={SEARCH_ROOM_TYPE_OPTIONS}
             value={roomTypes} 
             onChange={setRoomTypes} 
+          />
+        </AppDrawer>
+
+        <AppDrawer
+          ref={amenityDrawerRef}
+          title="Amenities"
+          description={'Only show homes that have all of these\nSelect all that apply'}
+          primaryAction={() => amenityDrawerRef.current?.close()}
+          primaryActionText="Save"
+        >
+          <PillGroup
+            items={SEARCH_AMENITY_OPTIONS}
+            value={amenities}
+            onChange={setAmenities}
           />
         </AppDrawer>
 

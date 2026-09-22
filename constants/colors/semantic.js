@@ -10,12 +10,12 @@ export const semanticColors = {
   },
 
   bottomSheet: {
-    backdrop: 'rgba(0, 0, 0, 0.5)',
+    backdrop: "rgba(0, 0, 0, 0.5)",
     background: baseColors.gray900,
     handleIndicator: baseColors.gray400,
   },
 
-  bg:{
+  bg: {
     white: baseColors.white,
     black: baseColors.black,
     error: baseColors.warning,
@@ -56,17 +56,17 @@ export const semanticColors = {
       normal: {
         bg: baseColors.primary,
         text: baseColors.accent,
-        border: 'transparent',
+        border: "transparent",
       },
       pressed: {
         bg: baseColors.gray500,
         text: baseColors.black,
-        border: 'transparent',
+        border: "transparent",
       },
       disabled: {
-        bg: baseColors.gray500Alpha,
+        bg: baseColors.gray400,
         text: baseColors.black,
-        border: '#3f3f3fff',
+        border: "#3f3f3fff",
       },
     },
 
@@ -82,27 +82,27 @@ export const semanticColors = {
         border: baseColors.bodyInverted,
       },
       disabled: {
-        bg: 'transparent',
+        bg: "transparent",
         text: baseColors.gray700,
-        border: '#3A3A3A',
+        border: "#3A3A3A",
       },
     },
 
     ghost: {
       normal: {
-        bg: 'transparent',
+        bg: "transparent",
         text: baseColors.bodyInverted,
-        border: 'transparent',
+        border: "transparent",
       },
       pressed: {
         bg: baseColors.gray500,
         text: baseColors.bodyInverted,
-        border: 'transparent',
+        border: "transparent",
       },
       disabled: {
-        bg: 'transparent',
+        bg: "transparent",
         text: baseColors.gray700,
-        border: 'transparent',
+        border: "transparent",
       },
     },
 
@@ -111,35 +111,35 @@ export const semanticColors = {
       normal: {
         bg: baseColors.warning,
         text: baseColors.white,
-        border: 'transparent',
+        border: "transparent",
       },
       pressed: {
         bg: baseColors.warning,
         text: baseColors.white,
-        border: 'transparent',
+        border: "transparent",
       },
       disabled: {
-        bg: baseColors.gray500Alpha,
+        bg: baseColors.gray400,
         text: baseColors.black,
-        border: '#3f3f3fff',
+        border: "#3f3f3fff",
       },
     },
 
     bare: {
       normal: {
-        bg: 'transparent',
+        bg: "transparent",
         text: baseColors.bodyInverted,
-        border: 'transparent',
+        border: "transparent",
       },
       pressed: {
-        bg: 'transparent',
+        bg: "transparent",
         text: baseColors.bodyInverted,
-        border: 'transparent',
+        border: "transparent",
       },
       disabled: {
-        bg: 'transparent',
+        bg: "transparent",
         text: baseColors.gray700,
-        border: 'transparent',
+        border: "transparent",
       },
     },
   },

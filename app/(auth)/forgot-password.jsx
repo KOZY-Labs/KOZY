@@ -3,7 +3,7 @@
 // email verification in signUp/verify — no in-app oobCode handling).
 import { useCallback, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
-import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TextField from "@/components/ui/input/textField";
@@ -20,9 +20,13 @@ import { requestPasswordReset } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { showAlertModal } from "@/components/ui/confirmModalHost";
 import useCooldown, { formatCooldown } from "@/hooks/use-cooldown";
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 export default function ForgotPassword() {
   const insets = useSafeAreaInsets();
+  const footerPadding = useStickyFooterPadding(1);
   const [email, setEmail] = useState("");
   const [fieldError, setFieldError] = useState(null);
   const [authError, setAuthError] = useState(null);
@@ -96,17 +100,15 @@ export default function ForgotPassword() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.container}>
+    <View style={styles.container}>
         <LoginBackground />
         <AppHeader showBack onBack={goBackToLogin} />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+        <KeyboardAwareScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: footerPadding }}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={stickyFooterOffset(1) + 24}
         >
+          <DismissKeyboard>
           <View style={[styles.content, { paddingBottom: insets.bottom }]}>
             <View style={styles.topContent}>
               <AppLogo />
@@ -160,35 +162,39 @@ export default function ForgotPassword() {
                   </View>
                 </AuthCard>
               )}
-              {/* Actions sit right under the card (not marooned at the screen
-                  bottom) so the input and its CTA read as one unit. */}
-              <View style={styles.actions}>
-                {authError ? (
-                  <View style={styles.errorPill}>
-                    <ErrorMessage message={authError} />
-                  </View>
-                ) : null}
-                {sent ? (
-                  <AppButton text="Back to Log In" onPress={goBackToLogin} />
-                ) : (
-                  <AppButton
-                    text="Send Reset Link"
-                    loading={submitting}
-                    loadingLabel="Sending"
-                    onPress={handleSend}
-                  />
-                )}
-              </View>
             </View>
             <View style={styles.footerContent} />
           </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+          </DismissKeyboard>
+        </KeyboardAwareScrollView>
+        <StickyFooter style={styles.stickyFooter}>
+          {authError ? (
+            <View style={styles.errorPill}>
+              <ErrorMessage message={authError} />
+            </View>
+          ) : null}
+          {sent ? (
+            <AppButton text="Back to Log In" onPress={goBackToLogin} />
+          ) : (
+            <AppButton
+              text="Send Reset Link"
+              loading={submitting}
+              loadingLabel="Sending"
+              state={email.trim() ? 'normal' : 'disabled'}
+              onPress={handleSend}
+            />
+          )}
+        </StickyFooter>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Brand-blue bar: the white primary button reads on it (white-on-white otherwise)
+  // and it hides content scrolling underneath, like the black footer elsewhere.
+  stickyFooter: {
+    backgroundColor: colors.base.accent,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,

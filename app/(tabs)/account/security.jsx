@@ -228,7 +228,7 @@ export default function AccountSecurity() {
         description="Enter your new email and current password"
         primaryActionText={changingEmail ? 'Sending...' : 'Send Verification Link'}
         primaryAction={handleEmailChange}
-        primaryDisabled={changingEmail}
+        primaryDisabled={changingEmail || !newEmail.trim() || !emailPassword}
       >
         <View>
           <AppText variant="body-xsm">✶ We’ll send a verification link to your new email.</AppText>
@@ -284,7 +284,7 @@ export default function AccountSecurity() {
         description="Enter your current password, then choose a new one. You’ll stay logged in on this device."
         primaryActionText={changingPassword ? 'Updating...' : 'Update Password'}
         primaryAction={handlePasswordChange}
-        primaryDisabled={changingPassword}
+        primaryDisabled={changingPassword || !pw.current || !pw.next || !pw.confirm}
       >
         {pwField('current', 'Current password')}
         {pwField('next', 'New password')}
@@ -299,7 +299,7 @@ export default function AccountSecurity() {
         primaryActionText={deleting ? 'Deleting...' : 'Delete Account'}
         primaryType="danger"
         primaryAction={handleDelete}
-        primaryDisabled={deleting}
+        primaryDisabled={deleting || !deletePassword}
       >
         <FormField label="" error={deleteError} lastField>
           <InputRow>

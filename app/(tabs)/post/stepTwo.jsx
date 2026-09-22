@@ -135,7 +135,7 @@ export default function StepTwo() {
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
     >
-        <View style={{ paddingHorizontal: 24, gap: 40 }}>
+        <View style={{ paddingHorizontal: 24, gap: 20 }}>
             <View style={styles.titleContainer}>
                 <AppText variant='headline-md' color='primary'>Step 2</AppText>
                 <AppText variant='body-md' color='primary' style={{textAlign: 'center'}}>Show your space. Clear photos help others feel confident.</AppText>
@@ -147,6 +147,7 @@ export default function StepTwo() {
                 items={[
                     'Upload at least 3 photos',
                     'Include views of the room, common areas, bathroom, and building (if applicable)',
+                    'Any aspect ratio works — photos show in full on the listing page',
                 ]}
             />
             <View style={{ minHeight: 280, paddingHorizontal: 8 }}>
@@ -193,7 +194,11 @@ export default function StepTwo() {
         />
     </ScrollView>
     <StickyFooter>
-        <AppButton text="Continue" onPress={continueToNextStep}/>
+        <AppButton
+            text="Continue"
+            state={photos.length >= MIN_PHOTOS ? 'normal' : 'disabled'}
+            onPress={continueToNextStep}
+        />
         <AppButton
             text="Cancel"
             type="secondary"

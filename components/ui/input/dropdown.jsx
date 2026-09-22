@@ -4,7 +4,9 @@ import { Picker } from "@react-native-picker/picker";
 import AppText from "@/components/ui/appText";
 import { colors } from "@/constants/colors";
 
-const WHEEL_HEIGHT = 216;
+// 160 shows the selection plus one neighbor each side (3 rows of 44 + breathing
+// room) — the native 216 left a tall empty band in short drawers like gender.
+const WHEEL_HEIGHT = 160;
 const ITEM_HEIGHT = 44;
 // Padding that lets the first/last option reach the center line.
 const WHEEL_PAD = (WHEEL_HEIGHT - ITEM_HEIGHT) / 2;
@@ -103,7 +105,7 @@ export default function Dropdown({ value, options, onChange, style }) {
           onChange?.(next);
         }}
         style={styles.picker}
-        itemStyle={{ color: 'white' }}
+        itemStyle={{ color: 'white', height: WHEEL_HEIGHT }}
       >
         {options.map((o) => (
           <Picker.Item

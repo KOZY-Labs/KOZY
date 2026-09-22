@@ -149,7 +149,10 @@ export default function SavedList() {
               }
 
               setPreviewId(null);
-              router.push(`account/savedList/${item.id}`);
+              router.push({
+                pathname: '/(tabs)/account/savedList/[id]',
+                params: { id: item.id, ids: listings.map((l) => l.id).join(',') },
+              });
             }}
             accessibilityLabel={
               isEditMode ? `Saved listing ${item.title}` : `Open saved listing ${item.title}`

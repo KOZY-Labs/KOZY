@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TextField from "@/components/ui/input/textField";
@@ -15,6 +15,9 @@ import AppHeader from "@/components/ui/appHeader";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { loginWithEmail } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth/errors";
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 export default function Login() {
   const insets = useSafeAreaInsets();
@@ -25,6 +28,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState(null);
 
+  const footerPadding = useStickyFooterPadding(1);
   const [errors, setErrors] = useState({
     email: null,
     password: null,
@@ -73,11 +77,7 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.container}>
+    <View style={styles.container}>
         {/* Background shapes */}
         <LoginBackground />
         <AppHeader
@@ -91,10 +91,12 @@ export default function Login() {
             }
           }}
         />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+        <KeyboardAwareScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: footerPadding }}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={stickyFooterOffset(1) + 24}
         >
+          <DismissKeyboard>
           <View style={[styles.content, { paddingBottom: insets.bottom }]}>
             <View style={styles.topContent}>
               <AppLogo />
@@ -157,38 +159,48 @@ export default function Login() {
                 </View>
               </AuthCard>
             </View>
-            <View style={styles.footerContent}>
-              {authError ? (
-                <View style={styles.errorPill}>
-                  <ErrorMessage message={authError} />
-                </View>
-              ) : null}
-              <AppButton
-                text="Log In"
-                loading={submitting}
-                loadingLabel="Logging in"
-                onPress={handleLogin}
-              />
-
-              <Text style={styles.caption}>
-                Don’t have an account?{" "}
-              </Text>
-              <AppButton
-                type="bare"
-                underline
-                text="Click here to sign up!"
-                onPress={() => router.push("/(auth)/signUp/email")}
-              />
-            </View>
+            <View style={styles.footerContent} />
           </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+          </DismissKeyboard>
+        </KeyboardAwareScrollView>
+        {/* Primary CTA rides above the keyboard (rule 21); links stay in the scroll. */}
+        <StickyFooter style={styles.stickyFooter}>
+          {authError ? (
+            <View style={styles.errorPill}>
+              <ErrorMessage message={authError} />
+            </View>
+          ) : null}
+          <AppButton
+            text="Log In"
+            loading={submitting}
+            loadingLabel="Logging in"
+            state={email.trim() && password ? 'normal' : 'disabled'}
+            onPress={handleLogin}
+          />
+          {/* Account switch lives with the CTA on the blue bar — always the same
+              background, so one text color reads everywhere. */}
+          <Text style={styles.footerCaption}>
+            Don’t have an account?{" "}
+            <Text
+              style={styles.footerLink}
+              onPress={() => router.push("/(auth)/signUp/email")}
+              accessibilityRole="button"
+            >
+              Sign up
+            </Text>
+          </Text>
+        </StickyFooter>
+    </View>
   );
 }
 
 
 const styles = StyleSheet.create({
+  // Brand-blue bar: the white primary button reads on it (white-on-white otherwise)
+  // and it hides content scrolling underneath, like the black footer elsewhere.
+  stickyFooter: {
+    backgroundColor: colors.base.accent,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,
@@ -214,22 +226,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',   
   },
   footerContent: {
-    height: 160,
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 12,
     width: '100%',
   },
-  caption: {
-    width: '80%',
-    fontSize: 10,
-    color: colors.semantic.text.primary,
+  footerCaption: {
+    fontSize: 12,
+    color: colors.base.white,
     textAlign: "center",
   },
-  link: {
-    color: colors.semantic.text.primary,
+  footerLink: {
+    fontWeight: "700",
     textDecorationLine: "underline",
-    textAlign: "center",
   },
   inputGroup: {
     width: '100%',

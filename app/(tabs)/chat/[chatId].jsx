@@ -22,6 +22,7 @@ import {
   chatViewModel,
   sendMessage,
   acceptChat,
+  declineChat,
   clearUnread,
   markMessagesRead,
   blockUserInChats,
@@ -243,6 +244,23 @@ export default function ChatScreen() {
         }
     };
 
+    // Declining is explicit (not just ignoring) so the requester's side flips to
+    // "Chat request declined" instead of sitting in "Request has been sent" forever.
+    const handleDeclineRequest = () =>
+        showConfirmModal({
+            title: 'Decline this chat request?',
+            message: `${vm?.otherInfo?.name ?? 'This user'} won't be able to message you about this listing.`,
+            primaryText: 'Decline',
+            secondaryText: 'Cancel',
+            onPrimary: async () => {
+                try {
+                    await declineChat(threadId);
+                } catch (e) {
+                    showAlertModal({ title: 'Decline failed', message: e?.message ?? 'Please try again.' });
+                }
+            },
+        });
+
     // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 
     useEffect(() => {
@@ -447,23 +465,32 @@ export default function ChatScreen() {
             )}
             <AppText variant="caption" style={{ marginTop: 10, color: '#D9D9D9' }}>{vm.statusLabel}</AppText>
             {vm.canAccept && (
-                <AppButton
-                    text="Accept Chat"
-                    size="sm"
-                    type="secondary"
-                    onPress={() =>
-                        showConfirmModal({
-                            title: 'Have you checked user\'s profile?',
-                            message: 'Review their profile, then accept to start chatting.',
-                            primaryText: 'Accept and Start Chat',
-                            secondaryText: 'View Profile',
-                            tertiaryText: 'Close',
-                            onPrimary: handleAcceptRequest,
-                            onSecondary: openProfile,
-                        })
-                    }
-                    style={styles.acceptButton}
-                />
+                <View style={styles.requestActions}>
+                    <AppButton
+                        text="Accept Chat"
+                        size="sm"
+                        type="secondary"
+                        onPress={() =>
+                            showConfirmModal({
+                                title: 'Have you checked user\'s profile?',
+                                message: 'Review their profile, then accept to start chatting.',
+                                primaryText: 'Accept and Start Chat',
+                                secondaryText: 'View Profile',
+                                tertiaryText: 'Close',
+                                onPrimary: handleAcceptRequest,
+                                onSecondary: openProfile,
+                            })
+                        }
+                        style={styles.acceptButton}
+                    />
+                    <AppButton
+                        text="Decline"
+                        size="sm"
+                        type="ghost"
+                        onPress={handleDeclineRequest}
+                        style={styles.acceptButton}
+                    />
+                </View>
             )}
         </View>
         <FlatList
@@ -499,6 +526,7 @@ export default function ChatScreen() {
             }}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
         />
 
         <View
@@ -632,8 +660,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
   },
-  acceptButton: {
+  requestActions: {
+    flexDirection: 'row',
+    gap: 8,
     marginTop: 12,
+  },
+  acceptButton: {
     width: 120,
   },
   inputSafeArea: {

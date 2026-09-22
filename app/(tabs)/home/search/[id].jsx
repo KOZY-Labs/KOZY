@@ -3,11 +3,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import ListingReelScreen from '@/components/ui/listingReelScreen';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 import { useListingActions } from '@/hooks/use-listing-actions';
+import { parseIds } from '@/lib/routeParams';
 
 // Tab bar visibility for the search flow is handled centrally in (tabs)/_layout.jsx.
 export default function SearchResultListItem() {
   const params = useLocalSearchParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const ids = parseIds(params.ids);
 
   const handleBack = () => {
     // Pop the stack so back always slides left-to-right and returns to the screen
@@ -23,6 +25,7 @@ export default function SearchResultListItem() {
   return (
     <ListingReelScreen
       listingId={id}
+      ids={ids}
       onBack={handleBack}
       renderOverlay={(item, insets) => <SearchReelOverlay item={item} insets={insets} />}
     />

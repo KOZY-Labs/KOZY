@@ -58,10 +58,10 @@ const AppDrawer = forwardRef(
         </View>}
 
         {/* Content */}
-        <View style={[styles.content, {marginVertical: title ? 50 : 0}]}>
+        <View style={[styles.content, { marginTop: title || description ? 24 : 0, marginBottom: 20 }]}>
             {children}
         </View>
-        <View style={{ marginTop: 8 }}>
+        <View>
           {/* Footer */}
           {primaryAction && (
               <View style={[styles.footer, { marginBottom: 12 }]}>
@@ -87,7 +87,7 @@ const AppDrawer = forwardRef(
         {/* Bottom clearance as a REAL view, not container padding — the sheet's
             scroll measurement reliably includes it, so the footer always clears
             the home indicator. */}
-        <View style={{ height: insets.bottom + 16 }} />
+        <View style={{ height: insets.bottom + 8 }} />
       </>
     );
 

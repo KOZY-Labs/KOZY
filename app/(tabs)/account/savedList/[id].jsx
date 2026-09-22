@@ -4,15 +4,17 @@ import { router, useLocalSearchParams } from 'expo-router';
 import ListingReelScreen from '@/components/ui/listingReelScreen';
 import ListingReelOverlay from '@/components/ui/listingReelOverlay';
 import { useListingActions } from '@/hooks/use-listing-actions';
+import { parseIds } from '@/lib/routeParams';
 
 // Tab bar visibility is handled centrally in (tabs)/_layout.jsx.
 export default function SavedList() {
-  const { id } = useLocalSearchParams();
+  const { id, ids } = useLocalSearchParams();
   const listingId = Array.isArray(id) ? id[0] : id;
 
   return (
     <ListingReelScreen
       listingId={listingId}
+      ids={parseIds(ids)}
       renderOverlay={(item, insets) => <SavedReelOverlay item={item} insets={insets} />}
     />
   );

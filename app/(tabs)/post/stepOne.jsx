@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -13,12 +14,13 @@ import TextField from '@/components/ui/input/textField';
 import TextArea from '@/components/ui/input/textArea';
 import AppButton from '@/components/ui/appButton';
 import AppDrawer from '@/components/ui/drawer/AppDrawer';
-import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import Dropdown from '@/components/ui/input/dropdown';
 import DisplayInput from '@/components/ui/input/displayInput';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
 import { geocodeAddress } from '@/lib/geo/geocode';
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
 import {
   ROOMTYPE_OPTIONS,
   FURNISHEDTYPE_OPTIONS,
@@ -281,6 +283,20 @@ export default function StepOne() {
         return Object.keys(nextErrors).length === 0;
     };
 
+    // Same rules as validate(), minus the messages — gates the Continue button so
+    // it's only enabled once every required field is filled in.
+    const isComplete =
+        !!normalizeAddressPart(roomTitle) &&
+        !!normalizeAddressPart(street) &&
+        !!normalizeAddressPart(city) &&
+        !!normalizeAddressPart(province) &&
+        !!availableMonth && !!availableDay && !!availableYear &&
+        !!leaseType &&
+        Number(price) > 0 &&
+        !!deposit &&
+        Number.isFinite(Number(minimumStay)) && Number(minimumStay) >= 1 &&
+        !!roomType && !!furnishedType;
+
     const continueToStepTwo = async () => {
         // Coordinates come from Google Places autocomplete when a suggestion is tapped;
         // otherwise we geocode the typed address as a fallback.
@@ -335,23 +351,22 @@ export default function StepOne() {
 
   return (
     <View style={{ flex: 1, overflow: 'visible' }}>
-        {/* Plain ScrollView + native keyboard insets. The JS keyboard-aware library
-            kept programmatically scrolling this form to the top after bottom-sheet
-            interactions (its scroll-restore math goes stale); the native inset path
-            has no JS scroll calls at all, so nothing can yank the position. Android
-            is handled by the window's default adjustResize. */}
-        <ScrollView
+        {/* react-native-keyboard-controller: keeps the focused input above the
+            keyboard AND the sticky footer (bottomOffset) on both platforms — Android
+            edge-to-edge never resizes the window, so RN's native inset path can't. */}
+        <KeyboardAwareScrollView
             contentContainerStyle={{ flexGrow: 1, paddingBottom: footerPadding }}
             keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
+            bottomOffset={stickyFooterOffset(2) + 24}
         >
+          <DismissKeyboard>
                 <View style={styles.container}>
                     <View style={styles.titleContainer}>
                         <AppText variant='headline-md' color='primary'>Step 1</AppText>
                         <AppText variant='body-md' color='primary'>Share key details about your room</AppText>
                     </View>
                     <View style={styles.contentContainer}>
-                        <FormField label="Room Title" error={errors.roomTitle}>
+                        <FormField label="Room Title" required error={errors.roomTitle}>
                             <TextField
                                 value={roomTitle}
                                 placeholder="e.g., Spacious Master Room in Downtown NYC"
@@ -363,7 +378,7 @@ export default function StepOne() {
                                 }}
                             />
                         </FormField>
-                        <FormField label="Address" error={errors.address}>
+                        <FormField label="Address" required error={errors.address}>
                             <InputRow isRow={false} style={styles.addressAutocompleteRow}>
                                 <GooglePlacesAutocomplete
                                     placeholder="Street"
@@ -443,7 +458,7 @@ export default function StepOne() {
                                 />
                             </InputRow>
                         </FormField>
-                        <FormField label="Available From" error={errors.availableFrom}>
+                        <FormField label="Available From" required error={errors.availableFrom}>
                             <InputRow>
                                 <DisplayInput
                                     value={availableMonth}
@@ -480,7 +495,7 @@ export default function StepOne() {
                                 />
                             </InputRow>
                         </FormField>
-                        <FormField label="Lease Type" error={errors.leaseType}>
+                        <FormField label="Lease Type" required error={errors.leaseType}>
                             <PillGroup
                                 items={LEASE_OPTIONS}
                                 value={leaseType}
@@ -491,7 +506,7 @@ export default function StepOne() {
                                 isMulti={false}
                             />
                         </FormField>
-                        <FormField label="Monthly Rent" error={errors.price}>
+                        <FormField label="Monthly Rent" required error={errors.price}>
                             <TextField
                                 value={formattedPrice}
                                 placeholder="Enter the rent (USD)"
@@ -505,7 +520,7 @@ export default function StepOne() {
                                 keyboardType="number-pad"
                             />
                         </FormField>
-                        <FormField label="Deposit" error={errors.deposit}>
+                        <FormField label="Deposit" required error={errors.deposit}>
                             <DisplayInput
                                 value={formattedDeposit}
                                 placeholder="Choose the deposit (USD)"
@@ -525,7 +540,7 @@ export default function StepOne() {
                                 rightIcon={<Feather name="chevron-down" size={22} color={colors.semantic.text.primary} />}
                             />
                         </FormField>
-                        <FormField label="Minimum Stay" error={errors.minimumStay}>
+                        <FormField label="Minimum Stay" required error={errors.minimumStay}>
                             <TextField
                                 value={minimumStay}
                                 placeholder="Enter minimum stay (months)"
@@ -539,7 +554,7 @@ export default function StepOne() {
                                 keyboardType="number-pad"
                             />
                         </FormField>
-                        <FormField label="About Room & House" error={errors.aboutRoom}>
+                        <FormField label="About Room & House" required error={errors.aboutRoom}>
                             <DisplayInput
                                 value={selectedAboutRoomLabels}
                                 isMulti={true}
@@ -567,12 +582,14 @@ export default function StepOne() {
                         </FormField>
                     </View>
                 </View>
-        </ScrollView>
+          </DismissKeyboard>
+        </KeyboardAwareScrollView>
         <StickyFooter>
             <AppButton
                 text="Continue"
                 loading={submitting}
                 loadingLabel="Locating address"
+                state={isComplete ? 'normal' : 'disabled'}
                 onPress={continueToStepTwo}
             />
             <AppButton
@@ -646,7 +663,7 @@ export default function StepOne() {
             description="Add key details about the room and home. Select all that apply"
             primaryAction={() => keyDetailDrawerRef.current?.close()}
         >
-            <FormField label="Room Type">
+            <FormField label="Room Type" required>
                 <PillGroup
                     items={ROOMTYPE_OPTIONS}
                     value={roomType}
@@ -657,7 +674,7 @@ export default function StepOne() {
                     isMulti={false}
                 />
             </FormField>
-            <FormField label="Furnished Type">
+            <FormField label="Furnished Type" required>
                 <PillGroup
                     items={FURNISHEDTYPE_OPTIONS}
                     value={furnishedType}

@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import {
   StyleSheet,
   View,
-  KeyboardAvoidingView,
   Platform,
   AppState,
   ActivityIndicator,
@@ -22,6 +21,8 @@ import { resendVerificationEmail, reloadUser, isEmailVerified } from "@/lib/auth
 import { authErrorMessage } from "@/lib/auth/errors";
 import { showAlertModal } from "@/components/ui/confirmModalHost";
 import useCooldown, { formatCooldown } from "@/hooks/use-cooldown";
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000; // stop auto-polling after 5 minutes
@@ -119,6 +120,7 @@ export default function Verify() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
+          <DismissKeyboard>
           <View style={[styles.content, { paddingBottom: insets.bottom }]}>
             <View style={styles.topContent}>
               <AppLogo />
@@ -147,6 +149,7 @@ export default function Verify() {
             </View>
             <View style={styles.footerContent} />
           </View>
+          </DismissKeyboard>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

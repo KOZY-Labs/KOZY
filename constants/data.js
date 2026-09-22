@@ -92,18 +92,17 @@ export const UTILITY_OPTIONS = [
 
 // Search filter vocabularies. These match against the stored label text on listing docs
 // (value === label) and deliberately include options the post form doesn't offer yet.
+// Room & House Type filter — only values a listing can actually carry (roomType +
+// furnished). Amenities moved to their own filter (SEARCH_AMENITY_OPTIONS) so the
+// two vocabularies stay in lock-step with what posters pick in Step 1.
 export const SEARCH_ROOM_TYPE_OPTIONS = [
-  'Private Room',
-  'Shared room',
-  'Master bedroom',
-  'Furnished',
-  'Unfurnished',
-  'Shared bathroom',
-  'Ensuite bathroom',
-  'Kitchen access',
-  'Laundry in building',
-  'Laundry in unit',
+  ...Object.values(ROOM_TYPE_LABELS),
+  ...Object.values(FURNISHED_LABELS),
 ].map((label) => ({ label, value: label }));
+
+// Amenities filter — same labels posters choose in Step 1 (listings.roomDetail),
+// matched with AND: every selected amenity must be on the listing.
+export const SEARCH_AMENITY_OPTIONS = toOptions(KEYDETAIL_LABELS).map(({ label }) => ({ label, value: label }));
 
 // Profile vocabularies — shared between Edit Profile (what users pick) and the
 // search filters (what listings are matched against), so the two can never drift.

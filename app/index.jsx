@@ -1,6 +1,7 @@
 import { Redirect } from "expo-router";
 
 import { useAuth } from "@/context/AuthContext";
+import { consumePendingRoute, markIndexResolved } from "@/lib/pendingRoute";
 
 // Auth flow paths are never a valid restore target.
 const AUTH_PATHS = /^\/(login|forgot-password|signUp)/;
@@ -8,9 +9,16 @@ const AUTH_PATHS = /^\/(login|forgot-password|signUp)/;
 // Browse-first: guests land on the home feed. Logged-in users are placed on their
 // lastScreenVisited (tracked by ScreenTracker; manually overridable in Firestore).
 export default function TabsIndex() {
-  const { initializing, isLoggedIn, profile } = useAuth();
+  const { initializing, isLoggedIn, profile, uid } = useAuth();
 
   if (initializing) return null;
+
+  // A push tap that launched the app wins over the last-screen restore.
+  markIndexResolved();
+  const pending = consumePendingRoute();
+  if (isLoggedIn && pending && (!pending.recipientId || pending.recipientId === uid)) {
+    return <Redirect href={`/(tabs)/chat/${pending.chatId}`} />;
+  }
 
   const last = profile?.lastScreenVisited;
   if (

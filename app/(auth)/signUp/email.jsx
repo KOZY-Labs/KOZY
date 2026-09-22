@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useSignup } from "@/context/SignupContext";
 import { router } from "expo-router";
-import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TextField from "@/components/ui/input/textField";
 import AppButton from "@/components/ui/appButton";
-import AppText from "@/components/ui/appText";
 import { colors } from '@/constants/colors';
 import FormField from "@/components/ui/form/formField";
 import AuthCard from "@/components/ui/authInputCard";
@@ -14,10 +13,14 @@ import { LoginBackground } from "@/components/ui/loginBackground";
 import AppHeader from "@/components/ui/appHeader";
 import AppLogo from "@/components/ui/appMainLogo";
 import { isEmailInUse } from "@/lib/auth";
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 export default function EmailScreen() {
   const insets = useSafeAreaInsets();
   const { signup, setEmail } = useSignup();
+  const footerPadding = useStickyFooterPadding(1);
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
 
@@ -66,18 +69,16 @@ export default function EmailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.container}>
+    <View style={styles.container}>
         {/* Background shapes */}
         <LoginBackground />
         <AppHeader showBack />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+        <KeyboardAwareScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: footerPadding }}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={stickyFooterOffset(1) + 24}
         >
+          <DismissKeyboard>
           <View style={[styles.content, { paddingBottom: insets.bottom }]}> 
             <View style={styles.topContent}>
               <AppLogo />
@@ -102,31 +103,48 @@ export default function EmailScreen() {
                 </FormField>
               </AuthCard>
             </View>
-            <View style={styles.footerContent}>
-              <AppButton
-                text="Continue"
-                loading={checking}
-                loadingLabel="Checking email"
-                onPress={handleContinue}
-              />
-              <AppText variant="body-sm" color="primary" style={{ textAlign: "center", marginBottom: 8, marginTop: 20 }}>
-                Already have an account?
-              </AppText>
-              <AppButton
-                text="Log In"
-                onPress={() => router.push("/(auth)/login")}
-                type="bare"
-                underline
-              />
-            </View>
+            <View style={styles.footerContent} />
           </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+          </DismissKeyboard>
+        </KeyboardAwareScrollView>
+        <StickyFooter style={styles.stickyFooter}>
+          <AppButton
+            text="Continue"
+            loading={checking}
+            loadingLabel="Checking email"
+            state={signup.email?.trim() ? 'normal' : 'disabled'}
+            onPress={handleContinue}
+          />
+          <Text style={styles.footerCaption}>
+            Already have an account?{" "}
+            <Text
+              style={styles.footerLink}
+              onPress={() => router.push("/(auth)/login")}
+              accessibilityRole="button"
+            >
+              Log In
+            </Text>
+          </Text>
+        </StickyFooter>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({ 
+const styles = StyleSheet.create({
+  // Brand-blue bar: the white primary button reads on it (white-on-white otherwise)
+  // and it hides content scrolling underneath, like the black footer elsewhere.
+  footerCaption: {
+    fontSize: 12,
+    color: colors.base.white,
+    textAlign: 'center',
+  },
+  footerLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  stickyFooter: {
+    backgroundColor: colors.base.accent,
+  },
   container: { 
     flex: 1, 
     paddingHorizontal: 16, 
@@ -154,7 +172,6 @@ const styles = StyleSheet.create({
       width: '100%', 
     }, 
     footerContent: {
-      height: 160,
       justifyContent: 'flex-end',
       alignItems: 'center',
       width: '100%',

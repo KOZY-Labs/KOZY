@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, View, FlatList } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router, useNavigation, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,7 +26,7 @@ import { showAlertModal, showConfirmModal } from '@/components/ui/confirmModalHo
 import ErrorMessage from '@/components/ui/form/errorMessage';
 import { avatarSource } from '@/lib/avatar';
 import HeaderBackButton from '@/components/navigation/headerBackButton';
-import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 import MediaViewerModal from '@/components/ui/mediaViewerModal';
 import validateImage from '@/utils/mediaValidation';
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from '@/lib/dob.mjs';
@@ -43,6 +44,7 @@ import { syncProfileCaches } from '@/lib/db/profileSync';
 import { trustLevelFor } from '@/lib/trustLevel.mjs';
 import { uploadUserAvatar } from '@/lib/utils/uploadMedia';
 import { openTerms } from '@/lib/links';
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
 
 
 // Single photo: only the first avatar entry is ever shown anywhere in the app,
@@ -192,6 +194,9 @@ function EditProfileForm() {
 
     const isDirtyRef = useRef(false);
     isDirtyRef.current = isDirty;
+    // Display name is the one required field — Save stays disabled until it's valid.
+    const displayNameOk =
+      displayName.trim().length >= DISPLAY_NAME_MIN_LEN && displayName.trim().length <= DISPLAY_NAME_MAX_LEN;
 
     // Deep-focus: arriving with ?focus=verify (Trust Level CTA) opens the Persona
     // drawer directly. Small delay lets the bottom sheet finish mounting.
@@ -526,16 +531,13 @@ function EditProfileForm() {
 
   return (
     <View style={{ flex: 1, overflow: 'visible' }}>
-      <FlatList
-        data={[{ key: 'content' }]}
-        keyExtractor={(item) => item.key}
+      <KeyboardAwareScrollView
         keyboardShouldPersistTaps="always"
-        // Native keyboard insets: the focused field scrolls into view instead of
-        // being covered (same pattern as stepOne).
-        automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ paddingBottom: footerPadding }}
-        renderItem={() => (
-          <View style={styles.container}>
+        // Focused field clears keyboard + sticky Save button (same as stepOne).
+        bottomOffset={stickyFooterOffset(1) + 24}
+      >
+          <DismissKeyboard style={styles.container}>
             {/* Avatar preview exactly as other members see it — round frame plus the
                 verified badge — with tap-to-view and a change/remove menu. */}
             <View style={styles.avatarSection}>
@@ -585,7 +587,7 @@ function EditProfileForm() {
             ) : null}
 
             {/* Display name — public, always editable. */}
-            <FormField label="Display Name" error={errors.displayName}>
+            <FormField label="Display Name" required error={errors.displayName}>
               <TextField
                 value={displayName}
                 error={!!errors.displayName}
@@ -692,15 +694,14 @@ function EditProfileForm() {
                 </AppText>
               </View>
             ) : null}
-          </View>
-        )}
-      />
+          </DismissKeyboard>
+      </KeyboardAwareScrollView>
       <StickyFooter>
         <AppButton
           text="Save Changes"
           loading={saving}
           loadingLabel="Saving"
-          state={isDirty ? 'normal' : 'disabled'}
+          state={isDirty && displayNameOk ? 'normal' : 'disabled'}
           onPress={saveProfile}
         />
       </StickyFooter>

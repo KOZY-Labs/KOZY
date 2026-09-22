@@ -1,7 +1,7 @@
 import { useSignup } from "@/context/SignupContext";
 import { useCallback, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
-import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TextField from "@/components/ui/input/textField";
@@ -17,10 +17,14 @@ import { authErrorMessage } from "@/lib/auth/errors";
 import { formatDob, isValidDob, meetsMinimumAge, MIN_AGE } from "@/lib/dob.mjs";
 import { DISPLAY_NAME_MIN_LEN, DISPLAY_NAME_MAX_LEN, LEGAL_NAME_MAX_LEN } from "@/constants/data";
 import { colors } from "@/constants/colors";
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
   const { signup, setProfile } = useSignup();
+  const footerPadding = useStickyFooterPadding(1);
   const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState(null);
 
@@ -96,18 +100,16 @@ export default function Profile() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.container}>
+    <View style={styles.container}>
         {/* Background shapes */}
         <LoginBackground />
         <AppHeader showBack />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+        <KeyboardAwareScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: footerPadding }}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={stickyFooterOffset(1) + 24}
         >
+          <DismissKeyboard>
           <View style={[styles.content, { paddingBottom: insets.bottom }]}> 
             <View style={styles.topContent}>
               <AppLogo />
@@ -187,27 +189,41 @@ export default function Profile() {
                 </View>
               </AuthCard>
             </View>
-            <View style={styles.footerContent}>
-              {authError ? (
-                <View style={styles.errorPill}>
-                  <ErrorMessage message={authError} />
-                </View>
-              ) : null}
-              <AppButton
-                text="Continue"
-                loading={submitting}
-                loadingLabel="Creating account"
-                onPress={handleSubmit}
-              />
-            </View>
+            <View style={styles.footerContent} />
           </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+          </DismissKeyboard>
+        </KeyboardAwareScrollView>
+        <StickyFooter style={styles.stickyFooter}>
+          {authError ? (
+            <View style={styles.errorPill}>
+              <ErrorMessage message={authError} />
+            </View>
+          ) : null}
+          <AppButton
+            text="Continue"
+            loading={submitting}
+            loadingLabel="Creating account"
+            state={
+              signup.profile.displayName?.trim() &&
+              signup.profile.firstName?.trim() &&
+              signup.profile.lastName?.trim() &&
+              signup.profile.dob?.trim()
+                ? 'normal'
+                : 'disabled'
+            }
+            onPress={handleSubmit}
+          />
+        </StickyFooter>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Brand-blue bar: the white primary button reads on it (white-on-white otherwise)
+  // and it hides content scrolling underneath, like the black footer elsewhere.
+  stickyFooter: {
+    backgroundColor: colors.base.accent,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,

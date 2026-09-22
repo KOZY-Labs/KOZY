@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Platform, StyleSheet, View, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 
 import AppButton from '@/components/ui/appButton';
@@ -11,7 +12,8 @@ import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { useAuth } from '@/context/AuthContext';
 import { createReport } from '@/lib/db/reports';
 import { showAuthGate } from '@/lib/authGate';
-import StickyFooter, { useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -29,6 +31,7 @@ export default function ContactUs() {
     const [body, setBody] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const submittedRef = useRef(false);
+    const canSubmit = !!name.trim() && emailPattern.test(email.trim()) && !!body.trim();
 
     const validateForm = () => {
         const nextErrors = {};
@@ -94,15 +97,13 @@ export default function ContactUs() {
 
   return (
     <View style={{ flex: 1 }}>
-        <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-        <ScrollView
+        <KeyboardAwareScrollView
             // Bottom clearance from insets — the floating tab bar overlays this screen.
             contentContainerStyle={[styles.container, { paddingBottom: footerPadding }]}
             keyboardShouldPersistTaps="handled"
+            bottomOffset={stickyFooterOffset(1) + 24}
         >
+          <DismissKeyboard>
         <DisplayField
             title="Have a question, feedback, or need support?"
             style={{ marginBottom: 16 }}
@@ -148,14 +149,15 @@ export default function ContactUs() {
                 </FormField>
             </View>
         </View>
-        </ScrollView>
-        </KeyboardAvoidingView>
+          </DismissKeyboard>
+        </KeyboardAwareScrollView>
         <StickyFooter>
             <AppButton
                 text="Send Message"
                 size="lg"
                 type='primary'
                 loading={submitting}
+                state={canSubmit ? 'normal' : 'disabled'}
                 onPress={handleSubmit}
             />
         </StickyFooter>

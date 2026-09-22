@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSignup } from "@/context/SignupContext";
 import { router } from "expo-router";
-import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TextField from "@/components/ui/input/textField";
@@ -15,11 +15,15 @@ import AppHeader from "@/components/ui/appHeader";
 import AppLogo from "@/components/ui/appMainLogo";
 import AuthCard from "@/components/ui/authInputCard";
 import { openPrivacyPolicy, openTerms } from "@/lib/links";
+import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import StickyFooter, { stickyFooterOffset, useStickyFooterPadding } from '@/components/ui/layout/stickyFooter';
 
 export default function Password() {
   const insets = useSafeAreaInsets();
   const { signup, setPassword } = useSignup();
 
+  const footerPadding = useStickyFooterPadding(1);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -52,18 +56,16 @@ export default function Password() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.container}>
+    <View style={styles.container}>
         {/* Background shapes */}
         <LoginBackground />
         <AppHeader showBack />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+        <KeyboardAwareScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: footerPadding }}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={stickyFooterOffset(1) + 24}
         >
+          <DismissKeyboard>
           <View style={[styles.content, { paddingBottom: insets.bottom }]}>
             <View style={styles.topContent}>
               <AppLogo />
@@ -120,34 +122,36 @@ export default function Password() {
                 </View>
               </AuthCard>
             </View>
-            <View style={styles.footerContent}>
-              <AppButton
-                text="Continue"
-                onPress={() => {
-                  if (!validate()) return;
-                  // setPassword(signup.confirmPassword)
-                  router.push("/(auth)/signUp/profile");
-                }}
-              />
-              <Text style={styles.caption}>
-                By continuing you agree to our{" "}
-                <Text style={styles.link} onPress={openTerms}>
-                  Terms of Services
-                </Text>{" "}
-                and {" "}
-                <Text style={styles.link} onPress={openPrivacyPolicy}>
-                  Privacy Policy.
-                </Text>{" "}
-              </Text>
-            </View>
+            <View style={styles.footerContent} />
           </View>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+          </DismissKeyboard>
+        </KeyboardAwareScrollView>
+        <StickyFooter style={styles.stickyFooter}>
+          <AppButton
+            text="Continue"
+            state={signup.password && confirmPassword ? 'normal' : 'disabled'}
+            onPress={() => {
+              if (!validate()) return;
+              router.push("/(auth)/signUp/profile");
+            }}
+          />
+          <Text style={styles.footerCaption}>
+            By continuing you agree to our{" "}
+            <Text style={styles.footerLink} onPress={openTerms}>Terms of Service</Text>
+            {" "}and{" "}
+            <Text style={styles.footerLink} onPress={openPrivacyPolicy}>Privacy Policy</Text>.
+          </Text>
+        </StickyFooter>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Brand-blue bar: the white primary button reads on it (white-on-white otherwise)
+  // and it hides content scrolling underneath, like the black footer elsewhere.
+  stickyFooter: {
+    backgroundColor: colors.base.accent,
+  },
   container: { 
     flex: 1, 
     paddingHorizontal: 16, 
@@ -175,23 +179,20 @@ const styles = StyleSheet.create({
       width: '100%', 
     }, 
     footerContent: {
-      height: 160,
       justifyContent: 'flex-end',
       alignItems: 'center',
       gap: 12,
       width: '100%',
     },
-  caption: {
-    width: '60%',
-    fontSize: 10,
-    color: colors.semantic.text.primary,
+  footerCaption: {
+    fontSize: 12,
+    color: colors.base.white,
     textAlign: "center",
+    paddingHorizontal: 16,
   },
-  link: {
-    marginTop: 12,
-    color: colors.semantic.text.primary,
+  footerLink: {
+    fontWeight: "700",
     textDecorationLine: "underline",
-    textAlign: "center",
   },
   inputGroup: {
     width: '100%',

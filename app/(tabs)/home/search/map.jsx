@@ -31,8 +31,9 @@ export default function SearchMapScreen() {
         gender: getParamString(params.gender),
         roomTypes: parseParamArray(params.roomTypes),
         lifestyleMatches: parseParamArray(params.lifestyleMatches),
+        amenities: parseParamArray(params.amenities),
       }),
-    [listings, params.location, params.budgetFrom, params.budgetTo, params.gender, params.roomTypes, params.lifestyleMatches]
+    [listings, params.location, params.budgetFrom, params.budgetTo, params.gender, params.roomTypes, params.lifestyleMatches, params.amenities]
   );
 
   // Open at the position the preview map was showing (when provided).
@@ -74,7 +75,7 @@ export default function SearchMapScreen() {
     // Detail button takes it from there. Back pops the stack, returning here.
     router.push({
       pathname: '/home/search/[id]',
-      params: { id: listing.id },
+      params: { id: listing.id, ids: areaListings.map((l) => l.id).join(',') },
     });
   };
 

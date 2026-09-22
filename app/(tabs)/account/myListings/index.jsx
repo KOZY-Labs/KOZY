@@ -123,7 +123,10 @@ export default function MyListings() {
               }
 
               setPreviewId(null);
-              router.push(`account/myListings/${item.id}`);
+              router.push({
+                pathname: '/(tabs)/account/myListings/[id]',
+                params: { id: item.id, ids: listings.map((l) => l.id).join(',') },
+              });
             }}
             accessibilityLabel={
               isEditMode ? `My listing ${item.title}` : `Open my listing ${item.title}`

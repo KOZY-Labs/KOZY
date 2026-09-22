@@ -8,6 +8,7 @@ import {
 import { useFonts } from 'expo-font';
 import { ThemeProvider as RNEThemeProvider, } from 'react-native-elements';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplashScreen from 'expo-splash-screen';
@@ -65,6 +66,7 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <KeyboardProvider>
       <NavigationThemeProvider
         value={AppDarkTheme}
       >
@@ -83,6 +85,7 @@ function RootLayout() {
           </AuthProvider>
         </RNEThemeProvider>
       </NavigationThemeProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

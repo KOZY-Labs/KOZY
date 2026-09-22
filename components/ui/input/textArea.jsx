@@ -13,6 +13,8 @@ export default function TextArea({
   disabled,
   onChangeText,
   maxLength,
+  onFocus,
+  onBlur,
   ...prop
 }) {
 
@@ -36,8 +38,14 @@ export default function TextArea({
         multiline
         numberOfLines={4}
         onChangeText={onChangeText}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
         maxLength={maxLength}
         style={[
           styles.textarea,

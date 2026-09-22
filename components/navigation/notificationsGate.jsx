@@ -12,6 +12,7 @@ import { router, useRootNavigationState } from 'expo-router';
 
 import { useAuth } from '@/context/AuthContext';
 import { configureNotifications, registerPushToken } from '@/lib/notifications';
+import { hasIndexResolved, setPendingRoute } from '@/lib/pendingRoute';
 
 export default function NotificationsGate() {
   const { uid, profile } = useAuth();
@@ -38,21 +39,35 @@ export default function NotificationsGate() {
   useEffect(() => {
     if (!navReady) return undefined;
 
-    const openFromResponse = (response) => {
+    const routeFromResponse = (response) => {
       const data = response?.notification?.request?.content?.data;
-      if (!data?.chatId) return;
+      if (!data?.chatId) return null;
       // Payload addressed to someone else (account switched on this device) — drop.
-      if (data.recipientId && data.recipientId !== uidRef.current) return;
-      router.push(`/(tabs)/chat/${data.chatId}`);
+      if (data.recipientId && data.recipientId !== uidRef.current) return null;
+      return `/(tabs)/chat/${data.chatId}`;
+    };
+    const openFromResponse = (response) => {
+      const route = routeFromResponse(response);
+      if (route) router.push(route);
     };
 
     // Cold start: the tap that launched the app is delivered via the last-response
-    // API, not the listener. One-shot — never re-run on remounts.
+    // API, not the listener. One-shot — never re-run on remounts. Until app/index
+    // has placed the user (lastScreenVisited restore), a push here would be
+    // overridden by that redirect — park the route for index to consume instead.
     if (!handledColdStartRef.current) {
       handledColdStartRef.current = true;
       Notifications.getLastNotificationResponseAsync()
         .then((response) => {
-          if (response) openFromResponse(response);
+          if (!response) return;
+          const data = response?.notification?.request?.content?.data;
+          if (!data?.chatId) return;
+          if (hasIndexResolved()) {
+            openFromResponse(response);
+            return;
+          }
+          // uid isn't known yet this early — index re-checks the recipient.
+          setPendingRoute({ chatId: data.chatId, recipientId: data.recipientId ?? null });
         })
         .catch(() => {});
     }
