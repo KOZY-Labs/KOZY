@@ -49,7 +49,7 @@ export default function PreviewListing() {
   const footerPadding = useStickyFooterPadding(2);
   const { draft, editingId, returnTo, resetDraft } = useListingDraft();
   const { profile, uid } = useAuth();
-  const item = useMemo(() => draftToPreview(draft, profile), [draft, profile]);
+  const item = useMemo(() => draftToPreview(draft, profile, editingId ?? 'preview'), [draft, profile, editingId]);
   const [publishing, setPublishing] = useState(false);
   // 0..1 across every file in the batch, weighted by real bytes (native upload
   // tasks report sent/expected per file). Ref holds per-file counters so

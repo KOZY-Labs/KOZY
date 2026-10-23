@@ -1,13 +1,15 @@
 // Listing location map used on detail screens.
 // Renders the small static preview; tapping it opens a full-screen interactive map
-// (like the search map) that shows ONLY this listing's pin — points of interest stay
-// visible so the viewer can see what's around the area.
+// (like the search map). Airbnb-style: the listing is shown as a circle around its
+// APPROXIMATE point (lib/geo/approxLocation.mjs), never an exact pin — points of
+// interest stay visible so the viewer can see what's around the area.
 import React, { useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
+import AreaCircle from '@/components/ui/areaCircle';
 import { colors } from '@/constants/colors';
 
 const FALLBACK_REGION = { latitude: 49.2827, longitude: -123.1207 }; // Vancouver
@@ -59,7 +61,7 @@ export default function ListingLocationMap({ latitude, longitude, style }) {
           pitchEnabled={false}
           pointerEvents="none"
         >
-          <Marker coordinate={coordinate} />
+          <AreaCircle center={coordinate} />
         </MapView>
         <View style={styles.expandHint} pointerEvents="none">
           <Feather name="maximize-2" size={14} color={colors.base.background} />
@@ -81,7 +83,7 @@ export default function ListingLocationMap({ latitude, longitude, style }) {
               regionRef.current = region;
             }}
           >
-            <Marker coordinate={coordinate} />
+            <AreaCircle center={coordinate} />
           </MapView>
 
           <Pressable

@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { showAlertModal } from '@/components/ui/confirmModalHost';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { useListing } from '@/hooks/use-listings';
+import { getListingPrivateLocation } from '@/lib/db/listings';
 
 // Entry point for "Edit Listing". Loads the saved listing into the shared draft, then
 // replaces itself with step 1 so the existing multi-step flow edits it in place.
@@ -34,8 +35,13 @@ export default function EditListing() {
       return;
     }
 
-    startEdit(listing, returnTo ?? null);
-    router.replace('/(tabs)/post/stepOne');
+    // The exact address lives in the owner-only private doc; merge it into the draft.
+    getListingPrivateLocation(listing.id)
+      .catch(() => null)
+      .then((privateLocation) => {
+        startEdit({ ...listing, ...(privateLocation ?? {}) }, returnTo ?? null);
+        router.replace('/(tabs)/post/stepOne');
+      });
   }, [loading, listing, returnTo, startEdit]);
 
   return (

@@ -59,6 +59,14 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn()
         && (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      // Exact address + coordinates (Airbnb-style: the public doc only carries an
+      // approximate point). Owner-only — nobody else can read where a listing is.
+      match /private/{docId} {
+        allow read, write: if isSignedIn()
+          && (get(/databases/$(database)/documents/listings/$(listingId)).data.ownerId == request.auth.uid
+              || isAdmin());
+      }
     }
 
     // chats — only participants can read/write the chat and its messages.

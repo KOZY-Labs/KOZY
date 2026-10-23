@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
@@ -37,10 +37,6 @@ import {
   LOOKINGFOR_LABELS,
 } from '@/constants/data';
 
-const DEPOSIT_INCREMENT = 100;
-const DEPOSIT_TBD_VALUE = 'TBD';
-const TBD_DEPOSIT_OPTION = { label: DEPOSIT_TBD_VALUE, value: DEPOSIT_TBD_VALUE };
-
 {/* utility functions */}
 const formatCurrency = (amount) => `$${Number(amount).toLocaleString()}`;
 
@@ -74,29 +70,6 @@ const getAddressParts = (components) => {
     };
 };
 
-const createDepositOptions = (priceValue) => {
-    const maxDeposit = Number(priceValue);
-
-    if (!Number.isFinite(maxDeposit) || maxDeposit <= 0) {
-        return [TBD_DEPOSIT_OPTION, { label: '$0', value: '0' }];
-    }
-
-    const highestIncrement = Math.floor(maxDeposit / DEPOSIT_INCREMENT) * DEPOSIT_INCREMENT;
-    const amounts = [];
-
-    for (let amount = 0; amount <= highestIncrement; amount += DEPOSIT_INCREMENT) {
-        amounts.push(amount);
-    }
-
-    if (highestIncrement !== maxDeposit) {
-        amounts.push(maxDeposit);
-    }
-
-    return [TBD_DEPOSIT_OPTION, ...amounts.map((amount) => ({
-        label: formatCurrency(amount),
-        value: String(amount),
-    }))];
-};
 
 {/* main component */}
 export default function StepOne() {
@@ -118,7 +91,8 @@ export default function StepOne() {
     const [latitude, setLatitude] = useState(draft.latitude ?? null);
     const [longitude, setLongitude] = useState(draft.longitude ?? null);
     const [leaseType, setLeaseType] = useState(draft.leaseType || '');
-    const [deposit, setDeposit] = useState(draft.deposit || '');
+    // Legacy drafts may carry 'TBD' from the old dropdown — start blank instead.
+    const [deposit, setDeposit] = useState(/^\d+$/.test(String(draft.deposit ?? '')) ? String(draft.deposit) : '');
     const [roomType, setRoomType] = useState(draft.roomType || '');
     const [furnishedType, setFurnishedType] = useState(draft.furnishedType || '');
     const [keyDetail, setKeyDetail] = useState(draft.keyDetail ?? []);
@@ -133,12 +107,10 @@ export default function StepOne() {
     const availableMonthDrawerRef = useRef(null);
     const availableDayDrawerRef = useRef(null);
     const availableYearDrawerRef = useRef(null);
-    const depositDrawerRef = useRef(null);
     const keyDetailDrawerRef = useRef(null);
     const lookingForDrawerRef = useRef(null);
     const utilitiesDrawerRef = useRef(null);
 
-    const depositOptions = useMemo(() => createDepositOptions(price), [price]);
 
     const clearFieldError = (field) => {
         setErrors((current) => (current[field] ? { ...current, [field]: null } : current));
@@ -158,34 +130,10 @@ export default function StepOne() {
         [lookingFor]
     );
     {/* formatted price and deposit for display in text fields */}
-    const formattedDeposit = deposit === DEPOSIT_TBD_VALUE
-        ? DEPOSIT_TBD_VALUE
-        : deposit
-            ? formatCurrency(deposit)
-            : '';
+    const formattedDeposit = deposit ? formatCurrency(deposit) : '';
     const formattedPrice = price ? formatCurrency(price) : '';
 
-    useEffect(() => {
-        if (deposit === DEPOSIT_TBD_VALUE) {
-            return;
-        }
-
-        const priceAmount = Number(price);
-        const depositAmount = Number(deposit);
-
-        if (deposit && Number.isFinite(priceAmount) && depositAmount > priceAmount) {
-            setDeposit('');
-        }
-    }, [deposit, price]);
-
     // Tab bar visibility for post sub-screens is handled centrally in (tabs)/_layout.jsx.
-
-    const openDepositDrawer = () => {
-        // Default to the first option (TBD) so opening + closing (even via handle/backdrop) commits a value.
-        if (!deposit) setDeposit(DEPOSIT_TBD_VALUE);
-        clearFieldError('deposit');
-        depositDrawerRef.current?.snapToIndex(0);
-    };
 
     const openUtilitiesDrawer = () => {
         setDraftIsUtilityIncluded(isUtilityIncluded);
@@ -261,8 +209,8 @@ export default function StepOne() {
             nextErrors.price = 'Monthly rent must be more than $0.';
         }
 
-        if (!deposit) {
-            nextErrors.deposit = 'Choose a deposit amount, or pick TBD if it is not decided yet.';
+        if (deposit === '') {
+            nextErrors.deposit = 'Enter the deposit, or 0 if there is none.';
         }
 
         if (!minimumStay) {
@@ -293,7 +241,7 @@ export default function StepOne() {
         !!availableMonth && !!availableDay && !!availableYear &&
         !!leaseType &&
         Number(price) > 0 &&
-        !!deposit &&
+        deposit !== '' &&
         Number.isFinite(Number(minimumStay)) && Number(minimumStay) >= 1 &&
         !!roomType && !!furnishedType;
 
@@ -457,6 +405,9 @@ export default function StepOne() {
                                     onChangeText={setPostalCode}
                                 />
                             </InputRow>
+                            <AppText variant="body-xsm" color="disabled" style={styles.addressCaption}>
+                                Only the city and an approximate area are shown publicly.
+                            </AppText>
                         </FormField>
                         <FormField label="Available From" required error={errors.availableFrom}>
                             <InputRow>
@@ -521,13 +472,16 @@ export default function StepOne() {
                             />
                         </FormField>
                         <FormField label="Deposit" required error={errors.deposit}>
-                            <DisplayInput
+                            <TextField
                                 value={formattedDeposit}
-                                placeholder="Choose the deposit (USD)"
+                                placeholder="Enter the deposit (USD), 0 if none"
                                 placeholderTextColor={colors.semantic.input.textDisabled}
-                                showSoftInputOnFocus={false}
-                                rightIcon={<Feather name="chevron-down" size={22} color={colors.semantic.text.primary} />}
-                                onPress={openDepositDrawer}
+                                error={!!errors.deposit}
+                                onChangeText={(text) => {
+                                    setDeposit(text.replace(/[^0-9]/g, ''));
+                                    clearFieldError('deposit');
+                                }}
+                                keyboardType="number-pad"
                             />
                         </FormField>
                         <FormField label="Utilities">
@@ -636,17 +590,6 @@ export default function StepOne() {
             />
         </AppDrawer>
         <AppDrawer
-            ref={depositDrawerRef}
-            scrollable={false}
-            primaryAction={() => depositDrawerRef.current?.close()}
-        >
-            <Dropdown
-                value={deposit}
-                onChange={setDeposit}
-                options={depositOptions}
-            />
-        </AppDrawer>
-        <AppDrawer
             ref={utilitiesDrawerRef}
             scrollable={false}
             primaryAction={saveUtilities}
@@ -710,6 +653,9 @@ export default function StepOne() {
 }
 
 const styles = StyleSheet.create({
+    addressCaption: {
+        marginTop: 6,
+    },
   container: {
     backgroundColor: 'black',
     paddingHorizontal: 16,

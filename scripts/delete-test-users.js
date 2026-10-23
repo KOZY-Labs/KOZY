@@ -66,7 +66,8 @@ async function deleteListing(listingId) {
   } catch (e) {
     console.warn(`  ! could not sweep saved entries for ${listingId}: ${e.message}`);
   }
-  await act(`rm listings/${listingId}`, () => db.doc(`listings/${listingId}`).delete());
+  // recursiveDelete: the owner-only private/location subdoc must go with the parent.
+  await act(`rm -r listings/${listingId}`, () => db.recursiveDelete(db.doc(`listings/${listingId}`)));
 }
 
 async function deleteChat(chatId) {

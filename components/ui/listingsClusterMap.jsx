@@ -1,6 +1,9 @@
 // Reusable interactive Google map with supercluster-based marker clustering.
 // Used by the search screen's inline preview and the full-screen map route.
 // Zoomed out → count badges; zoom in → Airbnb-style price pills.
+// Pins sit on each listing's APPROXIMATE point (approxLatitude/approxLongitude) —
+// the public doc never carries the real coordinates. No circles here (too busy in
+// dense areas, see docs/DECISIONS.md D3); the detail map shows the 500m area.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -59,7 +62,7 @@ export default function ListingsClusterMap({
   // (coords, price) so in-place edits rebuild the cluster index without moving the camera.
   const { idKey, contentKey } = useMemo(() => {
     // One pass + one sort (by id, so a price edit can't reorder and fake a set change).
-    const entries = listings.map((l) => [String(l.id), `${l.latitude}:${l.longitude}:${l.price}`]);
+    const entries = listings.map((l) => [String(l.id), `${l.approxLatitude}:${l.approxLongitude}:${l.price}`]);
     entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     return {
       idKey: entries.map((e) => e[0]).join(','),
@@ -74,7 +77,7 @@ export default function ListingsClusterMap({
       properties: { cluster: false, listing: item },
       geometry: {
         type: 'Point',
-        coordinates: [Number(item.longitude), Number(item.latitude)],
+        coordinates: [Number(item.approxLongitude), Number(item.approxLatitude)],
       },
     }));
     return new Supercluster({ radius: 60, maxZoom: MAX_ZOOM }).load(points);

@@ -35,7 +35,7 @@ export function useChatRequest(item, { backTo, onSuccess } = {}) {
         listing: item,
         requesterId: uid,
         requesterInfo: ownerFromProfile(profile),
-        firstMessage: `Hi, I'm interested in your listing at ${item.street}, ${item.city}. Is it still available?`,
+        firstMessage: `Hi, I'm interested in your listing "${item.title}" in ${item.city}. Is it still available?`,
       });
       onSuccess?.(chatId);
     } catch (e) {

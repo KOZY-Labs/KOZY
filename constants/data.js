@@ -23,16 +23,23 @@ export const LEASE_LABELS = { 'month-to-month': 'Month-to-Month', 'fixed-term': 
 export const ROOM_TYPE_LABELS = { private: 'Private Room', shared: 'Shared Room' };
 export const FURNISHED_LABELS = { furnished: 'Furnished', unfurnished: 'Unfurnished' };
 
+// Order = display order in Step 1 and the search filter. Labels are what gets
+// stored in listings.roomDetail; renaming one needs scripts/migrate-amenity-labels.js.
 export const KEYDETAIL_LABELS = {
+  'private-bath': 'Private Bath',
+  'laundry-in-unit': 'W/D in Unit',
+  'kitchen-access': 'Kitchen Access',
   wifi: 'Wi-Fi',
-  laundry: 'Laundry in building',
-  'kitchen-access': 'Kitchen access',
-  'pet-friendly': 'Pet friendly',
-  parking: 'Parking',
-  'shared-bathroom': 'Shared Bathroom',
+  'air-conditioning': 'A/C',
+  'pet-friendly': 'Pets Allowed',
+  laundry: 'Laundry in Building',
+  dishwasher: 'Dishwasher',
+  elevator: 'Elevator',
   gym: 'Gym',
-  'swimming-pool': 'Swimming Pool',
-  sauna: 'Sauna',
+  'private-outdoor': 'Private Outdoor Space',
+  'shared-outdoor': 'Shared Outdoor Space',
+  doorman: 'Doorman',
+  'swimming-pool': 'Pool',
 };
 
 export const LOOKINGFOR_LABELS = {

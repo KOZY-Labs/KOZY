@@ -9,6 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BUTTON_HEIGHT = 48;
 const PADDING = 12;
+// The global KeyboardToolbar (app/_layout.jsx) sits between keyboard and footer
+// while the keyboard is up — the footer must clear it too. Matches the
+// library's KEYBOARD_TOOLBAR_HEIGHT (not exported from the package root).
+const KEYBOARD_TOOLBAR_HEIGHT = 42;
 // Footer box plus breathing room; each extra stacked button adds its height + gap.
 const FOOTER_CLEARANCE = 96;
 const ROW_HEIGHT = BUTTON_HEIGHT + PADDING;
@@ -20,9 +24,10 @@ export function useStickyFooterPadding(rows = 1) {
   return insets.bottom + FOOTER_CLEARANCE + (rows - 1) * ROW_HEIGHT;
 }
 
-// Height of the footer while the keyboard is up (no home-indicator inset then).
+// Space a KeyboardAwareScrollView must keep clear above the keyboard: the
+// toolbar plus the footer (no home-indicator inset while the keyboard is up).
 export function stickyFooterOffset(rows = 1) {
-  return PADDING + rows * BUTTON_HEIGHT + (rows - 1) * PADDING + PADDING;
+  return KEYBOARD_TOOLBAR_HEIGHT + PADDING + rows * BUTTON_HEIGHT + (rows - 1) * PADDING + PADDING;
 }
 
 // KeyboardStickyView rides above the keyboard on both platforms (Android
@@ -33,7 +38,9 @@ export default function StickyFooter({ children, style }) {
   const insets = useSafeAreaInsets();
   return (
     <KeyboardStickyView
-      offset={{ closed: 0, opened: insets.bottom }}
+      // opened: positive = shift DOWN. Drop by the (now hidden) home-indicator
+      // inset, rise by the toolbar that sits on top of the keyboard.
+      offset={{ closed: 0, opened: insets.bottom - KEYBOARD_TOOLBAR_HEIGHT }}
       style={[styles.footer, { paddingBottom: insets.bottom + PADDING }, style]}
     >
       {children}

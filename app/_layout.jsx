@@ -8,7 +8,7 @@ import {
 import { useFonts } from 'expo-font';
 import { ThemeProvider as RNEThemeProvider, } from 'react-native-elements';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { KeyboardProvider, KeyboardToolbar } from 'react-native-keyboard-controller';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplashScreen from 'expo-splash-screen';
@@ -77,6 +77,9 @@ function RootLayout() {
                 <ScreenTracker />
                 <NotificationsGate />
                 <Slot />
+                {/* Prev/Next/Done bar above the keyboard — the only way to move between
+                    fields from iOS number pads, which have no Return key. */}
+                <KeyboardToolbar />
                 <ConfirmModalHost />
                 <ReportDrawerHost />
                 <StatusBar style="auto" />

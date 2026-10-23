@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -10,6 +10,8 @@ import ProfileSection from '@/components/ui/profileSection';
 import ListingLocationMap from '@/components/ui/listingLocationMap';
 import MediaViewerModal from '@/components/ui/mediaViewerModal';
 import { colors } from '@/constants/colors';
+import { useAuth } from '@/context/AuthContext';
+import { getListingPrivateLocation } from '@/lib/db/listings';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // The body renders inside the screen's 16px side padding.
@@ -122,6 +124,21 @@ const MediaGallery = memo(function MediaGallery({ videoUrl, images }) {
 // re-render the MapView and field stack below.
 export default memo(function ListingDetailBody({ listing }) {
   const images = listing.images ?? EMPTY_IMAGES;
+  const { uid } = useAuth();
+
+  // Airbnb-style: everyone sees city/province + an approximate circle. The owner
+  // additionally sees the street (from the owner-only private doc — the preview
+  // flow already carries it on the draft), so a chat's listing link is unambiguous.
+  const isOwner = !!uid && listing.ownerId === uid;
+  const [privateStreet, setPrivateStreet] = useState(null);
+  useEffect(() => {
+    if (!isOwner || listing.street || listing.id === 'preview') return undefined;
+    getListingPrivateLocation(listing.id)
+      .then((loc) => setPrivateStreet(loc?.street ?? null))
+      .catch(() => {});
+    return undefined;
+  }, [isOwner, listing.id, listing.street]);
+  const street = listing.street || privateStreet;
 
   return (
     <>
@@ -131,11 +148,20 @@ export default memo(function ListingDetailBody({ listing }) {
 
       {/* Details */}
       <View style={styles.content}>
-        <DisplayField title="Location">
-          {`${listing.street}, ${listing.city}, ${listing.province}`}
+        <DisplayField
+          title={
+            <>
+              Location
+              {!street ? (
+                <AppText variant="body-xsm" color="disabled"> · Exact address from the roommate</AppText>
+              ) : null}
+            </>
+          }
+        >
+          {[street, listing.city, listing.province].filter(Boolean).join(', ')}
         </DisplayField>
-        {/* Tap opens a full-screen map with just this listing's pin */}
-        <ListingLocationMap latitude={listing.latitude} longitude={listing.longitude} />
+        {/* Tap opens a full-screen map showing the approximate area */}
+        <ListingLocationMap latitude={listing.approxLatitude} longitude={listing.approxLongitude} />
 
         {/* Owner */}
         <View style={styles.section}>

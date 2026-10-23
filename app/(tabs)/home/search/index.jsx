@@ -157,6 +157,9 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
           scrollEnabled={!mapInteracting}
           renderItem={() => (
+            <>
+            {/* The map lives OUTSIDE DismissKeyboard: a Pressable ancestor that owns
+                the touch blocks the native map's pan gesture on iOS. */}
             <DismissKeyboard>
           <View style={styles.heroBlock}>
             <SearchSection label="Location">
@@ -207,6 +210,8 @@ export default function SearchScreen() {
                 <Feather name="search" color={colors.semantic.text.primary} size={28} style={{ marginTop: 5 }} />
               </View>
             </SearchSection>
+          </View>
+            </DismissKeyboard>
 
             {/* Interactive clustered preview — pan/zoom/pills work in place */}
             <View
@@ -239,8 +244,8 @@ export default function SearchScreen() {
                 </AppText>
               </Pressable>
             </View>
-          </View>
 
+            <DismissKeyboard>
           <View style={styles.filters}>
             <SearchSection label="Rent Budget">
               <View style={styles.budgetRow}>
@@ -294,6 +299,7 @@ export default function SearchScreen() {
             </FormField>
           </View>
             </DismissKeyboard>
+            </>
           )}
         />
 
@@ -452,6 +458,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   mapContainer: {
+    marginTop: 13,
     height: 320,
     width: '100%',
     borderRadius: 6,
