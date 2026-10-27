@@ -1,5 +1,6 @@
-import { forwardRef } from 'react';
-import { View, StyleSheet, Keyboard, Pressable, Dimensions } from 'react-native';
+import { forwardRef, useEffect, useRef } from 'react';
+import { View, StyleSheet, Keyboard, Pressable, useWindowDimensions } from 'react-native';
+import { useKeyboardState } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheet from '@gorhom/bottom-sheet';
 import AppText from '@/components/ui/appText';
@@ -7,6 +8,10 @@ import AppButton from '@/components/ui/appButton';
 import { BottomSheetView, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { colors } from '@/constants/colors';
+
+// Backdrop strip kept above the sheet (below the status bar) so there is always
+// somewhere to tap to dismiss.
+const TOP_CLEARANCE = 100; // header (~44) + a comfortable tap strip
 
 const AppDrawer = forwardRef(
   (
@@ -30,7 +35,9 @@ const AppDrawer = forwardRef(
       keyboardBlurBehavior = 'restore',
       android_keyboardInputMode = 'adjustResize',
       // Default: size the sheet to its content (no wasted space under short drawers),
-      // capped at 90% of the screen with internal scrolling beyond that. Passing
+      // capped so a strip of backdrop always stays above it (tap to dismiss, clear of
+      // the screen header) — 75% of the screen, or whatever fits above the keyboard
+      // when one is open. Taller content scrolls inside the sheet. Passing
       // explicit snapPoints opts a drawer OUT of dynamic sizing (fixed height wins) —
       // mixing the two is what previously caused clipped/mispositioned sheets.
       enableDynamicSizing,
@@ -42,6 +49,23 @@ const AppDrawer = forwardRef(
   ) => {
     const insets = useSafeAreaInsets();
     const dynamicSizing = enableDynamicSizing ?? !snapPoints;
+    const { height: windowHeight } = useWindowDimensions();
+    const keyboard = useKeyboardState();
+    const keyboardHeight = keyboard.isVisible ? keyboard.height : 0;
+    const maxContentSize = Math.min(
+      windowHeight * 0.75,
+      windowHeight - keyboardHeight - insets.top - TOP_CLEARANCE
+    );
+
+    // When the keyboard opens the sheet shrinks to fit above it; the input that
+    // opened the keyboard is at the end of every text drawer we have, so bring the
+    // end into view once the resize has settled.
+    const scrollRef = useRef(null);
+    useEffect(() => {
+      if (!keyboard.isVisible || !scrollable) return undefined;
+      const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+      return () => clearTimeout(timer);
+    }, [keyboard.isVisible, scrollable]);
 
     const content = (
       <>
@@ -97,7 +121,7 @@ const AppDrawer = forwardRef(
         index={-1}
         snapPoints={dynamicSizing ? undefined : snapPoints}
         enableDynamicSizing={dynamicSizing}
-        maxDynamicContentSize={Dimensions.get('window').height * 0.9}
+        maxDynamicContentSize={maxContentSize}
         keyboardBehavior={keyboardBehavior}
         keyboardBlurBehavior={keyboardBlurBehavior}
         android_keyboardInputMode={android_keyboardInputMode}
@@ -122,7 +146,7 @@ const AppDrawer = forwardRef(
         handleIndicatorStyle ={{ backgroundColor: colors.semantic.bottomSheet.handleIndicator }}
       >
         {scrollable ? (
-          <BottomSheetScrollView style={styles.sheetContainer} keyboardShouldPersistTaps="handled">
+          <BottomSheetScrollView ref={scrollRef} style={styles.sheetContainer} keyboardShouldPersistTaps="handled">
             <Pressable onPress={Keyboard.dismiss}>{content}</Pressable>
           </BottomSheetScrollView>
         ) : (

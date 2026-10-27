@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Keyboard, Pressable, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import { filterWithCoordinates } from '@/lib/geo/mapRegion';
 import { filterListings } from '@/lib/listingFilters';
 import { SEARCH_ROOM_TYPE_OPTIONS, SEARCH_LIFESTYLE_OPTIONS, SEARCH_AMENITY_OPTIONS, GENDER_OPTIONS } from '@/constants/data';
 import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { geocodeAddress, locationFromDetails, PLACES_QUERY, PLACES_REQUEST_URL, PLACE_LOCATION_FIELDS } from '@/lib/geo/places';
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -37,9 +38,9 @@ export default function SearchScreen() {
   const [mapInteracting, setMapInteracting] = useState(false);
 
   const [location, setLocation] = useState('');
-  // Set when an autocomplete suggestion is picked: { mainText, latitude, longitude }.
-  // The input shows the full address; filtering uses mainText (street) so it can match
-  // listing addresses; the preview map recenters on the coordinates.
+  // Set when an autocomplete suggestion is picked: { latitude, longitude }. The input
+  // shows the full address; the map recenters there — listings are NOT text-filtered
+  // by location (their public docs only carry city/province + an approximate point).
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [budgetFrom, setBudgetFrom] = useState('');
   const [budgetTo, setBudgetTo] = useState('');
@@ -50,13 +51,10 @@ export default function SearchScreen() {
 
   const { data: listings } = useBrowseListings();
 
-  const locationQuery = selectedPlace?.mainText ?? location;
-
   // Live-filtered pins: the preview map reflects the current filters in real time.
   const mapListings = useMemo(
     () =>
       filterListings(filterWithCoordinates(listings), {
-        location: locationQuery,
         budgetFrom,
         budgetTo,
         gender,
@@ -64,14 +62,13 @@ export default function SearchScreen() {
         lifestyleMatches,
         amenities,
       }),
-    [listings, locationQuery, budgetFrom, budgetTo, gender, roomTypes, lifestyleMatches, amenities]
+    [listings, budgetFrom, budgetTo, gender, roomTypes, lifestyleMatches, amenities]
   );
 
   // Latest preview-map position — handed off to the full-screen map so it opens in place.
   const lastRegionRef = useRef(null);
 
   const filterParams = () => ({
-    location: locationQuery,
     budgetFrom,
     budgetTo,
     gender,
@@ -128,6 +125,15 @@ export default function SearchScreen() {
     });
   };
 
+  // Search icon / keyboard "search": the user typed a place without picking a
+  // suggestion — geocode the text and recenter there (no-op when nothing matches).
+  const handleLocationSearch = async () => {
+    Keyboard.dismiss();
+    if (selectedPlace?.latitude != null || !location.trim()) return;
+    const loc = await geocodeAddress(location);
+    if (loc) setSelectedPlace(loc);
+  };
+
   // Recenter the preview when an address is picked from the autocomplete.
   const previewCenter = useMemo(() => {
     if (selectedPlace?.latitude != null && selectedPlace?.longitude != null) {
@@ -167,16 +173,15 @@ export default function SearchScreen() {
                 <GooglePlacesAutocomplete
                   placeholder="1423 3rd Ave"
                   fetchDetails
+                  isNewPlacesAPI
+                  requestUrl={PLACES_REQUEST_URL}
+                  fields={PLACE_LOCATION_FIELDS}
                   debounce={300}
                   minLength={2}
                   enablePoweredByContainer={false}
                   keyboardShouldPersistTaps="always"
                   listViewDisplayed="auto"
-                  query={{
-                    key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
-                    language: 'en',
-                    components: 'country:ca|country:us',
-                  }}
+                  query={PLACES_QUERY}
                   textInputProps={{
                     value: location,
                     placeholderTextColor: colors.semantic.input.textDisabled,
@@ -185,16 +190,16 @@ export default function SearchScreen() {
                       setSelectedPlace(null);
                     },
                     returnKeyType: 'search',
+                    onSubmitEditing: handleLocationSearch,
                     accessibilityLabel: 'Location',
                   }}
                   onPress={(data, details = null) => {
-                    // Show the full address; filter by the street part; recenter the map.
-                    const loc = details?.geometry?.location;
+                    // Show the full address and recenter the map there.
+                    const loc = locationFromDetails(details);
                     setLocation(data?.description ?? '');
                     setSelectedPlace({
-                      mainText: data?.structured_formatting?.main_text ?? data?.description ?? '',
-                      latitude: loc?.lat ?? null,
-                      longitude: loc?.lng ?? null,
+                      latitude: loc?.latitude ?? null,
+                      longitude: loc?.longitude ?? null,
                     });
                   }}
                   styles={{
@@ -207,7 +212,9 @@ export default function SearchScreen() {
                     description: styles.placesDescription,
                   }}
                 />
-                <Feather name="search" color={colors.semantic.text.primary} size={28} style={{ marginTop: 5 }} />
+                <Pressable onPress={handleLocationSearch} hitSlop={8} accessibilityRole="button" accessibilityLabel="Search this location">
+                  <Feather name="search" color={colors.semantic.text.primary} size={28} style={{ marginTop: 5 }} />
+                </Pressable>
               </View>
             </SearchSection>
           </View>

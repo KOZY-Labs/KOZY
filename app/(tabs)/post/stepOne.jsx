@@ -19,8 +19,9 @@ import Dropdown from '@/components/ui/input/dropdown';
 import DisplayInput from '@/components/ui/input/displayInput';
 import { useListingDraft } from '@/context/ListingDraftContext';
 import { usePostFlowExit } from '@/hooks/use-post-flow-exit';
-import { geocodeAddress } from '@/lib/geo/geocode';
+import { geocodeAddress, addressPartsFromDetails, locationFromDetails, PLACES_QUERY, PLACES_REQUEST_URL, PLACE_DETAIL_FIELDS } from '@/lib/geo/places';
 import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { placesAutocompleteStyles } from '@/components/ui/input/placesAutocompleteStyles';
 import {
   ROOMTYPE_OPTIONS,
   FURNISHEDTYPE_OPTIONS,
@@ -48,27 +49,6 @@ const getKeyDetailLabel = (value) => KEYDETAIL_LABELS[value] ?? value;
 const getLookingForLabel = (value) => LOOKINGFOR_LABELS[value] ?? value;
 
 const normalizeAddressPart = (value) => value?.trim?.() ?? '';
-
-const getAddressComponent = (components, type, name = 'long_name') => (
-    components.find((component) => component.types.includes(type))?.[name] ?? ''
-);
-
-const getAddressParts = (components) => {
-    const streetNumber = getAddressComponent(components, 'street_number');
-    const route = getAddressComponent(components, 'route');
-
-    return {
-        street: [streetNumber, route].filter(Boolean).join(' '),
-        city:
-            getAddressComponent(components, 'locality') ||
-            getAddressComponent(components, 'postal_town') ||
-            getAddressComponent(components, 'sublocality') ||
-            getAddressComponent(components, 'administrative_area_level_2'),
-        province: getAddressComponent(components, 'administrative_area_level_1', 'short_name'),
-        postalCode: getAddressComponent(components, 'postal_code'),
-        country: getAddressComponent(components, 'country', 'short_name'),
-    };
-};
 
 
 {/* main component */}
@@ -153,8 +133,8 @@ export default function StepOne() {
     };
 
     const handlePlaceSelect = (data, details = null) => {
-        const location = details?.geometry?.location;
-        const addressParts = getAddressParts(details?.address_components ?? []);
+        const location = locationFromDetails(details);
+        const addressParts = addressPartsFromDetails(details);
         const nextStreet = addressParts.street || data.description;
 
         setStreet(nextStreet);
@@ -162,8 +142,8 @@ export default function StepOne() {
         setProvince(addressParts.province);
         setPostalCode(addressParts.postalCode);
         setPlaceId(data.place_id);
-        setLatitude(location?.lat ?? null);
-        setLongitude(location?.lng ?? null);
+        setLatitude(location?.latitude ?? null);
+        setLongitude(location?.longitude ?? null);
         clearFieldError('address');
 
         // console.log('[StepOne] Google place selected', {
@@ -331,17 +311,16 @@ export default function StepOne() {
                                 <GooglePlacesAutocomplete
                                     placeholder="Street"
                                     fetchDetails
+                                    isNewPlacesAPI
+                                    requestUrl={PLACES_REQUEST_URL}
+                                    fields={PLACE_DETAIL_FIELDS}
                                     debounce={300}
                                     minLength={2}
                                     enablePoweredByContainer={false}
                                     keyboardShouldPersistTaps="always"
                                     listViewDisplayed="auto"
                                     disableScroll
-                                    query={{
-                                        key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
-                                        language: 'en',
-                                        components: 'country:ca|country:us',
-                                    }}
+                                    query={PLACES_QUERY}
                                     textInputProps={{
                                         value: street ?? '',
                                         placeholderTextColor: colors.semantic.input.textDisabled,
@@ -363,16 +342,7 @@ export default function StepOne() {
                                             address: 'No matching address found. Try a more specific address.',
                                         }));
                                     }}
-                                    styles={{
-                                        container: styles.placesContainer,
-                                        textInputContainer: styles.placesTextInputContainer,
-                                        textInput: styles.placesTextInput,
-                                        listView: styles.placesList,
-                                        row: styles.placesRow,
-                                        separator: styles.placesSeparator,
-                                        description: styles.placesDescription,
-                                        predefinedPlacesDescription: styles.placesDescription,
-                                    }}
+                                    styles={placesAutocompleteStyles}
                                 />
                                 <TextField
                                     value={additionalAddress}
@@ -671,48 +641,6 @@ const styles = StyleSheet.create({
   addressAutocompleteRow: {
     zIndex: 20,
     elevation: 20,
-  },
-  placesContainer: {
-    flex: 1,
-    zIndex: 20,
-  },
-  placesTextInputContainer: {
-    flexDirection: 'row',
-  },
-  placesTextInput: {
-    width: '100%',
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderColor: colors.semantic.input.border.normal.color,
-    borderWidth: colors.semantic.input.border.normal.width,
-    backgroundColor: colors.semantic.input.bg,
-    color: colors.semantic.input.text,
-    fontSize: 12,
-    marginBottom: 0,
-  },
-  placesList: {
-    marginTop: 8,
-    borderRadius: 12,
-    backgroundColor: colors.semantic.bottomSheet.background,
-    borderWidth: 1,
-    borderColor: colors.base.gray800,
-    overflow: 'hidden',
-    zIndex: 30,
-    elevation: 30,
-  },
-  placesRow: {
-    backgroundColor: colors.semantic.bottomSheet.background,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  placesSeparator: {
-    height: 1,
-    backgroundColor: colors.base.gray800,
-  },
-  placesDescription: {
-    color: colors.semantic.text.primary,
-    fontSize: 12,
   },
     dropdownRow: {
         flexDirection: 'row',

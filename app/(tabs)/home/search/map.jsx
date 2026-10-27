@@ -25,7 +25,6 @@ export default function SearchMapScreen() {
   const mapListings = useMemo(
     () =>
       filterListings(filterWithCoordinates(listings), {
-        location: getParamString(params.location),
         budgetFrom: getParamString(params.budgetFrom),
         budgetTo: getParamString(params.budgetTo),
         gender: getParamString(params.gender),
@@ -33,7 +32,7 @@ export default function SearchMapScreen() {
         lifestyleMatches: parseParamArray(params.lifestyleMatches),
         amenities: parseParamArray(params.amenities),
       }),
-    [listings, params.location, params.budgetFrom, params.budgetTo, params.gender, params.roomTypes, params.lifestyleMatches, params.amenities]
+    [listings, params.budgetFrom, params.budgetTo, params.gender, params.roomTypes, params.lifestyleMatches, params.amenities]
   );
 
   // Open at the position the preview map was showing (when provided).

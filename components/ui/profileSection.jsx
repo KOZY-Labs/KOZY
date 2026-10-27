@@ -6,6 +6,7 @@ import DisplayField from '@/components/ui/displayField';
 import { colors } from '@/constants/colors';
 import { avatarSource } from '@/lib/avatar';
 import { ageFromBirth } from '@/lib/dob.mjs';
+import { languageLabel } from '@/constants/data';
 
 export default function ProfileSection({ listing }) {
   const owner = listing?.owner;
@@ -41,23 +42,28 @@ export default function ProfileSection({ listing }) {
         ) : null}
       </View>
 
+      {/* At-a-glance facts in one pill row; optional ones simply don't appear.
+          DisplayField drops empty values and hides itself when none are left. */}
       <DisplayField title="Profile" type="pill">
-        {[owner.gender, owner.occupation]}
+        {[owner.gender, owner.occupation, owner.education ? `🎓 ${owner.education}` : null]}
       </DisplayField>
 
-      <DisplayField title="Personality" type="pill">
-        {owner.personality}
+      <DisplayField title="Preferred Languages" type="pill">
+        {(owner.languages ?? []).map(languageLabel)}
       </DisplayField>
 
-      <DisplayField title="Lifestyle" type="pill">
-        {owner.lifestyle}
+      <DisplayField title="Personality & Lifestyle" type="pill">
+        {[...(owner.personality ?? []), ...(owner.lifestyle ?? [])]}
       </DisplayField>
 
-      {owner.aboutMe ? (
-        <DisplayField title="About Me">
-          {owner.aboutMe}
-        </DisplayField>
-      ) : null}
+      {/* Short rules before the long story — the reader decides on the rules. */}
+      <DisplayField title="House rules">{owner.roommateNotes}</DisplayField>
+
+      <DisplayField title="About Me">{owner.aboutMe}</DisplayField>
+
+      {/* Pet gets its own titled block — allergies make it a real decision point. */}
+      <DisplayField title="Pet">{owner.petDescription}</DisplayField>
+      <DisplayField title="Hobby">{owner.hobby}</DisplayField>
     </View>
   );
 }

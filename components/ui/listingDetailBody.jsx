@@ -163,12 +163,8 @@ export default memo(function ListingDetailBody({ listing }) {
         {/* Tap opens a full-screen map showing the approximate area */}
         <ListingLocationMap latitude={listing.approxLatitude} longitude={listing.approxLongitude} />
 
-        {/* Owner */}
+        {/* Room first, then the person — two clearly separate sections. */}
         <View style={styles.section}>
-          <AppText variant='headline-sm'>Meet Your Roommate</AppText>
-
-          <ProfileSection listing={listing} />
-
           <DisplayField title="About Room & House" type="pill">
             {[
               listing.bedrooms > 0 ? `${listing.bedrooms} Bed` : null,
@@ -200,6 +196,12 @@ export default memo(function ListingDetailBody({ listing }) {
           {listing.deposit != null && listing.deposit !== '' && listing.deposit !== 0 ? (
             <AppText variant='body-sm' style={{lineHeight: 14}}>• Deposit: ${listing.deposit}</AppText>
           ) : null}
+        </View>
+
+        <View style={styles.section}>
+          <AppText variant='headline-sm'>Meet Your Roommate</AppText>
+
+          <ProfileSection listing={listing} />
         </View>
       </View>
     </>

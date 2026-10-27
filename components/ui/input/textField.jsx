@@ -1,6 +1,7 @@
 // components/input/TextField.jsx
 import { useState } from "react";
 import { Text, StyleSheet, View, Pressable } from "react-native";
+import { Feather } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { getTypeStyle } from '@/constants/typographyStyles';
 import AdaptiveTextInput from './adaptiveTextInput';
@@ -20,10 +21,19 @@ export default function TextField({
   rightIcon,
   onRightIconPress,
   rightIconAccessibilityLabel,
+  // Every text box gets a trailing ✕ that clears it in one tap (while it has a
+  // value and no custom right icon, e.g. the password eye, is in the way).
+  clearable = true,
   ...props
 }) {
 
   const [focused, setFocused] = useState(false);
+  const showClear = clearable && !rightIcon && !disabled && !!value;
+  const trailingIcon = showClear
+    ? <Feather name="x-circle" size={18} color={colors.semantic.input.textDisabled} />
+    : rightIcon;
+  const trailingPress = showClear ? () => onChangeText?.('') : onRightIconPress;
+  const trailingLabel = showClear ? 'Clear text' : rightIconAccessibilityLabel;
 
   const borderStyle = () => {
     if (disabled) return colors.semantic.input.border.disabled;
@@ -65,8 +75,9 @@ export default function TextField({
             borderWidth: border.width,
             color: isAuth ? colors.base.gray800 : colors.semantic.input.text,
           },
-          rightIcon && styles.inputWithIcon,
+          trailingIcon && styles.inputWithIcon,
           suffixText && styles.inputWithSuffix,
+          suffixText && trailingIcon && styles.inputWithSuffixAndIcon,
           style,
         ]}
       />
@@ -76,26 +87,27 @@ export default function TextField({
           style={[
             styles.suffix,
             getTypeStyle('body-xsm'),
-            rightIcon && styles.suffixWithIcon,
+            trailingIcon && styles.suffixWithIcon,
           ]}
           pointerEvents="none"
         >
           {suffixText}
         </Text>
       ) : null}
-      {rightIcon ? (
-        onRightIconPress ? (
+      {trailingIcon ? (
+        trailingPress ? (
           <Pressable
-            onPress={onRightIconPress}
+            onPress={trailingPress}
             accessibilityRole="button"
-            accessibilityLabel={rightIconAccessibilityLabel}
+            accessibilityLabel={trailingLabel}
+            hitSlop={8}
             style={styles.iconButton}
           >
-            {rightIcon}
+            {trailingIcon}
           </Pressable>
         ) : (
           <View style={styles.iconButton}>
-            {rightIcon}
+            {trailingIcon}
           </View>
         )
       ) : null}
@@ -120,6 +132,9 @@ const styles = StyleSheet.create({
   },
   inputWithSuffix: {
     paddingRight: 72,
+  },
+  inputWithSuffixAndIcon: {
+    paddingRight: 100,
   },
   suffix: {
     position: 'absolute',

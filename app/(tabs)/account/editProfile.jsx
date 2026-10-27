@@ -34,6 +34,11 @@ import {
   GENDER_OPTIONS,
   PERSONALITY_OPTIONS,
   SEARCH_LIFESTYLE_OPTIONS,
+  LANGUAGE_OPTIONS,
+  LANGUAGE_OTHER,
+  languageLabel,
+  sortLanguages,
+  PROFILE_SHORT_TEXT_MAX_LEN,
   DISPLAY_NAME_MIN_LEN,
   DISPLAY_NAME_MAX_LEN,
   LEGAL_NAME_MAX_LEN,
@@ -45,6 +50,10 @@ import { trustLevelFor } from '@/lib/trustLevel.mjs';
 import { uploadUserAvatar } from '@/lib/utils/uploadMedia';
 import { openTerms } from '@/lib/links';
 import DismissKeyboard from '@/components/ui/layout/dismissKeyboard';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { placesAutocompleteStyles } from '@/components/ui/input/placesAutocompleteStyles';
+import AdaptiveTextInput from '@/components/ui/input/adaptiveTextInput';
+import { PLACES_QUERY, PLACES_REQUEST_URL } from '@/lib/geo/places';
 
 
 // Single photo: only the first avatar entry is ever shown anywhere in the app,
@@ -118,6 +127,8 @@ function EditProfileForm() {
     const jobDrawerRef = useRef(null);
     const lifestyleDrawerRef = useRef(null);
     const aboutMeDrawerRef = useRef(null);
+    const languagesDrawerRef = useRef(null);
+    const educationDrawerRef = useRef(null);
     const myVerificationDrawerRef = useRef(null);
     // Public display name — never locked (unlike the legal name below).
     const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
@@ -129,6 +140,20 @@ function EditProfileForm() {
     const [gender, setGender] = useState(profile?.gender ?? null);
     const [job, setJob] = useState(profile?.occupation ?? null);
     const [aboutMe, setAboutMe] = useState(profile?.aboutMe ?? '');
+    // Optional "more about me" fields. `languages` holds the picked labels; a custom
+    // language (via Other) lives in `otherLanguage` and is merged on save.
+    const [languages, setLanguages] = useState(profile?.languages ?? []);
+    const [otherLanguage, setOtherLanguage] = useState('');
+    const [education, setEducation] = useState(profile?.education ?? '');
+    const [petDescription, setPetDescription] = useState(profile?.petDescription ?? '');
+    const [hobby, setHobby] = useState(profile?.hobby ?? '');
+    const [roommateNotes, setRoommateNotes] = useState(profile?.roommateNotes ?? '');
+    // What gets saved: picked languages with Other swapped for the typed one.
+    const savedLanguages = useMemo(() => {
+      const picked = languages.filter((l) => l !== LANGUAGE_OTHER);
+      const custom = otherLanguage.trim();
+      return sortLanguages(custom && languages.includes(LANGUAGE_OTHER) ? [...picked, custom] : picked);
+    }, [languages, otherLanguage]);
     // One message per field so each FormField explains its own problem.
     const [errors, setErrors] = useState({});
     // Derived, not copied: the live users-doc subscription keeps profile current, so a
@@ -200,9 +225,14 @@ function EditProfileForm() {
         JSON.stringify(personality) !== JSON.stringify(profile?.personality ?? []) ||
         JSON.stringify(lifestylePreferences) !== JSON.stringify(profile?.lifestyle ?? []) ||
         aboutMe !== (profile?.aboutMe ?? '') ||
+        JSON.stringify(savedLanguages) !== JSON.stringify(profile?.languages ?? []) ||
+        education !== (profile?.education ?? '') ||
+        petDescription !== (profile?.petDescription ?? '') ||
+        hobby !== (profile?.hobby ?? '') ||
+        roommateNotes !== (profile?.roommateNotes ?? '') ||
         photosChanged
       );
-    }, [displayName, firstName, lastName, dob, gender, job, personality, lifestylePreferences, aboutMe, photos, profile, existingAvatar]);
+    }, [displayName, firstName, lastName, dob, gender, job, personality, lifestylePreferences, aboutMe, savedLanguages, education, petDescription, hobby, roommateNotes, photos, profile, existingAvatar]);
 
     const isDirtyRef = useRef(false);
     isDirtyRef.current = isDirty;
@@ -357,6 +387,11 @@ function EditProfileForm() {
         personality,
         lifestyle: lifestylePreferences,
         aboutMe,
+        languages: savedLanguages,
+        education: education.trim(),
+        petDescription: petDescription.trim(),
+        hobby: hobby.trim(),
+        roommateNotes: roommateNotes.trim(),
         avatar,
       };
       // Completing the profile is what advances Level 1 → 2.
@@ -372,6 +407,12 @@ function EditProfileForm() {
       if (identity.firstName != null) setFirstName(identity.firstName);
       if (identity.lastName != null) setLastName(identity.lastName);
       setPhotos(avatar.map((url) => ({ uri: url, remoteUrl: url })));
+      setLanguages(savedLanguages);
+      setOtherLanguage('');
+      setEducation(updates.education);
+      setPetDescription(updates.petDescription);
+      setHobby(updates.hobby);
+      setRoommateNotes(updates.roommateNotes);
       showAlertModal({
         title: 'Profile updated',
         message: 'Your changes have been saved.',
@@ -598,6 +639,7 @@ function EditProfileForm() {
               </Pressable>
             ) : null}
 
+            <AppText variant="headline-sm" style={styles.sectionTitle}>Basics</AppText>
             {/* Display name — public, always editable. */}
             <FormField label="Display Name" required error={errors.displayName}>
               <TextField
@@ -636,6 +678,22 @@ function EditProfileForm() {
                 onPress={() => jobDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
+            <FormField label="Education">
+              <DisplayInput
+                value={education}
+                placeholder="School or university"
+                onPress={() => educationDrawerRef.current?.snapToIndex(0)}
+              />
+            </FormField>
+            <FormField label="Preferred Languages">
+              <DisplayInput
+                value={savedLanguages.map(languageLabel)}
+                isMulti={true}
+                placeholder="+"
+                onPress={() => languagesDrawerRef.current?.snapToIndex(0)}
+              />
+            </FormField>
+            <AppText variant="headline-sm" style={styles.sectionTitle}>About you</AppText>
             <FormField label="Personality">
               <DisplayInput
                 value={personality}
@@ -654,6 +712,15 @@ function EditProfileForm() {
                 onPress={() => lifestyleDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
+            <FormField label="House rules">
+              <TextField
+                value={roommateNotes}
+                placeholder="e.g. No parties, quiet after 11pm"
+                maxLength={PROFILE_SHORT_TEXT_MAX_LEN}
+                suffixText={`${roommateNotes.length}/${PROFILE_SHORT_TEXT_MAX_LEN}`}
+                onChangeText={setRoommateNotes}
+              />
+            </FormField>
             <FormField label="About Me">
               <DisplayInput
                 value={aboutMe}
@@ -661,6 +728,25 @@ function EditProfileForm() {
                 onPress={() => aboutMeDrawerRef.current?.snapToIndex(0)}
               />
             </FormField>
+            <FormField label="Hobby">
+              <TextField
+                value={hobby}
+                placeholder="e.g. Hiking, cooking, board games"
+                maxLength={PROFILE_SHORT_TEXT_MAX_LEN}
+                suffixText={`${hobby.length}/${PROFILE_SHORT_TEXT_MAX_LEN}`}
+                onChangeText={setHobby}
+              />
+            </FormField>
+            <FormField label="Pet">
+              <TextField
+                value={petDescription}
+                placeholder="e.g. A calm 3-year-old cat"
+                maxLength={PROFILE_SHORT_TEXT_MAX_LEN}
+                suffixText={`${petDescription.length}/${PROFILE_SHORT_TEXT_MAX_LEN}`}
+                onChangeText={setPetDescription}
+              />
+            </FormField>
+
             {/* Verified: the row itself expands to show the locked legal identity. */}
             <Pressable
               style={styles.idVerificationContainer}
@@ -789,6 +875,63 @@ function EditProfileForm() {
             </FormField>
       </AppDrawer>
       <AppDrawer
+            ref={languagesDrawerRef}
+            title="Which languages do you speak?"
+            description="Select all that apply."
+            primaryAction={() => languagesDrawerRef.current?.close()}
+          >
+            <PillGroup items={LANGUAGE_OPTIONS} value={languages} onChange={setLanguages} />
+            {languages.includes(LANGUAGE_OTHER) ? (
+              <FormField label="Which language?" style={{ marginTop: 16 }}>
+                <TextField
+                  value={otherLanguage}
+                  placeholder="e.g. Swahili"
+                  maxLength={30}
+                  onChangeText={setOtherLanguage}
+                />
+              </FormField>
+            ) : null}
+      </AppDrawer>
+      <AppDrawer
+            ref={educationDrawerRef}
+            title="Where did you study?"
+            description="Pick your school from the suggestions, or just type it."
+            primaryAction={() => educationDrawerRef.current?.close()}
+            scrollable={false}
+          >
+            {/* No reserved space: the sheet is dynamically sized, so it grows when
+                suggestions appear and stays tight when there are none. */}
+            <View>
+            <GooglePlacesAutocomplete
+              placeholder="School or university"
+              debounce={300}
+              minLength={2}
+              enablePoweredByContainer={false}
+              keyboardShouldPersistTaps="always"
+              listViewDisplayed="auto"
+              disableScroll
+              // Places API (New): the legacy endpoint can't filter to schools.
+              isNewPlacesAPI
+              requestUrl={PLACES_REQUEST_URL}
+              query={{ ...PLACES_QUERY, includedPrimaryTypes: ['university', 'school'] }}
+              textInputProps={{
+                // Bottom-sheet-aware input so the sheet rides above the keyboard.
+                InputComp: AdaptiveTextInput,
+                value: education,
+                placeholderTextColor: colors.semantic.input.textDisabled,
+                onChangeText: setEducation,
+                accessibilityLabel: 'School or university',
+              }}
+              // Keep only the school name — the address is noise on a profile.
+              onPress={(data) => setEducation(data?.structured_formatting?.main_text ?? data?.description ?? '')}
+              // Suggestions are a nicety: when the request fails (e.g. Places API (New)
+              // not enabled on the key) the typed text still saves — no warning spam.
+              onFail={() => {}}
+              styles={placesAutocompleteStyles}
+            />
+            </View>
+      </AppDrawer>
+      <AppDrawer
             ref={myVerificationDrawerRef}
             title="Verify Your Identity"
             align="center"
@@ -823,6 +966,10 @@ function EditProfileForm() {
 }
 
 const styles = StyleSheet.create({
+  sectionTitle: {
+    marginTop: 8,
+    marginBottom: 12,
+  },
   container: {
     backgroundColor: 'black',
     paddingHorizontal: 16,

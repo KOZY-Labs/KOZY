@@ -23,13 +23,15 @@ export default function DisplayField({
 
   return (
     <View {...props}>
-      <AppText
-        variant="body-md-strong"
-        color="primary"
-        style={{ marginBottom: 8 }}
-      >
-        {title}
-      </AppText>
+      {title ? (
+        <AppText
+          variant="body-md-strong"
+          color="primary"
+          style={{ marginBottom: 8 }}
+        >
+          {title}
+        </AppText>
+      ) : null}
 
       {type === 'pill' ? (
         <View style={styles.pillContainer}>

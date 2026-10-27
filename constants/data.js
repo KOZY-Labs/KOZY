@@ -140,6 +140,32 @@ export const SEARCH_LIFESTYLE_OPTIONS = [
   'Go to Office',
 ].map((label) => ({ label, value: label }));
 
+// Optional "more about me" profile fields. Languages are alphabetical with Other
+// last — picking Other reveals a free-text box whose value is stored instead.
+// Stored value = plain name; the flag lives only in the label (a representative
+// country per language — colour-emoji flags render on iOS and Android alike).
+export const LANGUAGE_OTHER = 'Other';
+const LANGUAGE_FLAGS = {
+  Arabic: '🇸🇦', Cantonese: '🇭🇰', English: '🇺🇸', French: '🇫🇷', German: '🇩🇪', Hindi: '🇮🇳',
+  Italian: '🇮🇹', Japanese: '🇯🇵', Korean: '🇰🇷', Mandarin: '🇨🇳', Persian: '🇮🇷', Polish: '🇵🇱',
+  Portuguese: '🇧🇷', Punjabi: '🇮🇳', Russian: '🇷🇺', Spanish: '🇪🇸', Tagalog: '🇵🇭', Urdu: '🇵🇰',
+  Vietnamese: '🇻🇳', [LANGUAGE_OTHER]: '🌐',
+};
+export const LANGUAGE_OPTIONS = Object.keys(LANGUAGE_FLAGS).map((value) => ({
+  value,
+  label: `${LANGUAGE_FLAGS[value]} ${value}`,
+}));
+// Display label for a stored language (custom "Other" entries have no flag).
+export const languageLabel = (value) =>
+  LANGUAGE_FLAGS[value] ? `${LANGUAGE_FLAGS[value]} ${value}` : value;
+// Alphabetical by list position; custom entries after the known ones, A→Z.
+export function sortLanguages(values = []) {
+  const order = Object.keys(LANGUAGE_FLAGS);
+  const rank = (v) => (order.includes(v) ? order.indexOf(v) : order.length);
+  return [...values].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+export const PROFILE_SHORT_TEXT_MAX_LEN = 50; // pet / hobby / important-to-me
+
 // Report reasons (reports.reasonCode). `only` restricts a reason to one target type.
 export const REPORT_REASONS = [
   { value: 'scam', label: 'Scam or misleading information' },
