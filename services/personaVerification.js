@@ -69,8 +69,8 @@ export async function startPersonaVerification(referenceId, identity = {}) {
     );
   }
 
-  // kozy://persona-verification — must be allowlisted in the Persona template's
-  // redirect URLs. Requires the dev client / standalone build (not Expo Go).
+  // kozy://persona-verification — passed per inquiry, so the template's "Default
+  // Redirect URI" can stay empty. Requires the dev client / standalone build (not Expo Go).
   const redirectUri = Linking.createURL('persona-verification');
 
   const params = new URLSearchParams({
