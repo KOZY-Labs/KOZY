@@ -26,8 +26,9 @@ service cloud.firestore {
       function noServerOnlyFields() {
         // `persona` is the webhook's audit map; `personaInquiryId` is its legacy
         // flat predecessor — keep both blocked so clients can't fabricate either.
+        // `role` feeds isAdmin(); admins are granted in the Firebase console only.
         return !request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['verified', 'persona', 'personaInquiryId']);
+          .hasAny(['verified', 'persona', 'personaInquiryId', 'role']);
       }
       function trustLevelAllowed() {
         return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['trustLevel'])
@@ -39,6 +40,7 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && request.resource.data.get('verified', false) == false
         && request.resource.data.get('trustLevel', 1) in [1, 2]
+        && request.resource.data.get('role', 'user') == 'user'
         && !('persona' in request.resource.data)
         && !('personaInquiryId' in request.resource.data);
       allow update: if (isSelf(uid) || isAdmin())
@@ -120,6 +122,12 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (isSignedIn() && resource.data.reporterId == request.auth.uid);
       allow update, delete: if isAdmin();
+    }
+
+    // Written only by the listing-delete trigger (Admin SDK) so the admin page can
+    // show when and by whom a reported listing was removed.
+    match /deletedListings/{listingId} {
+      allow read: if isAdmin();
     }
   }
 }

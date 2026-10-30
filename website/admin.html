@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KOZY Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Open+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    :root{--danger:#F58E8E;--danger-soft:rgba(245,142,142,.14);--ok:#8EF5B4;--ok-soft:rgba(142,245,180,.12);
+      --warn:#F5D28E;--warn-soft:rgba(245,210,142,.13);--field:#12141C}
+    [hidden]{display:none!important}
+    body{min-height:100dvh}
+    .adminTag{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+    .navLeft{display:flex;align-items:center;gap:12px}
+    .who{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted);min-width:0}
+    .who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ghostBtn{border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;
+      color:var(--text);white-space:nowrap}
+    .ghostBtn:hover{border-color:var(--muted)}
+
+    /* login / denied */
+    .authCard{max-width:420px;margin:64px auto 96px;background:var(--surface);
+      border:1px solid var(--line);border-radius:20px;padding:32px 28px}
+    .authCard h1{font-family:var(--display);font-weight:800;font-size:24px;margin-bottom:8px}
+    .authCard p{font-size:14px;line-height:1.6;color:var(--muted);margin-bottom:18px}
+    .authCard label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px}
+    .authCard input{width:100%;background:var(--field);border:1px solid var(--line);border-radius:10px;
+      color:var(--text);font-family:var(--body);font-size:15px;padding:12px 14px}
+    .authCard input:focus{outline:2px solid #7E96F5;outline-offset:1px}
+    .authCard input.invalid{border-color:var(--danger)}
+    .fieldGroup{margin-bottom:14px}
+    .fieldErr{color:var(--danger);font-size:12.5px;margin-top:6px}
+    .primaryBtn{display:block;width:100%;text-align:center;background:#7E96F5;color:#0B0E17;
+      font-weight:700;font-size:15px;border-radius:12px;padding:14px;margin-top:4px}
+    .primaryBtn:disabled{opacity:.5;cursor:default}
+
+    /* console */
+    .console{padding:28px 0 72px}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;margin-bottom:18px}
+    .toolbar h1{font-family:var(--display);font-weight:800;font-size:26px}
+    .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+    .tab{padding:8px 14px;border-radius:9px;font-size:13.5px;font-weight:700;color:var(--muted);display:flex;gap:8px;align-items:center}
+    .tab[aria-selected="true"]{background:var(--surface2);color:var(--text)}
+    .tab .n{font-size:11.5px;font-variant-numeric:tabular-nums;background:var(--accent-soft);color:#AFC0FF;
+      border-radius:999px;padding:1px 8px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    .sortSel{margin-left:auto;background:var(--surface);border:1px solid var(--line);color:var(--text);
+      border-radius:999px;padding:6px 12px;font-family:var(--body);font-size:12.5px;font-weight:600;cursor:pointer}
+    .chip{border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;color:var(--muted)}
+    .chip[aria-pressed="true"]{border-color:#7E96F5;color:var(--text);background:var(--accent-soft)}
+
+    .grid{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:20px;align-items:start}
+    .list{display:flex;flex-direction:column;gap:8px}
+    .row{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);
+      border-radius:14px;padding:14px 16px}
+    .row:hover{border-color:rgba(255,255,255,.2)}
+    .row[aria-current="true"]{border-color:#7E96F5;background:var(--surface2)}
+    .rowTop{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .rowTop time{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+    .rowReason{font-size:14px;font-weight:700;margin-bottom:2px}
+    .rowMeta{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .badge{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 7px}
+    .badge.listing{background:var(--accent-soft);color:#AFC0FF}
+    .badge.user{background:var(--warn-soft);color:var(--warn)}
+    .badge.general{background:var(--ok-soft);color:var(--ok)}
+    .badge.res{background:var(--surface2);color:var(--muted);text-transform:none;letter-spacing:0}
+    .empty{color:var(--muted);font-size:14px;padding:28px 4px}
+
+    .detail{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;
+      position:sticky;top:20px;min-width:0}
+    .detail h2{font-family:var(--display);font-weight:800;font-size:20px;margin-bottom:4px;overflow-wrap:anywhere}
+    /* not .sub — styles.css uses that for the home hero (34px bottom margin) */
+    .dim{font-size:13px;color:var(--muted)}
+    .section{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
+    .label{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .kv{display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px 12px;font-size:14px}
+    .kv dt{color:var(--muted)}
+    .kv dd{overflow-wrap:anywhere}
+    .kv a,.idLine a{color:#AFC0FF;text-decoration:underline}
+    .idLine{font-size:12px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+    .idLine code{font-family:ui-monospace,Menlo,monospace;color:var(--text);user-select:all}
+    .quote{background:var(--field);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+      font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+    .thumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+    .thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--surface2)}
+    .profile{display:flex;gap:14px;align-items:center}
+    .profile img{width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--surface2);flex-shrink:0}
+    .gone{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.6}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+    .actBtn{border:1px solid var(--line);border-radius:10px;padding:10px 16px;font-size:13.5px;font-weight:700}
+    .actBtn:hover{border-color:var(--muted)}
+    .actBtn.danger{border-color:rgba(245,142,142,.45);color:var(--danger)}
+    .actBtn:disabled{opacity:.4;cursor:default}
+    .bannerErr{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:10px 14px;font-size:13.5px;margin-top:14px}
+
+    /* center confirm modal */
+    dialog{margin:auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;
+      padding:24px;width:min(420px,calc(100vw - 32px))}
+    dialog::backdrop{background:rgba(3,5,10,.7)}
+    dialog h3{font-family:var(--display);font-weight:800;font-size:19px;margin-bottom:8px}
+    dialog p{font-size:14px;line-height:1.6;color:var(--muted);margin-bottom:16px}
+    .noteLabel{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px}
+    .noteLabel span{font-weight:400;color:var(--muted)}
+    dialog textarea{width:100%;background:var(--field);border:1px solid var(--line);border-radius:10px;
+      color:var(--text);font-family:var(--body);font-size:14px;line-height:1.5;padding:10px 12px;resize:vertical}
+    dialog textarea:focus{outline:2px solid #7E96F5;outline-offset:1px}
+    .noteCount{font-size:12px;color:var(--muted);text-align:right;margin:4px 0 16px;font-variant-numeric:tabular-nums}
+    .dlgBtns{display:flex;gap:10px;justify-content:flex-end}
+    .dlgBtns .confirm{background:#7E96F5;color:#0B0E17;border-color:transparent}
+    .dlgBtns .confirm.danger{background:var(--danger);color:#1A0B0B}
+
+    /* full-screen busy overlay (admin screens: one state while saving) */
+    .busy{position:fixed;inset:0;z-index:50;background:rgba(3,5,10,.72);display:flex;align-items:center;
+      justify-content:center;font-weight:700;font-size:15px}
+
+    @media (max-width:860px){
+      .grid{grid-template-columns:1fr}
+      .detail{position:static}
+    }
+    @media (max-width:480px){
+      .who span{max-width:130px}
+      .kv{grid-template-columns:1fr;gap:2px}
+      .kv dd{margin-bottom:8px}
+      .thumbs{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+  </style>
+</head>
+<body>
+
+<header class="wrap">
+  <nav class="nav">
+    <div class="navLeft">
+      <a href="/" aria-label="KOZY home"><img class="logo" src="/assets/logo.png" alt="KOZY"></a>
+      <span class="adminTag">Admin</span>
+    </div>
+    <div class="who" id="who" hidden>
+      <span id="whoEmail"></span>
+      <button class="ghostBtn" id="signOutBtn" type="button">Sign out</button>
+    </div>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="authCard" id="loadingView"><p>Loading…</p></div>
+
+  <div class="authCard" id="loginView" hidden>
+    <h1>Admin sign in</h1>
+    <p>Use your KOZY account. Only admin accounts can open this page.</p>
+    <form id="loginForm" novalidate>
+      <div class="fieldGroup">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+      </div>
+      <div class="fieldGroup">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <div class="fieldErr" id="loginErr" hidden></div>
+      </div>
+      <button class="primaryBtn" id="loginBtn" type="submit" disabled>Sign in</button>
+    </form>
+  </div>
+
+  <div class="authCard" id="deniedView" hidden>
+    <h1>No admin access</h1>
+    <p>This account doesn't have admin access. Sign out and use an admin account.</p>
+  </div>
+
+  <section class="console" id="consoleView" hidden>
+    <div class="toolbar">
+      <h1>Reports</h1>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-status="open" aria-selected="true">Open <span class="n" id="openCount">0</span></button>
+        <button class="tab" role="tab" data-status="resolved" aria-selected="false">Resolved <span class="n" id="resolvedCount">0</span></button>
+      </div>
+    </div>
+    <div class="chips">
+      <button class="chip" data-type="all" aria-pressed="true">All</button>
+      <button class="chip" data-type="listing" aria-pressed="false">Listing</button>
+      <button class="chip" data-type="user" aria-pressed="false">User</button>
+      <button class="chip" data-type="general" aria-pressed="false">Contact Us</button>
+      <select class="sortSel" id="sortSel" aria-label="Sort by report date">
+        <option value="desc">Newest first</option>
+        <option value="asc">Oldest first</option>
+      </select>
+    </div>
+    <div class="grid">
+      <div class="list" id="list"></div>
+      <aside class="detail" id="detail">
+        <p class="dim">Select a report to see the details.</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<dialog id="confirmDlg">
+  <h3 id="dlgTitle"></h3>
+  <p id="dlgBody"></p>
+  <label class="noteLabel" for="dlgNote">Note <span>(optional)</span></label>
+  <textarea id="dlgNote" rows="3" maxlength="500" placeholder="Why are you taking this action? Other admins will see this."></textarea>
+  <div class="noteCount"><span id="dlgNoteCount">0</span>/500</div>
+  <div class="dlgBtns">
+    <button class="actBtn" id="dlgCancel" type="button">Cancel</button>
+    <button class="actBtn confirm" id="dlgOk" type="button"></button>
+  </div>
+</dialog>
+
+<div class="busy" id="busy" hidden>Saving…</div>
+
+<script type="module">
+  // Report triage for KOZY admins. Access is enforced by Firestore rules (isAdmin)
+  // and the admin callables; the role check here only decides which view to show.
+  // __FIREBASE_*__ tokens are injected at build time (see build.js).
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
+  } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
+  import {
+    getFirestore, collection, query, where, orderBy, limit, getDocs, getDoc, doc, updateDoc,
+    serverTimestamp, getCountFromServer,
+  } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
+  import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-functions.js';
+
+  const app = initializeApp({
+    apiKey: '__FIREBASE_API_KEY__',
+    authDomain: '__FIREBASE_AUTH_DOMAIN__',
+    projectId: '__FIREBASE_PROJECT_ID__',
+  });
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const fns = getFunctions(app, 'us-central1');
+  const deleteListingFn = httpsCallable(fns, 'adminDeleteListing');
+  const suspendUserFn = httpsCallable(fns, 'adminSuspendUser');
+
+  // Mirror of constants/data.js REPORT_REASONS (the app bundle can't be imported here).
+  const REASONS = {
+    scam: 'Scam or misleading information',
+    inappropriate: 'Inappropriate content',
+    harassment: 'Discrimination or harassment',
+    unavailable: 'Duplicate or no longer available',
+    other: 'Other',
+  };
+  const TYPE_LABEL = { listing: 'Listing', user: 'User', general: 'Contact Us' };
+  const RESOLUTION_LABEL = {
+    dismissed: 'Dismissed',
+    listing_hidden: 'Listing hidden',
+    listing_deleted: 'Listing deleted',
+    user_suspended: 'User suspended',
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    status: 'open', type: 'all', sortDir: 'desc', reports: { open: [], resolved: [] }, selectedId: null, me: null,
+  };
+
+  // DOM helper — strings always go in as text, never HTML (report fields are user input).
+  function el(tag, props = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') node.className = v;
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of children.flat()) {
+      if (c == null || c === false) continue;
+      node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    }
+    return node;
+  }
+
+  const toDate = (ts) => (ts?.toDate ? ts.toDate() : null);
+  const fmtDate = (d) => (d ? d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
+  function relTime(d) {
+    if (!d) return '';
+    const s = Math.round((Date.now() - d.getTime()) / 1000);
+    if (s < 60) return 'just now';
+    const m = Math.round(s / 60); if (m < 60) return `${m}m ago`;
+    const h = Math.round(m / 60); if (h < 48) return `${h}h ago`;
+    return `${Math.round(h / 24)}d ago`;
+  }
+  // Document id + a link to it in the Firebase console, for double-checking there.
+  // user-select:all on the id makes one click select the whole thing for copying.
+  function idLine(label, col, id) {
+    if (!id) return null;
+    const url = `https://console.firebase.google.com/project/${app.options.projectId}`
+      + `/firestore/databases/-default-/data/~2F${col}~2F${encodeURIComponent(id)}`;
+    return el('div', { class: 'idLine' },
+      `${label} `, el('code', {}, id), ' · ',
+      el('a', { href: url, target: '_blank', rel: 'noopener' }, 'Open in Firestore'));
+  }
+
+  const httpsOnly = (url) => (typeof url === 'string' && url.startsWith('https://') ? url : null);
+  const reasonLabel = (r) => (r.targetType === 'general' ? 'Inquiry' : REASONS[r.reasonCode] ?? 'Other');
+
+  function showView(id) {
+    for (const v of ['loadingView', 'loginView', 'deniedView', 'consoleView']) $(v).hidden = v !== id;
+  }
+  async function withBusy(label, fn) {
+    $('busy').textContent = label;
+    $('busy').hidden = false;
+    try { return await fn(); } finally { $('busy').hidden = true; }
+  }
+
+  // ---------- auth ----------
+  const emailIn = $('email'), pwIn = $('password');
+  function syncLoginBtn() { $('loginBtn').disabled = !emailIn.value.trim() || !pwIn.value; }
+  function clearLoginErr() { $('loginErr').hidden = true; emailIn.classList.remove('invalid'); pwIn.classList.remove('invalid'); }
+  for (const input of [emailIn, pwIn]) input.addEventListener('input', () => { clearLoginErr(); syncLoginBtn(); });
+
+  $('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if ($('loginBtn').disabled) return;
+    clearLoginErr();
+    try {
+      await withBusy('Signing in…', () => signInWithEmailAndPassword(auth, emailIn.value.trim(), pwIn.value));
+    } catch (err) {
+      const code = err?.code ?? '';
+      $('loginErr').textContent = code === 'auth/too-many-requests'
+        ? 'Too many attempts. Try again in a few minutes.'
+        : code === 'auth/user-disabled' ? 'This account is disabled.'
+        : 'Incorrect email or password.';
+      $('loginErr').hidden = false;
+      emailIn.classList.add('invalid');
+      pwIn.classList.add('invalid');
+    }
+  });
+  $('signOutBtn').addEventListener('click', () => signOut(auth));
+
+  onAuthStateChanged(auth, async (user) => {
+    $('who').hidden = !user;
+    if (!user) { showView('loginView'); syncLoginBtn(); return; }
+    $('whoEmail').textContent = user.email ?? '';
+    showView('loadingView');
+    const me = await getDoc(doc(db, 'users', user.uid)).catch(() => null);
+    if (me?.data()?.role !== 'admin') { showView('deniedView'); return; }
+    state.me = { uid: user.uid, name: me.data().displayName || user.email || 'Admin' };
+    showView('consoleView');
+    await loadReports();
+    const deepLink = new URLSearchParams(location.search).get('report');
+    if (deepLink) await openReport(deepLink);
+  });
+
+  // ---------- list ----------
+  // Sorting re-queries instead of reversing the loaded page: with the 100-row cap,
+  // "oldest first" must come from the server or the true oldest reports never show.
+  async function fetchByStatus(status) {
+    const snap = await getDocs(query(
+      collection(db, 'reports'), where('status', '==', status), orderBy('createdAt', state.sortDir), limit(100),
+    ));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  // Server-side totals — the lists above stop at 100.
+  const countByStatus = (status) =>
+    getCountFromServer(query(collection(db, 'reports'), where('status', '==', status)))
+      .then((c) => c.data().count);
+  async function loadReports() {
+    const [open, resolved, openN, resolvedN] = await Promise.all([
+      fetchByStatus('open'), fetchByStatus('resolved'), countByStatus('open'), countByStatus('resolved'),
+    ]);
+    state.reports = { open, resolved };
+    $('openCount').textContent = String(openN);
+    $('resolvedCount').textContent = String(resolvedN);
+    renderList();
+  }
+
+  $('sortSel').addEventListener('change', async (e) => {
+    state.sortDir = e.target.value;
+    await withBusy('Loading…', loadReports);
+  });
+
+  function renderList() {
+    const items = state.reports[state.status].filter((r) => state.type === 'all' || r.targetType === state.type);
+    const list = $('list');
+    list.replaceChildren();
+    if (!items.length) {
+      list.append(el('p', { class: 'empty' }, state.status === 'open' ? 'No open reports.' : 'Nothing resolved yet.'));
+      return;
+    }
+    for (const r of items) {
+      const created = toDate(r.createdAt);
+      list.append(el('button', {
+        class: 'row', type: 'button', 'aria-current': r.id === state.selectedId ? 'true' : 'false',
+        onclick: () => selectReport(r),
+      },
+        el('div', { class: 'rowTop' },
+          el('span', { class: `badge ${r.targetType}` }, TYPE_LABEL[r.targetType] ?? r.targetType),
+          r.resolution && el('span', { class: 'badge res' }, RESOLUTION_LABEL[r.resolution] ?? r.resolution),
+          el('time', { datetime: created?.toISOString() }, relTime(created)),
+        ),
+        el('div', { class: 'rowReason' }, reasonLabel(r)),
+        el('div', { class: 'rowMeta' }, `From ${r.name || 'Unknown'}${r.reason ? ` · ${r.reason}` : ''}`),
+      ));
+    }
+  }
+
+  for (const tab of document.querySelectorAll('.tab')) {
+    tab.addEventListener('click', () => {
+      state.status = tab.dataset.status;
+      for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', String(t === tab));
+      renderList();
+    });
+  }
+  for (const chip of document.querySelectorAll('.chip')) {
+    chip.addEventListener('click', () => {
+      state.type = chip.dataset.type;
+      for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-pressed', String(c === chip));
+      renderList();
+    });
+  }
+
+  async function openReport(id) {
+    const snap = await getDoc(doc(db, 'reports', id)).catch(() => null);
+    if (!snap?.exists()) return;
+    const r = { id: snap.id, ...snap.data() };
+    state.status = r.status === 'open' ? 'open' : 'resolved';
+    for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', String(t.dataset.status === state.status));
+    await selectReport(r);
+  }
+
+  // ---------- detail ----------
+  async function selectReport(r) {
+    state.selectedId = r.id;
+    renderList();
+    const detail = $('detail');
+    detail.replaceChildren(el('p', { class: 'dim' }, 'Loading…'));
+    if (window.matchMedia('(max-width: 860px)').matches) detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const target = await loadTarget(r);
+    if (state.selectedId !== r.id) return; // another row was picked meanwhile
+
+    const created = toDate(r.createdAt);
+    // filter(Boolean): replaceChildren would render a skipped `cond && el()` as "false".
+    detail.replaceChildren(...[
+      el('span', { class: `badge ${r.targetType}` }, TYPE_LABEL[r.targetType] ?? r.targetType),
+      el('h2', { style: 'margin-top:10px' }, reasonLabel(r)),
+      el('p', { class: 'dim' }, `Reported ${fmtDate(created)}`),
+      r.status !== 'open' && el('p', { class: 'dim' },
+        `${RESOLUTION_LABEL[r.resolution] ?? 'Resolved'} · ${fmtDate(toDate(r.updatedAt))}`
+        + (r.resolvedByName ? ` · by ${r.resolvedByName}` : '')),
+
+      r.resolutionNote && el('div', { class: 'section' },
+        el('div', { class: 'label' }, 'Admin note'),
+        el('div', { class: 'quote' }, r.resolutionNote),
+      ),
+
+      el('div', { class: 'section' },
+        el('div', { class: 'label' }, r.targetType === 'general' ? 'Message' : 'Reporter’s note'),
+        el('div', { class: 'quote' }, r.reason || '(no details)'),
+        el('dl', { class: 'kv', style: 'margin-top:12px' },
+          el('dt', {}, 'From'), el('dd', {}, r.name || 'Unknown'),
+          el('dt', {}, 'Email'), el('dd', {}, r.email ? el('a', { href: `mailto:${r.email}` }, r.email) : '—'),
+        ),
+      ),
+
+      r.targetType !== 'general' && el('div', { class: 'section' },
+        el('div', { class: 'label' }, r.targetType === 'listing' ? 'Reported listing' : 'Reported user'),
+        r.targetType === 'listing' ? listingPreview(target) : userPreview(target),
+      ),
+
+      el('div', { class: 'section' },
+        el('div', { class: 'label' }, 'Actions'),
+        actionButtons(r, target),
+      ),
+      el('div', { class: 'bannerErr', id: 'actionErr', hidden: true }),
+    ].filter(Boolean));
+  }
+
+  async function loadTarget(r) {
+    if (r.targetType === 'listing') {
+      const snap = await getDoc(doc(db, 'listings', r.targetId)).catch(() => null);
+      if (snap?.exists()) {
+        const listing = snap.data();
+        const owner = listing.ownerId ? await getDoc(doc(db, 'users', listing.ownerId)).catch(() => null) : null;
+        return { exists: true, listingId: r.targetId, listing, owner: owner?.data() ?? null, ownerId: listing.ownerId };
+      }
+      const tomb = await getDoc(doc(db, 'deletedListings', r.targetId)).catch(() => null);
+      return { exists: false, tomb: tomb?.exists() ? tomb.data() : null, ownerId: tomb?.data()?.ownerId ?? null };
+    }
+    if (r.targetType === 'user') {
+      const snap = await getDoc(doc(db, 'users', r.targetId)).catch(() => null);
+      if (!snap?.exists()) return { exists: false };
+      const count = await getCountFromServer(query(
+        collection(db, 'listings'), where('ownerId', '==', r.targetId), where('status', '==', 'published'),
+      )).then((c) => c.data().count).catch(() => null);
+      return { exists: true, uid: r.targetId, user: snap.data(), published: count };
+    }
+    return null;
+  }
+
+  function listingPreview(t) {
+    if (!t.exists) {
+      const tomb = t.tomb;
+      const when = tomb?.deletedAt ? fmtDate(toDate(tomb.deletedAt)) : 'time unknown';
+      const role = tomb?.deletedBy;
+      const by = role && `Deleted by ${tomb.deletedByName ? `${tomb.deletedByName} (${role})` : role}`;
+      return el('div', { class: 'gone' },
+        `Listing already deleted · ${when}${by ? ` · ${by}` : ''}`,
+        tomb?.title && el('div', { style: 'color:var(--muted);margin-top:4px' }, `Title: “${tomb.title}”`),
+        idLine('Owner UID', 'users', tomb?.ownerId),
+        tomb?.deletedBy === 'admin' && idLine('Deleted by UID', 'users', tomb.deletedByUid),
+      );
+    }
+    const l = t.listing;
+    const images = (l.images ?? []).map(httpsOnly).filter(Boolean).slice(0, 4);
+    const video = httpsOnly(l.videoUrl);
+    const place = [l.city, l.province].filter(Boolean).join(', ');
+    return el('div', {},
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Title'), el('dd', {}, l.title || 'Untitled', idLine('ID', 'listings', t.listingId)),
+        el('dt', {}, 'Location'), el('dd', {}, place || '—'),
+        el('dt', {}, 'Rent'), el('dd', {}, l.price != null ? `$${Number(l.price).toLocaleString('en-US')}/mo` : '—'),
+        el('dt', {}, 'Status'), el('dd', {}, l.status || '—'),
+        el('dt', {}, 'Owner'), el('dd', {}, t.owner?.displayName || 'Unknown', idLine('UID', 'users', t.ownerId)),
+        el('dt', {}, 'Links'), el('dd', {},
+          el('a', { href: `/listing/${encodeURIComponent(t.listingId)}`, target: '_blank', rel: 'noopener' }, 'Public page'),
+          video && ' · ', video && el('a', { href: video, target: '_blank', rel: 'noopener' }, 'Video'),
+        ),
+      ),
+      images.length > 0 && el('div', { class: 'thumbs' },
+        images.map((src) => el('a', { href: src, target: '_blank', rel: 'noopener' }, el('img', { src, alt: '', loading: 'lazy' })))),
+    );
+  }
+
+  function userPreview(t) {
+    if (!t.exists) return el('div', { class: 'gone' }, 'This account no longer exists.');
+    const u = t.user;
+    const avatar = httpsOnly((u.avatar ?? [])[0]);
+    return el('div', {},
+      el('div', { class: 'profile' },
+        avatar ? el('img', { src: avatar, alt: '' }) : el('img', { alt: '' }),
+        el('div', {},
+          el('div', { style: 'font-weight:700' }, u.displayName || 'No name'),
+          idLine('UID', 'users', t.uid),
+          el('div', { class: 'dim' },
+            `${u.verified ? 'ID verified' : 'Not ID verified'} · ${t.published ?? '?'} published listing${t.published === 1 ? '' : 's'}`),
+        ),
+      ),
+      u.aboutMe && el('div', { class: 'quote', style: 'margin-top:12px' }, u.aboutMe),
+    );
+  }
+
+  function actionButtons(r, t) {
+    if (r.status !== 'open') return el('p', { class: 'dim' }, 'This report is closed.');
+    const buttons = [];
+    if (r.targetType === 'general') {
+      buttons.push(el('a', {
+        class: 'actBtn', href: r.email ? `mailto:${r.email}?subject=${encodeURIComponent('Re: your KOZY inquiry')}` : null,
+      }, 'Reply by email'));
+      buttons.push(el('button', {
+        class: 'actBtn', type: 'button',
+        onclick: () => confirmThen({
+          title: 'Mark this inquiry resolved?', body: 'It moves to the Resolved tab.', ok: 'Mark resolved', danger: false,
+        }, (note) => act(r, 'dismissed', note)),
+      }, 'Mark resolved'));
+      return el('div', { class: 'actions' }, buttons);
+    }
+    buttons.push(el('button', {
+      class: 'actBtn', type: 'button',
+      onclick: () => confirmThen({
+        title: 'Dismiss this report?', body: 'The report closes and nothing else changes.', ok: 'Dismiss', danger: false,
+      }, (note) => act(r, 'dismissed', note)),
+    }, 'Dismiss'));
+    if (r.targetType === 'listing') {
+      const live = t.exists;
+      buttons.push(el('button', {
+        class: 'actBtn', type: 'button', disabled: !live || t.listing.status === 'archived',
+        onclick: () => confirmThen({
+          title: 'Hide this listing?', body: 'It disappears from the feed and search. The owner keeps it in My Listings.',
+          ok: 'Hide listing', danger: false,
+        }, (note) => act(r, 'listing_hidden', note, () => updateDoc(doc(db, 'listings', r.targetId), {
+          status: 'archived', updatedAt: serverTimestamp(),
+        }))),
+      }, 'Hide listing'));
+      buttons.push(el('button', {
+        class: 'actBtn danger', type: 'button', disabled: !live,
+        onclick: () => confirmThen({
+          title: 'Delete this listing?', body: 'The listing, its photos and video are permanently removed. This can’t be undone.',
+          ok: 'Delete listing', danger: true,
+        }, (note) => act(r, 'listing_deleted', note, () => deleteListingFn({ listingId: r.targetId }))),
+      }, 'Delete listing'));
+    }
+    const suspendUid = r.targetType === 'user' ? (t.exists ? r.targetId : null) : t.ownerId;
+    buttons.push(el('button', {
+      class: 'actBtn danger', type: 'button', disabled: !suspendUid,
+      onclick: () => confirmThen({
+        title: r.targetType === 'user' ? 'Suspend this user?' : 'Suspend the listing owner?',
+        body: 'They can’t sign in anymore and all their published listings are hidden. You can re-enable the account in the Firebase console.',
+        ok: 'Suspend', danger: true,
+      }, (note) => act(r, 'user_suspended', note, () => suspendUserFn({ uid: suspendUid }))),
+    }, r.targetType === 'user' ? 'Suspend user' : 'Suspend owner'));
+    return el('div', { class: 'actions' }, buttons);
+  }
+
+  // ---------- actions ----------
+  function confirmThen({ title, body, ok, danger }, onConfirm) {
+    const dlg = $('confirmDlg');
+    $('dlgTitle').textContent = title;
+    $('dlgBody').textContent = body;
+    const noteIn = $('dlgNote');
+    noteIn.value = '';
+    $('dlgNoteCount').textContent = '0';
+    noteIn.oninput = () => { $('dlgNoteCount').textContent = String(noteIn.value.length); };
+    const okBtn = $('dlgOk');
+    okBtn.textContent = ok;
+    okBtn.classList.toggle('danger', danger);
+    okBtn.onclick = () => { const note = noteIn.value.trim(); dlg.close(); onConfirm(note); };
+    $('dlgCancel').onclick = () => dlg.close();
+    dlg.showModal();
+  }
+
+  async function act(r, resolution, note, sideEffect) {
+    try {
+      await withBusy('Saving…', async () => {
+        if (sideEffect) await sideEffect();
+        await updateDoc(doc(db, 'reports', r.id), {
+          status: 'resolved',
+          resolution,
+          resolvedBy: state.me.uid,
+          resolvedByName: state.me.name,
+          ...(note ? { resolutionNote: note } : {}),
+          updatedAt: serverTimestamp(),
+        });
+        await loadReports();
+      });
+      await openReport(r.id);
+    } catch (err) {
+      const box = $('actionErr');
+      if (box) {
+        box.textContent = `Couldn’t finish: ${err?.message || 'unknown error'}. Nothing else was changed after the failed step.`;
+        box.hidden = false;
+      }
+    }
+  }
+</script>
+</body>
+</html>
